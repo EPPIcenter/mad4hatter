@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir results/cutadapt_TES_demux
+mkdir results/cutadapt_TES_quarter_demux
 
 cutadapt \
     --action=trim \
@@ -10,7 +10,7 @@ cutadapt \
     --pair-adapters \
     -e 0 \
     --no-indels \
-    -o results/cutadapt_TES_demux/{name}_trimmed_R1.fastq.gz \
-    -p results/cutadapt_TES_demux/{name}_trimmed_R2.fastq.gz \
-    data/raw_fastq/TES_R1_001.fastq.gz \
-    data/raw_fastq/TES_R2_001.fastq.gz 
+    -o results/cutadapt_TES_quarter_demux/{name}_trimmed_R1.fastq.gz \
+    -p results/cutadapt_TES_quarter_demux/{name}_trimmed_R2.fastq.gz \
+    data/raw_fastq/TES_quarter_R1_001.fastq.gz \
+    data/raw_fastq/TES_quarter_R2_001.fastq.gz 
