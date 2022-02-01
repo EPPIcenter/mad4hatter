@@ -1,3 +1,7 @@
 # ampseq_worflow
 
-I use the cutadapt.sh file as bash cutadapt.sh. I manually edit the inputs and outputs on that file
+Usage: 
+
+First run cutadapt_demux.sh with bash
+Then run count_reads.r with Rscript
+Then run dada.r with Rscript
