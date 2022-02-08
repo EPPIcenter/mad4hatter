@@ -1,4 +1,8 @@
-demuxed_folder = "~/Data/test_times/results/cutadapt_TES_quarter_demux"
+#!/usr/bin/env Rscript
+
+args = commandArgs(trailingOnly=T)
+
+demuxed_folder = args[1]
 
 fastq.summary = ShortRead::countFastq(demuxed_folder,pattern = "R1")
 
@@ -9,5 +13,5 @@ fastq.reads$locus = sapply(strsplit(fastq.reads$filename,"_trimmed"),"[",1)
 
 fastq.reads = fastq.reads[,c("locus","reads")]
 
-write.table(fastq.reads, file='~/Data/test_times/results/cutadapt_TES_quarter_demux/count_reads.tsv', quote=FALSE, sep='\t')
+write.table(fastq.reads, file=args[2], quote=FALSE, sep='\t')
 
