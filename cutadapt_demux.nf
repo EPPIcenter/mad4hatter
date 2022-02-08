@@ -32,14 +32,12 @@ process cutadapt {
         file rev_primers
 
         output:
-        file("trimmed_noprimers")
-        file("*.cutadapt.log")
-        file("*.html")
+        file("trimmed_demuxed")
 
-        conda 'bioconda::cutadapt=3.4 bioconda::fastp=0.20.1'
+        conda 'bioconda::cutadapt=3.5'
 
         time '120m'
-        cpus 4
+        cpus 8
         penv 'smp'
         memory '8 GB'
 
@@ -47,6 +45,7 @@ process cutadapt {
         """
         #!/usr/bin/env bash
         set -e
+        ulimit -s unlimited
 
         mkdir trimmed_demuxed
 
@@ -58,7 +57,6 @@ process cutadapt {
             --pair-adapters \
             -e 0 \
             --no-indels \
-            -j \$NSLOTS \
             -o trimmed_demuxed/{name}_${pair_id}_trimmed_R1.fastq.gz \
             -p trimmed_demuxed/{name}_${pair_id}_trimmed_R2.fastq.gz \
             ${reads[0]} \
