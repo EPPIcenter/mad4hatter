@@ -1,8 +1,10 @@
 #!/usr/bin/env Rscript
 
+args = commandArgs(trainingOnly=T)
+
 library(dada2)
 
-trimmed_path = "~/Data/test_times/results/cutadapt_TES_quarter_demux"
+trimmed_path = args[1]
 fnFs <- sort(list.files(path=trimmed_path, pattern="_R1.fastq.gz", full.names = TRUE))
 fnRs <- sort(list.files(path=trimmed_path, pattern="_R2.fastq.gz", full.names = TRUE))
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
@@ -37,4 +39,4 @@ seqtab <- makeSequenceTable(mergers)
 
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
-save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim, file = "output_TES_quarter_demux.RData")
+save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim, file = args[2])
