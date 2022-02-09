@@ -16,7 +16,7 @@ Channel
         .set { read_pairs }
 
 // cutadapt based quality filtering and QC
-// Filter to only reads with primer detected 
+// Filter to only reads with primer detected and trim poly-g
 process cutadapt {
     
         publishDir "${params.outdir}",
@@ -36,16 +36,13 @@ process cutadapt {
 
         conda 'bioconda::cutadapt=3.5'
 
-        time '120m'
-        cpus 4
-        penv 'smp'
-        memory '4 GB'
-
         script:
         """
         #!/usr/bin/env bash
         set -e
+
         mkdir trimmed_demuxed
+
         cutadapt \
             --action=trim \
             --discard-untrimmed \
