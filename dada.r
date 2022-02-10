@@ -1,10 +1,14 @@
 #!/usr/bin/env Rscript
 
-args = commandArgs(trainingOnly=T)
+.libPaths("~/R/x86_64-pc-linux-gnu-library/4.0-CBI")
+
+
+args = commandArgs(trailingOnly=T)
 
 library(dada2)
 
-trimmed_path = args[1]
+trimmed_path = paste0(list.files(path=args[1],pattern="_S",full.name=T),"/trimmed_demuxed")
+
 fnFs <- sort(list.files(path=trimmed_path, pattern="_R1.fastq.gz", full.names = TRUE))
 fnRs <- sort(list.files(path=trimmed_path, pattern="_R2.fastq.gz", full.names = TRUE))
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
