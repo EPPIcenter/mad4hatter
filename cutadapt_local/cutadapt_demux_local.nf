@@ -34,7 +34,7 @@ process cutadapt {
         file("trimmed_demuxed") 
         file '*qctempsummary.txt' into cutadapt_report
 
-        conda '/home/andres/miniconda3/envs/cutadaptenv/'
+        conda '/wynton/home/eppicenter/aarandad/miniconda3/envs/cutadaptenv/'
 
         script:
         """
@@ -50,20 +50,18 @@ process cutadapt {
             --pair-adapters \
             -e 0 \
             --no-indels \
+	    --nextseq-trim=20 \
             -j 2 \
-            --trim-n \
-            -q 10 \
-            --minimum-length 120 \
+            --minimum-length  116\
             -o trimmed_demuxed/{name}_${pair_id}_trimmed_R1.fastq.gz \
             -p trimmed_demuxed/{name}_${pair_id}_trimmed_R2.fastq.gz \
             ${reads[0]} \
             ${reads[1]} 1> ${pair_id}.cutadapt_summary.txt
            
-        grep -E "Adapter|Sequence" ${pair_id}.cutadapt_summary.txt | paste -s -d";\n" | sed 's/=== //' | cut -f 1,5 -d ";" | grep First | cut -f 4,7 -d " " \
-           | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1,\$1,\$2};' > ${pair_id}.qctempsummary.txt
         
         grep -E "Read 1 with adapter:" ${pair_id}.cutadapt_summary.txt | paste -s -d";\n"  | sed 's/Read 1 with adapter://' | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' \
-           | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Total",\$1};' >> ${pair_id}.qctempsummary.txt
+           | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Total trimmed",\$1};' >> ${pair_id}.qctempsummary.txt
+
 
         grep -E "Total read pairs processed:" ${pair_id}.cutadapt_summary.txt | paste -s -d";\n"  | sed 's/Total read pairs processed://' | sed 's/ //g' | sed 's/,//g' \
            | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Input",\$1};' >> ${pair_id}.qctempsummary.txt
