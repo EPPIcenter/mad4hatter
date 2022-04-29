@@ -126,7 +126,7 @@ process qualitycheck {
       awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
       fi
       
-       Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_trim.AMPLICONsummary.txt ${amplicon_info} ${params.outDIR}  
+       Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ${amplicon_info} ${params.outDIR}  
         """
 }
 
