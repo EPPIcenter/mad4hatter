@@ -50,6 +50,8 @@ process cutadapt {
 
 
 
+
+
         script:
         """
         #!/usr/bin/env bash
@@ -76,13 +78,19 @@ process cutadapt {
             ${reads[1]} 1> ${pair_id}.cutadapt_summary.txt
            
            grep -E "Adapter|Sequence" ${pair_id}.cutadapt_summary.txt | paste -s -d";\n" | sed 's/=== //' | cut -f 1,5 -d ";" | grep First | cut -f 4,7 -d " " \
-           | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1,\$1,\$2};' > ${pair_id}.AMPLICONsummary.txt
+           | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1,\$1,\$2};' > ${pair_id}.trim.AMPLICONsummary.txt
            
            grep -E "Read 1 with adapter:" ${pair_id}.cutadapt_summary.txt | paste -s -d";\n"  | sed 's/Read 1 with adapter://' | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' \
            | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Total trimmed",\$1};' > ${pair_id}.SAMPLEsummary.txt
            
            grep -E "Total read pairs processed:" ${pair_id}.cutadapt_summary.txt | paste -s -d";\n"  | sed 's/Total read pairs processed://' | sed 's/ //g' | sed 's/,//g' \
            | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Input",\$1};' >> ${pair_id}.SAMPLEsummary.txt
+           
+           if [ "\$(ls -A trimmed_demuxed/filtered/)" ]; then
+           for afile in trimmed_demuxed/filtered/*trimmed_F*; do primer=`echo \$afile | cut -f 3- -d '/' | cut -f 1-3 -d '_'`;  samplename=`echo \$afile | cut -f 3- -d '/' | cut -f 4- -d '_' | sed 's/_trimmed_F_filt.fastq.gz//g'`;  readcount=`zcat \$afile | awk 'NR % 4 ==1' | wc -l`; printf "%s\t%s\t%s\n" \$samplename \$primer \$readcount >> ${pair_id}.filt.AMPLICONsummary.txt; done
+           else
+           touch ${pair_id}.filt.AMPLICONsummary.txt
+           fi
  
         """
 }
@@ -108,12 +116,17 @@ process qualitycheck {
         #!/usr/bin/env bash
        set -e 
        
-       echo $summfile | tr ' ' '\n' | grep 'AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_AMPLICONsummary.txt
+       echo $summfile | tr ' ' '\n' | grep 'filt.AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_filt.AMPLICONsummary.txt
+       echo $summfile | tr ' ' '\n' | grep 'trim.AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_trim.AMPLICONsummary.txt
        echo $summfile | tr ' ' '\n' | grep 'SAMPLEsummary.txt' | tr '\n' ' ' | xargs cat > ALL_SAMPLEsummary.txt
        
-       
+      if [ -s ALL_filt.AMPLICONsummary.txt ]; then
+      awk 'NR == FNR { key[\$1,\$2] = \$3; next } { \$3 = ((\$1,\$2) in key) ? key[\$1,\$2] : 0 };1' OFS="\t"  ALL_filt.AMPLICONsummary.txt ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
+      else
+      awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
+      fi
       
-       Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_AMPLICONsummary.txt ${amplicon_info} ${params.outDIR}  
+       Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_trim.AMPLICONsummary.txt ${amplicon_info} ${params.outDIR}  
         """
 }
 
