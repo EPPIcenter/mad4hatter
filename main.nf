@@ -86,8 +86,8 @@ process cutadapt {
            grep -E "Total read pairs processed:" ${pair_id}.cutadapt_summary.txt | paste -s -d";\n"  | sed 's/Total read pairs processed://' | sed 's/ //g' | sed 's/,//g' \
            | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Input",\$1};' >> ${pair_id}.SAMPLEsummary.txt
            
-           if [ "\$(ls -A trimmed_demuxed/filtered/)" ]; then
-           for afile in trimmed_demuxed/filtered/*trimmed_F*; do primer=`echo \$afile | cut -f 3- -d '/' | cut -f 1-3 -d '_'`;  samplename=`echo \$afile | cut -f 3- -d '/' | cut -f 4- -d '_' | sed 's/_trimmed_F_filt.fastq.gz//g'`;  readcount=`zcat \$afile | awk 'NR % 4 ==1' | wc -l`; printf "%s\t%s\t%s\n" \$samplename \$primer \$readcount >> ${pair_id}.filt.AMPLICONsummary.txt; done
+           if [ "\$(ls -A trimmed_demuxed/)" ]; then
+           for afile in trimmed_demuxed/*trimmed_R1.fastq.gz; do primer=`echo \$afile | cut -f 2- -d '/' | cut -f 1-3 -d '_'`;  samplename=${pair_id};  readcount=`zcat \$afile | awk 'NR % 4 ==1' | wc -l`; printf "%s\t%s\t%s\n" \$samplename \$primer \$readcount >> ${pair_id}.filt.AMPLICONsummary.txt; done
            else
            touch ${pair_id}.filt.AMPLICONsummary.txt
            fi
