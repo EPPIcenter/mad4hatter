@@ -3,7 +3,6 @@ fwd_primers = file( params.fwd_primers )
 rev_primers = file( params.rev_primers )
 amplicon_info = file( params.amplicon_info )
 
-// this needs to be fixed
 cutadapt_minlen = params.cutadapt_minlen
 if ( params.sequencer == 'miseq' ) { qualfilter = 10 } else { qualfilter = 20 }
 
@@ -24,7 +23,8 @@ read_pairs.into { read_pairs_cutadapt; read_pairs_qualitycheck }
 // cutadapt based quality filtering and QC
 // Filter to only reads with primer detected and trim poly-g
 process cutadapt {
-    
+
+   
         publishDir "${params.outDIR}",
                 saveAs: {filename ->
                         if (filename.endsWith("cutadapt{1,2}_summary.txt")) "${pair_id}/logs/${filename}"
@@ -42,6 +42,12 @@ process cutadapt {
         file("trimmed_demuxed") into dada2
         file '*{AMPLICON,SAMPLE}summary.txt' into cutadapt_report 
 
+        time '30m'
+        cpus 4
+        penv 'smp'
+        memory '8 GB'
+
+
         script:
         """
         #!/usr/bin/env bash
@@ -56,7 +62,6 @@ process cutadapt {
             --action=trim \
             -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC \
             -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT \
-            -j 2 \
             -e 0 \
             --no-indels \
             --minimum-length ${cutadapt_minlen} \
@@ -82,7 +87,6 @@ process cutadapt {
             --pair-adapters \
             -e 0 \
             --no-indels \
-            -j 2 \
             --nextseq-trim=20 \
             --minimum-length 100 \
             -o trimmed_demuxed/{name}_${pair_id}_trimmed_R1.fastq.gz \
@@ -118,6 +122,12 @@ process qualitycheck {
         output:
         file '*.txt' into qualitycheck_report
 
+        time '30m'
+        cpus 4
+        penv 'smp'
+        memory '8 GB'
+
+
         script:
         """
         #!/usr/bin/env bash
@@ -132,8 +142,7 @@ process qualitycheck {
       else
       awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
       fi
-      module load CBI r
-       Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ${amplicon_info} ${params.outDIR}  
+      
         """
 }
 
@@ -145,12 +154,17 @@ process dada2_analysis {
                saveAs: {filename -> "${filename}"
                }
 
- input:
+        input:
        file 'trimmed_demuxed' from dada2.collect().ifEmpty([])
        file amplicon_info
          
         output:
         file '*.RData' into dada2_summary
+        
+        time '600m'
+        cpus 4
+        penv 'smp'
+        memory '8 GB'
 
         script:
        treat_no_overlap_differently = "T"
@@ -163,6 +177,11 @@ process dada2_analysis {
 
 // Dada2 Postprocessing
 process dada2_postproc {
+
+        time '120m'
+        cpus 4
+        penv 'smp'
+        memory '8 GB'
 
         publishDir "${params.outDIR}",
                saveAs: {filename -> "${filename}"
@@ -177,7 +196,7 @@ process dada2_postproc {
         script:
 
         """
-	module load CBI r
+        module load CBI r
       Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile
         """
 }
