@@ -1,4 +1,3 @@
-.libPaths("~/R/x86_64-pc-linux-gnu-library/4.0-CBI")
 library(tidyverse)
 library(gridExtra)
 library(ggbeeswarm)
@@ -66,6 +65,6 @@ p4=ggplot(df1,aes(x=ampInsert_length,y=NumReads)) + ggtitle("Amplicon Length vs.
 p=list(p1,p3,p4)
 ml <- marrangeGrob(p, nrow=1, ncol=1)
 ## non-interactive use, multipage pdf
-#ggsave(filename = paste(outDIR,"/QCplots.pdf",sep=""), plot = ml, width = 15, height = 9)
+ggsave(filename = paste(outDIR,"/QCplots.pdf",sep=""), plot = ml, width = 15, height = 9)
 
 
