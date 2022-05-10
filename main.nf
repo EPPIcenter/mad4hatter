@@ -4,7 +4,7 @@ rev_primers = file( params.rev_primers )
 amplicon_info = file( params.amplicon_info )
 
 cutadapt_minlen = params.cutadapt_minlen
-if ( params.sequencer == 'miseq' ) { qualfilter = 10 } else { qualfilter = 20 }
+if ( params.sequencer == 'miseq' ) { qualfilter = '--trim-n -q 10' } else { qualfilter = '--nextseq-trim=20' }
 
 //params.dev = false
 //params.number_of_inputs = 1
@@ -59,32 +59,55 @@ process cutadapt {
 
      
         mkdir trimmed_demuxed
+        mkdir trimmed_demuxed_unknown
+        mkdir filtered_out
+        mkdir filtered_in
+        
+        cutadapt \
+            --action=trim \
+            -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC \
+            -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT \
+            -j 2 \
+            -e 0 \
+            --no-indels \
+            --minimum-length ${cutadapt_minlen} \
+            -o filtered_out/${pair_id}_dimer_R1.fastq.gz \
+            -p filtered_out/${pair_id}_dimer_R2.fastq.gz \
+            --untrimmed-output filtered_in/${pair_id}_filtered_R1.fastq.gz \
+            --untrimmed-paired-output filtered_in/${pair_id}_filtered_R2.fastq.gz \
+            ${reads[0]} \
+            ${reads[1]} 1> ${pair_id}.cutadapt1_summary.txt
+        
+
+
+           grep -E "Total read pairs processed:" ${pair_id}.cutadapt1_summary.txt | paste -s -d";\n"  | sed 's/Total read pairs processed://' | sed 's/ //g' | sed 's/,//g' | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Input",\$1};' > ${pair_id}.SAMPLEsummary.txt
+           
+          grep -E "Pairs discarded as untrimmed:" ${pair_id}.cutadapt1_summary.txt | paste -s -d";\n"  | sed 's/Pairs discarded as untrimmed://' | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' |awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Total filtered",\$1};' >> ${pair_id}.SAMPLEsummary.txt
+           
+
 
         cutadapt \
             --action=trim \
-            --discard-untrimmed \
             -g file:${fwd_primers} \
             -G file:${rev_primers} \
             --pair-adapters \
             -e 0 \
             --no-indels \
             -j 2 \
-            --trim-n \
-            -q ${qualfilter} \
+            ${qualfilter} \
             --minimum-length ${cutadapt_minlen} \
             -o trimmed_demuxed/{name}_${pair_id}_trimmed_R1.fastq.gz \
             -p trimmed_demuxed/{name}_${pair_id}_trimmed_R2.fastq.gz \
-            ${reads[0]} \
-            ${reads[1]} 1> ${pair_id}.cutadapt_summary.txt
+            --untrimmed-output trimmed_demuxed_unknown/${pair_id}_unknown_R1.fastq.gz \
+            --untrimmed-paired-output trimmed_demuxed_unknown/${pair_id}_unknown_R2.fastq.gz \
+            filtered_in/${pair_id}_filtered_R1.fastq.gz \
+            filtered_in/${pair_id}_filtered_R2.fastq.gz 1> ${pair_id}.cutadapt2_summary.txt
            
-           grep -E "Adapter|Sequence" ${pair_id}.cutadapt_summary.txt | paste -s -d";\n" | sed 's/=== //' | cut -f 1,5 -d ";" | grep First | cut -f 4,7 -d " " \
+           grep -E "Pairs written" ${pair_id}.cutadapt2_summary.txt | cut -f 2- -d ":" | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Final filtered",\$1};' >> ${pair_id}.SAMPLEsummary.txt
+           
+           grep -E "Adapter|Sequence" ${pair_id}.cutadapt2_summary.txt | paste -s -d";\n" | sed 's/=== //' | cut -f 1,5 -d ";" | grep First | cut -f 4,7 -d " " \
            | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1,\$1,\$2};' > ${pair_id}.trim.AMPLICONsummary.txt
            
-           grep -E "Read 1 with adapter:" ${pair_id}.cutadapt_summary.txt | paste -s -d";\n"  | sed 's/Read 1 with adapter://' | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' \
-           | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Total trimmed",\$1};' > ${pair_id}.SAMPLEsummary.txt
-           
-           grep -E "Total read pairs processed:" ${pair_id}.cutadapt_summary.txt | paste -s -d";\n"  | sed 's/Total read pairs processed://' | sed 's/ //g' | sed 's/,//g' \
-           | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Input",\$1};' >> ${pair_id}.SAMPLEsummary.txt
            
            if [ "\$(ls -A trimmed_demuxed/)" ]; then
            for afile in trimmed_demuxed/*trimmed_R1.fastq.gz; do primer=`echo \$afile | cut -f 2- -d '/' | cut -f 1-3 -d '_'`;  samplename=${pair_id};  readcount=`zcat \$afile | awk 'NR % 4 ==1' | wc -l`; printf "%s\t%s\t%s\n" \$samplename \$primer \$readcount >> ${pair_id}.filt.AMPLICONsummary.txt; done
@@ -126,7 +149,7 @@ process qualitycheck {
       awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
       fi
       
-       Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ${amplicon_info} ${params.outDIR}  
+       Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ALL_SAMPLEsummary.txt ${amplicon_info} ${params.outDIR}  
         """
 }
 
