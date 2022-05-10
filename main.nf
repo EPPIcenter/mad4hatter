@@ -3,9 +3,8 @@ fwd_primers = file( params.fwd_primers )
 rev_primers = file( params.rev_primers )
 amplicon_info = file( params.amplicon_info )
 
-// this needs to be fixed
 cutadapt_minlen = params.cutadapt_minlen
-if ( params.sequencer == 'miseq' ) { qualfilter = 10 } else { qualfilter = 20 }
+if ( params.sequencer == 'miseq' ) { qualfilter = '--trim-n -q 10' } else { qualfilter = '--nextseq-trim=20' }
 
 
 /*
@@ -29,7 +28,8 @@ process cutadapt {
                 saveAs: {filename ->
                         if (filename.endsWith("cutadapt{1,2}_summary.txt")) "${pair_id}/logs/${filename}"
                         else "${pair_id}/${filename}"
-                }
+                },
+               mode: 'copy'
 
         input:
         tuple pair_id, file(reads) from read_pairs_cutadapt
@@ -56,7 +56,6 @@ process cutadapt {
             --action=trim \
             -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC \
             -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT \
-            -j 2 \
             -e 0 \
             --no-indels \
             --minimum-length ${cutadapt_minlen} \
@@ -83,7 +82,7 @@ process cutadapt {
             -e 0 \
             --no-indels \
             -j 2 \
-            --nextseq-trim=20 \
+	    ${qualfilter} \
             --minimum-length 100 \
             -o trimmed_demuxed/{name}_${pair_id}_trimmed_R1.fastq.gz \
             -p trimmed_demuxed/{name}_${pair_id}_trimmed_R2.fastq.gz \
@@ -91,6 +90,8 @@ process cutadapt {
             --untrimmed-paired-output trimmed_demuxed_unknown/${pair_id}_unknown_R2.fastq.gz \
             filtered_in/${pair_id}_filtered_R1.fastq.gz \
             filtered_in/${pair_id}_filtered_R2.fastq.gz 1> ${pair_id}.cutadapt2_summary.txt
+        
+        grep -E "Pairs written" ${pair_id}.cutadapt2_summary.txt | cut -f 2- -d ":" | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Final filtered",\$1};' >> ${pair_id}.SAMPLEsummary.txt
         
         grep -E "Adapter|Sequence" ${pair_id}.cutadapt2_summary.txt | paste -s -d";\n" | sed 's/=== //' | cut -f 1,5 -d ";" | grep First | cut -f 4,7 -d " " \
            | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1,\$1,\$2};' > ${pair_id}.trim.AMPLICONsummary.txt
@@ -108,7 +109,8 @@ process qualitycheck {
 
         publishDir "${params.outDIR}", 
                saveAs: {filename -> "${filename}"
-               }
+               },
+               mode: 'copy'
 
         input:
         tuple pair_id, file(reads) from read_pairs_qualitycheck
@@ -121,19 +123,19 @@ process qualitycheck {
         script:
         """
         #!/usr/bin/env bash
-       set -e 
+        set -e 
        
-       echo $summfile | tr ' ' '\n' | grep 'filt.AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_filt.AMPLICONsummary.txt
-       echo $summfile | tr ' ' '\n' | grep 'trim.AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_trim.AMPLICONsummary.txt
-       echo $summfile | tr ' ' '\n' | grep 'SAMPLEsummary.txt' | tr '\n' ' ' | xargs cat > ALL_SAMPLEsummary.txt
+        echo $summfile | tr ' ' '\n' | grep 'filt.AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_filt.AMPLICONsummary.txt
+        echo $summfile | tr ' ' '\n' | grep 'trim.AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_trim.AMPLICONsummary.txt
+        echo $summfile | tr ' ' '\n' | grep 'SAMPLEsummary.txt' | tr '\n' ' ' | xargs cat > ALL_SAMPLEsummary.txt
        
-      if [ -s ALL_filt.AMPLICONsummary.txt ]; then
-      awk 'NR == FNR { key[\$1,\$2] = \$3; next } { \$3 = ((\$1,\$2) in key) ? key[\$1,\$2] : 0 };1' OFS="\t"  ALL_filt.AMPLICONsummary.txt ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
-      else
-      awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
-      fi
-      module load CBI r
-       Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ${amplicon_info} ${params.outDIR}  
+        if [ -s ALL_filt.AMPLICONsummary.txt ]; then
+        awk 'NR == FNR { key[\$1,\$2] = \$3; next } { \$3 = ((\$1,\$2) in key) ? key[\$1,\$2] : 0 };1' OFS="\t"  ALL_filt.AMPLICONsummary.txt ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
+        else
+        awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
+        fi
+        module load CBI r
+        Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ALL_SAMPLEsummary.txt ${amplicon_info} ${params.outDIR}
         """
 }
 
@@ -143,7 +145,8 @@ process dada2_analysis {
 
         publishDir "${params.outDIR}",
                saveAs: {filename -> "${filename}"
-               }
+               },
+               mode:'copy'
 
  input:
        file 'trimmed_demuxed' from dada2.collect().ifEmpty([])
@@ -166,7 +169,8 @@ process dada2_postproc {
 
         publishDir "${params.outDIR}",
                saveAs: {filename -> "${filename}"
-               }
+               },
+               mode:'copy'
 
  input:
         file rdatafile from dada2_summary
@@ -178,6 +182,6 @@ process dada2_postproc {
 
         """
 	module load CBI r
-      Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile
+        Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile
         """
 }
