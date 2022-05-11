@@ -1,7 +1,7 @@
 # ampseq_workflow
 
 Install:
-R (will need libraries: dada, ggbeeswarm, tidyverse)
+R (will need libraries: dada, ggbeeswarm, tidyverse, gridExtra, rmarkdown, knitr)
 cutadapt
 nextflow
 
