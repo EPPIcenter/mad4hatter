@@ -129,6 +129,7 @@ process qualitycheck {
         fi
 
         mkdir quality_report
+        module load CBI r
         Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ALL_SAMPLEsummary.txt ${amplicon_info} quality_report
         """
 }
@@ -151,6 +152,7 @@ process dada2_analysis {
         treat_no_overlap_differently = 'T'
 
         """
+        module load CBI r
         Rscript ${params.scriptDIR}/dada_overlaps.R ${trimmed_demuxed} ${amplicon_info} $treat_no_overlap_differently dada2_overlaps.RData
         """
 }
@@ -171,6 +173,7 @@ process dada2_postproc {
         script:
 
         """
+        module load CBI r
         Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile
         """
 }
