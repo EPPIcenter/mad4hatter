@@ -28,10 +28,12 @@ sample_stats=df1 %>% pivot_wider(names_from = V2, values_from = V3) %>% dplyr::r
 
 ampdata=read.delim(ampliconFILE,header=T)
 
-setwd(outDIR)
+#setwd(outDIR)
+numsamples=length(unique(df$SampleName))
+numcols=ifelse(numsamples>=32,12,ifelse(numsamples>=16,8,4))
 
 #Histogram#
-p1=ggplot(data=df, aes(x=NumReads)) +  geom_histogram( binwidth=100, fill="#993333", color="#990000", alpha=0.9) + scale_y_continuous(breaks=seq(0,10,5),limits=c(0,10)) +  guides(fill=FALSE) + xlab("Read Count") + ylab("Frequency") + ggtitle("\nNumber of reads/Amplicon") + theme_bw() + theme(axis.text.x = element_text(size = 6)) + theme(plot.title = element_text(hjust = 0.5)) + facet_wrap(~SampleName,ncol=8) + theme(strip.text.x = element_text(size = 7))
+p1=ggplot(data=df, aes(x=NumReads)) +  geom_histogram( binwidth=100, fill="#993333", color="#990000", alpha=0.9) + scale_y_continuous(breaks=seq(0,10,5),limits=c(0,10)) +  guides(fill=FALSE) + xlab("Read Count") + ylab("Frequency") + ggtitle("\nNumber of reads/Amplicon") + theme_bw() + theme(axis.text.x = element_text(size = 6)) + theme(plot.title = element_text(hjust = 0.5)) + facet_wrap(~SampleName,ncol=numcols) + theme(strip.text.x = element_text(size = 7))
 
 
 
@@ -60,7 +62,7 @@ p2b=ggplot( data=df %>% dplyr::filter(SampleName %in% samples_group2),aes(x=Samp
  df$NumReads[which(df$NumReads == 0)]=0.1  
  p3=ggplot(df) + ggbeeswarm::geom_quasirandom(aes(x=1,y=NumReads,color = Pool),dodge.width = 0.5,size=0.5)+
   scale_y_log10()+
-  facet_wrap(~SampleName,ncol=12)+
+  facet_wrap(~SampleName,ncol=numcols)+
   xlab("")+ theme_bw() +
   theme(strip.text.x = element_blank()) +
   geom_hline(yintercept = 100,linetype="dashed",color = "grey")
@@ -69,7 +71,7 @@ p2b=ggplot( data=df %>% dplyr::filter(SampleName %in% samples_group2),aes(x=Samp
 #Length vs. NumReads#
 df1=df %>% left_join(ampdata,by = c("Amplicon" = "amplicon")) %>% select(SampleName,Amplicon,NumReads,ampInsert_length) %>% data.frame()
 p4=ggplot(df1,aes(x=ampInsert_length,y=NumReads)) + ggtitle("Amplicon Length vs. NumReads") + 
-  geom_point(alpha=0.9,color="#993333") + xlab("Amplicon Insert Length") + theme_bw() + theme(axis.text.y  = element_text(size = 7)) + theme(plot.title = element_text(hjust = 0.5)) + facet_wrap(~SampleName,ncol=8) + theme(strip.text.x = element_text(size = 7))
+  geom_point(alpha=0.9,color="#993333") + xlab("Amplicon Insert Length") + theme_bw() + theme(axis.text.y  = element_text(size = 7)) + theme(plot.title = element_text(hjust = 0.5)) + facet_wrap(~SampleName,ncol=numcols) + theme(strip.text.x = element_text(size = 7))
 
 #pdf(paste(outDIR,"/QCplots.pdf",sep=""), onefile = TRUE)
 #grid.arrange(p1,p2a,p2b,p3,p4)
@@ -84,8 +86,8 @@ p4=ggplot(df1,aes(x=ampInsert_length,y=NumReads)) + ggtitle("Amplicon Length vs.
 ##RMarkdown report##
 
 currentDate <- Sys.Date()
-#rmd_file=paste(outDIR,"/QCplots.Rmd",sep="")
-rmd_file="QCplots.Rmd"
+rmd_file=paste(outDIR,"/QCplots.Rmd",sep="")
+#rmd_file="QCplots.Rmd"
 file.create(rmd_file)
 p=list(sample_stats,p1,p3,p4)
 

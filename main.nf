@@ -133,6 +133,7 @@ process qualitycheck {
 
         output:
         file '*.txt' into qualitycheck_report
+        file('quality_report')
 
         script:
         """
@@ -149,12 +150,15 @@ process qualitycheck {
       awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
       fi
       
-       Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ALL_SAMPLEsummary.txt ${amplicon_info} ${params.outDIR}  
+ 
+       
+         mkdir quality_report
+         Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ALL_SAMPLEsummary.txt ${amplicon_info} quality_report
         """
 }
 
 // Dada2 
-/*
+
 process dada2_analysis {
 
         publishDir "${params.outDIR}",
@@ -195,4 +199,4 @@ process dada2_postproc {
       Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile
         """
 }
-*/
+
