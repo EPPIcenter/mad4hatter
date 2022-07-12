@@ -7,7 +7,7 @@ load (args[1])
 seqtab.nochim.df = as.data.frame(seqtab.nochim)
 seqtab.nochim.df$sample = rownames(seqtab.nochim)
 seqtab.nochim.df[seqtab.nochim.df==0]=NA
-pat="-1A_|-1B_|-1_|-2_"
+pat="-1A_|-1B_|-1_|-2_|-1AB|-1B2"
 seqtab.nochim.df = seqtab.nochim.df %>% 
   pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>% 
   mutate(locus = paste0(sapply(strsplit(sample,"_"),"[",1),"_",sapply(strsplit(sample,"_"),"[",2),"_",sapply(strsplit(sample,"_"),"[",3)))%>% 
