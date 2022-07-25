@@ -3,6 +3,8 @@ fwd_primers = file( params.fwd_primers )
 rev_primers = file( params.rev_primers )
 amplicon_info = file( params.amplicon_info )
 
+QC_only = params.QC_only
+
 cutadapt_minlen = params.cutadapt_minlen
 if ( params.sequencer == 'miseq' ) { qualfilter = '--trim-n -q 10' } else { qualfilter = '--nextseq-trim=20' }
 
@@ -135,6 +137,7 @@ process qualitycheck {
         file '*.txt' into qualitycheck_report
         file('quality_report')
 
+        
         script:
         """
         #!/usr/bin/env bash
@@ -171,6 +174,8 @@ process dada2_analysis {
          
         output:
         file '*.RData' into dada2_summary
+        
+        when : QC_only != "T"
 
         script:
        treat_no_overlap_differently = "T"
@@ -192,6 +197,8 @@ process dada2_postproc {
 
         output:
         file '*.{RDS,txt}' into dada2_proc
+        
+        when : QC_only != "T"
 
         script:
 
