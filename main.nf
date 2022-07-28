@@ -207,3 +207,29 @@ process dada2_postproc {
         """
 }
 
+// Moire MOI
+process moire {
+
+        publishDir "${params.outDIR}",
+               saveAs: {filename -> "${filename}"
+               }
+
+ input:
+        file asvfile from dada2_proc.collect().ifEmpty([])
+
+        output:
+        file '*.txt' into moire_moi
+        
+        when : QC_only != "T"
+
+        script:
+        
+        """
+        rdsfile="\$(echo $asvfile | tr ' ' '\n' | grep RDS)"
+        
+        Rscript ${params.scriptDIR}/moire_moi.R "\${rdsfile}"
+        
+        """
+}
+
+
