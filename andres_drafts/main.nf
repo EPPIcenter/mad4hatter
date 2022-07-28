@@ -3,8 +3,6 @@ fwd_primers = file( params.fwd_primers )
 rev_primers = file( params.rev_primers )
 amplicon_info = file( params.amplicon_info )
 
-QC_only = params.QC_only
-
 cutadapt_minlen = params.cutadapt_minlen
 if ( params.sequencer == 'miseq' ) { qualfilter = '--trim-n -q 10' } else { qualfilter = '--nextseq-trim=20' }
 
@@ -55,7 +53,6 @@ process cutadapt {
             --action=trim \
             -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC \
             -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT \
-            -j 2 \
             -e 0 \
             --no-indels \
             --minimum-length ${cutadapt_minlen} \
@@ -79,9 +76,8 @@ process cutadapt {
             --pair-adapters \
             -e 0 \
             --no-indels \
-            -j 2 \
-            ${qualfilter} \
-            --minimum-length ${cutadapt_minlen} \
+        ${qualfilter} \
+            --minimum-length 100 \
             -o trimmed_demuxed/{name}_${pair_id}_trimmed_R1.fastq.gz \
             -p trimmed_demuxed/{name}_${pair_id}_trimmed_R2.fastq.gz \
             --untrimmed-output trimmed_demuxed_unknown/${pair_id}_unknown_R1.fastq.gz \
@@ -117,7 +113,6 @@ process qualitycheck {
         file '*.txt' into qualitycheck_report
         file('quality_report')
 
-        
         script:
         """
         #!/usr/bin/env bash
@@ -134,6 +129,7 @@ process qualitycheck {
         fi
 
         mkdir quality_report
+        module load CBI r
         Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ALL_SAMPLEsummary.txt ${amplicon_info} quality_report
         """
 }
@@ -151,13 +147,12 @@ process dada2_analysis {
 
         output:
         file '*.RData' into dada2_summary
-        
-        when : QC_only != "T"
 
         script:
         treat_no_overlap_differently = 'T'
 
         """
+        module load CBI r
         Rscript ${params.scriptDIR}/dada_overlaps.R ${trimmed_demuxed} ${amplicon_info} $treat_no_overlap_differently dada2_overlaps.RData
         """
 }
@@ -174,39 +169,11 @@ process dada2_postproc {
 
         output:
         file '*.{RDS,txt}' into dada2_proc
-        
-        when : QC_only != "T"
 
         script:
 
         """
+        module load CBI r
         Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile
         """
 }
-
-// Moire MOI
-process moire {
-
-        publishDir "${params.outDIR}",
-               saveAs: {filename -> "${filename}"
-               }
-
- input:
-        file asvfile from dada2_proc.collect().ifEmpty([])
-
-        output:
-        file '*.txt' into moire_moi
-        
-        when : QC_only != "T"
-
-        script:
-        
-        """
-        rdsfile="\$(echo $asvfile | tr ' ' '\n' | grep RDS)"
-        
-        Rscript ${params.scriptDIR}/moire_moi.R "\${rdsfile}"
-        
-        """
-}
-
-

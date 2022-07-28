@@ -1,5 +1,3 @@
-#!/usr/bin/env Rscript
-.libPaths("~/R/x86_64-pc-linux-gnu-library/4.0-CBI")
 library(tidyverse)
 args = commandArgs(trailingOnly=T)
 
@@ -8,10 +6,11 @@ load (args[1])
 seqtab.nochim.df = as.data.frame(seqtab.nochim)
 seqtab.nochim.df$sample = rownames(seqtab.nochim)
 seqtab.nochim.df[seqtab.nochim.df==0]=NA
+pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
 seqtab.nochim.df = seqtab.nochim.df %>% 
   pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>% 
-  mutate(locus = sapply(strsplit(sample,"_PARA"),"[",1)) %>% 
-  mutate(sampleID = as.numeric(sapply(strsplit(sapply(strsplit(sample,"s_S"),"[",2),"_trimmed"),"[",1))) %>% 
+  mutate(locus = paste0(sapply(strsplit(sample,"_"),"[",1),"_",sapply(strsplit(sample,"_"),"[",2),"_",sapply(strsplit(sample,"_"),"[",3)))%>% 
+  mutate(sampleID = sapply(strsplit(sapply(strsplit(sample,pat),"[",2),"_trimmed"),"[",1)) %>% 
   select(sampleID,locus,asv,reads)
 
 
@@ -37,4 +36,5 @@ allele.data = seqtab.nochim.df %>%
   mutate(norm.reads.locus = reads/sum(reads))%>% 
   mutate(n.alleles = n())
 
-  saveRDS(allele.data,allele_data.RDS)
+  saveRDS(allele.data,file="allele_data.RDS")
+  write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
