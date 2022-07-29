@@ -12,6 +12,7 @@ conda env create -f environment.yaml
 
 ```R
 install.packages(c('dada', 'ggbeeswarm', 'tidyverse', 'gridExtra', 'rmarkdown', 'knitr'))
+remotes::install_github("m-murphy/moire")
 ```
 
 ## Running the Pipeline
