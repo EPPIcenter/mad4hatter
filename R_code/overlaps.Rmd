@@ -1,0 +1,88 @@
+# Brian Palmer
+
+```{r}
+library(Biostrings)
+library(stringr)
+library(dada2)
+library(msa)
+load(file.path("results/dada2_overlaps.RData"))
+amplicon_info <- read.csv("vX_amplicon_info/v4_amplicon_info.tsv", sep = "\t")
+```
+
+```{r, include = FALSE}
+
+amplicon_info$amplicon
+names(mergers)
+
+mergers[[495]]$sequence <- paste0(dadaFs[[495]]$sequence, "NNNNNNNNNN",
+    Biostrings::reverseComplement(
+        Biostrings::DNAString(dadaRs[[495]]$sequence)) %>%
+            as.character())
+
+mergers[[495]]
+```
+
+
+## Just keep the forward reads
+
+This was proprosed by the author for someone who had 600 bp amplicons with 200 bp reads. https://github.com/benjjneb/dada2/issues/790. 
+The downside is this obviously causes loss of information.
+
+```r
+seqtab <- gsub("N{10}[ACGT]+", "", getSequences(seqtab))
+```
+
+## Possibly could use amplicons from replicates or other samples to determine similarity
+
+```{r}
+v <- vector(length = length(mergers))
+for (idx in seq_along(mergers)) {
+    v[idx] <- nchar(mergers[[idx]]$sequence) > 0 &&
+        isTRUE(str_detect(mergers[[idx]]$sequence, "NNNNNNNNNN"))
+}
+
+merged_non_overlapping <- mergers[v]
+if (length(merged_non_overlapping) > 0) {
+
+    non_overlapping_amplicon <- sub(
+        "_PARAV3.*", "", names(merged_non_overlapping))
+
+    v <- str_detect(names(mergers[v]), non_overlapping_amplicon)
+
+    # must have at least 3 reads
+    if (sum(v) >= 0)
+        msa(mergers[[1]]$sequence, type = "dna", method = "Muscle")
+}
+
+```
+
+
+## A more painful approach reverting to forward and reverse reads.
+
+I'm least confident in this answer.
+
+```{r}
+vr <- as.vector(rep(Inf, length(mergers)), mode = "numeric")
+vf <- as.vector(rep(Inf, length(mergers)), mode = "numeric")
+
+alignment <- function(fn, x, y) {
+    return(fn(x, y))
+}
+non_overlapping <- mergers[[name]]$sequence
+
+for (i in seq_along(mergers)) {
+    name <- names(mergers[i])
+    merger_sequence <- mergers[[name]]$sequence
+    if (nchar(merger_sequence) > 0 &&
+        isTRUE(str_detect(merger_sequence, "NNNNNNNNNN"))) {
+            split_merged <- unlist(str_split(merger_sequence, "NNNNNNNNNN"))
+            vf[i] <- alignment(adist, split_merged[1], dadaFs[[name]]$sequence)
+            vr[i] <- alignment(adist, split_merged[2],
+                Biostrings::reverseComplement(
+                    Biostrings::DNAString(dadaRs[[name]]$sequence)) %>%
+                        as.character())
+    }
+}
+
+```
+
