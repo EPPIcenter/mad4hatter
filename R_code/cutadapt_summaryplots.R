@@ -54,12 +54,14 @@ p1=ggplot(data=df, aes(x=NumReads+0.1)) +
   guides(fill=FALSE) + 
   xlab("Read Count") + 
   ylab("Frequency") + 
-  ggtitle("\nNumber of reads/Amplicon") + 
+  ggtitle("\nNumber of Reads/Amplicon") + 
   theme_bw() + 
   theme(axis.text.x = element_text(size = 6)) + 
   theme(plot.title = element_text(hjust = 0.5)) + 
-  facet_wrap(~SampleNumber,ncol=6) + 
-  theme(strip.text.x = element_text(size = 7))
+  facet_wrap(~SampleName,ncol=6) + 
+  theme(strip.text.x = element_text(size = 7)) +
+  scale_y_log10()
+
 
 
 #Boxplot#
@@ -89,7 +91,7 @@ df2$NumReads[which(df$NumReads == 0)]=0.1
 p3=ggplot(df2) +   
   ggbeeswarm::geom_quasirandom(aes(x=1,y=NumReads,color = Pool),dodge.width = 0.5,size=0.5)+
   scale_y_log10()+
-  facet_wrap(~SampleNumber,ncol=8)+
+  facet_wrap(~SampleName,ncol=6)+
   theme_bw() +
   xlab("")+
   theme(axis.text.x = element_blank(),axis.ticks = element_blank())+
@@ -99,7 +101,7 @@ p3=ggplot(df2) +
 
 
 #Length vs. NumReads#
-df1=df %>% left_join(ampdata,by = c("Amplicon" = "amplicon")) %>% select(SampleNumber,Amplicon,NumReads,ampInsert_length,Pool) %>% data.frame()
+df1=df %>% left_join(ampdata,by = c("Amplicon" = "amplicon")) %>% select(SampleName,Amplicon,NumReads,ampInsert_length,Pool) %>% data.frame()
 p4=ggplot(df1,aes(x=ampInsert_length,y=NumReads+0.1,color = Pool)) + ggtitle("Amplicon Length vs. NumReads") + 
   geom_point(alpha=0.9,size=0.5) + 
   scale_y_log10()+
@@ -107,7 +109,7 @@ p4=ggplot(df1,aes(x=ampInsert_length,y=NumReads+0.1,color = Pool)) + ggtitle("Am
   theme_bw() + 
   theme(axis.text.y  = element_text(size = 7)) + 
   theme(plot.title = element_text(hjust = 0.5)) + 
-  facet_wrap(~SampleNumber,ncol=8) + 
+  facet_wrap(~SampleName,ncol=6) + 
   theme(strip.text.x = element_text(size = 7))+
   theme(legend.position = "bottom")
 
