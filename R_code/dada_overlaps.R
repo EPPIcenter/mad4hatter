@@ -102,6 +102,43 @@ if(treat.no.overlap.differently == T){
 
 seqtab <- makeSequenceTable(mergers)
 
+
+# Brian Code
+v <- vector(length = length(mergers))
+for (idx in seq_along(mergers)) {
+    v[idx] <- nchar(mergers[[idx]]$sequence) > 0 &&
+        isTRUE(str_detect(mergers[[idx]]$sequence, "NNNNNNNNNN"))
+}
+
+merged_non_overlapping <- mergers[v]
+msa_results <- NULL
+if (length(merged_non_overlapping) > 0) {
+
+    non_overlapping_amplicon_name <- sub(
+        "_PARAV3.*", "", names(merged_non_overlapping))
+
+    # get all amplicons by name across samples
+    non_overlaps_across <- str_detect(
+        names(mergers[v]), non_overlapping_amplicon_name)
+
+    # must have at least 3 reads
+    if (sum(non_overlaps_across) >= 3) {
+        s4_dna_strings <- list()
+        for (i in seq_along(non_overlaps_across)) {
+            name <- names(mergers[i])
+            s4_dna_strings <- c(s4_dna_strings,
+                list(maskMotif(DNAString(non_overlaps_across[[name]]$sequence),
+                    "NNNNNNNNNN")))
+        }
+        msa_results <- msa(s4_dna_strings, type = "dna", method = "Muscle")
+        assign(msa_results = msa_results)
+
+        toString(msa_results) 
+
+
+    }
+}
+
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
-save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim, file = dada2RData)
+save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim,msa_results, file = dada2RData)

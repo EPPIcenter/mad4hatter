@@ -5,7 +5,7 @@ library(Biostrings)
 library(stringr)
 library(dada2)
 library(msa)
-load(file.path("results/dada2_overlaps.RData"))
+load(file.path("/home/bpalmer/Documents/MAD4HATTER_example_data/results/dada2_overlaps.RData"))
 amplicon_info <- read.csv("vX_amplicon_info/v4_amplicon_info.tsv", sep = "\t")
 ```
 
@@ -44,14 +44,26 @@ for (idx in seq_along(mergers)) {
 merged_non_overlapping <- mergers[v]
 if (length(merged_non_overlapping) > 0) {
 
-    non_overlapping_amplicon <- sub(
+    non_overlapping_amplicon_name <- sub(
         "_PARAV3.*", "", names(merged_non_overlapping))
 
-    v <- str_detect(names(mergers[v]), non_overlapping_amplicon)
+    # get all amplicons by name across samples
+    non_overlaps_across <- str_detect(
+        names(mergers[v]), non_overlapping_amplicon_name)
 
     # must have at least 3 reads
-    if (sum(v) >= 0)
-        msa(mergers[[1]]$sequence, type = "dna", method = "Muscle")
+    if (sum(non_overlaps_across) >= 3) {
+        s4_dna_strings <- list()
+        for (i in seq_along(non_overlaps_across)) {
+            name <- names(mergers[i])
+            s4_dna_strings <- c(s4_dna_strings,
+                list(maskMotif(DNAString(non_overlaps_across[[name]]$sequence),
+                    "NNNNNNNNNN")))
+        }
+        msa_results <- msa(s4_dna_strings, type = "dna", method = "Muscle")
+
+        assign(msa_results = msa_results)
+    }
 }
 
 ```
@@ -86,3 +98,35 @@ for (i in seq_along(mergers)) {
 
 ```
 
+
+```{r}
+
+v <- vector(mode = "logical", length = length(mergers))
+for (i in seq_along(mergers)) {
+    name <- names(mergers[i])
+    if (nchar(mergers[[name]]$sequence) > 0)
+        v[i] <- str_detect(mergers[[name]]$sequence, "NNNNNNNNNN")
+}
+
+mergers_with_ns <- mergers[v]
+s4_dna_strings <- list()
+for (i in seq_along(mergers_with_ns)) {
+    name <- names(mergers[i])
+    s4_dna_strings <- c(s4_dna_strings,
+        list(maskMotif(DNAString(mergers_with_ns[[name]]$sequence),
+            "NNNNNNNNNN")))
+}
+
+if (length(s4_dna_strings) > 0) {
+    aln <- msa(s4_dna_strings, method = "Muscle", type = "dna")
+    toString(unmasked(aln))
+}
+
+
+```
+
+
+```{r}
+maskMotif(BString("AbcbbcbEE"), "bcb")
+
+```
