@@ -110,35 +110,63 @@ for (idx in seq_along(mergers)) {
         isTRUE(str_detect(mergers[[idx]]$sequence, "NNNNNNNNNN"))
 }
 
-merged_non_overlapping <- mergers[v]
-msa_results <- NULL
-if (length(merged_non_overlapping) > 0) {
+merged_non_overlappers <- mergers[v]
 
-    non_overlapping_amplicon_name <- sub(
-        "_PARAV3.*", "", names(merged_non_overlapping))
+aln_results <- list()
+if (length(merged_non_overlappers) > 0) {
 
-    # get all amplicons by name across samples
-    non_overlaps_across <- str_detect(
-        names(mergers[v]), non_overlapping_amplicon_name)
+    # get the substitution scores given a paremterized error probability
+    subscores <- errorSubstitutionMatrices(
+        errorProbability = 0.1) # parameterize this
 
-    # must have at least 3 reads
-    if (sum(non_overlaps_across) >= 3) {
-        s4_dna_strings <- list()
-        for (i in seq_along(non_overlaps_across)) {
-            name <- names(mergers[i])
-            s4_dna_strings <- c(s4_dna_strings,
-                list(maskMotif(DNAString(non_overlaps_across[[name]]$sequence),
-                    "NNNNNNNNNN")))
+    submat <- matrix(subscores[, , "0"], 4, 4)
+    diag(submat) <- subscores[, , "1"]
+    dimnames(submat) <- list(DNA_ALPHABET[1:4], DNA_ALPHABET[1:4])
+
+    for (merged_non_overlap in merged_non_overlappers) {
+
+        best_score <- -Inf
+        best_alignment <- NULL
+
+        # get the starting sequence
+        starting_sequence_name <- names(merged_non_overlap)
+        starting_sequence <- DNAString(merged_non_overlappers[[
+            starting_sequence_name]]$sequence)
+
+        # get the amplicon name from concatenated sample-amplicon name
+        amplicon_name <- sub(
+            "_PARAV3.*", "", names(merged_non_overlap)) # parameterize this
+
+        # get all amplicons by name across samples
+        amplicons_across <- str_detect(
+            names(mergers), amplicon_name)
+
+        for (amplicon in mergers[amplicons_across]) {
+
+            # make sure were not comparing against ourselves
+            if (!identical(names(amplicon), names(merged_non_overlap))) {
+                # Fit a pairwise comparison
+                compare_sequence <- DNAString(
+                    mergers[[names(amplicon)]]$sequence)
+
+                score <- pairwiseAlignment(starting_sequence, compare_sequence,
+                    substitutionMatrix = subscores, scoreOnly = TRUE)
+
+                if (score > best_score) {
+                    best_alignment <- amplicon
+                    best_score <- score
+                }
+            }
         }
-        msa_results <- msa(s4_dna_strings, type = "dna", method = "Muscle")
-        assign(msa_results = msa_results)
 
-        toString(msa_results) 
-
-
+        aln_results <- c(aln_results, list(
+            starting_sequence_name = starting_sequence_name,
+            best_alignment = best_alignment,
+            best_score = best_score)
+        )
     }
 }
 
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
-save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim,msa_results, file = dada2RData)
+save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim,aln_results, file = dada2RData)
