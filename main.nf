@@ -55,7 +55,6 @@ process cutadapt {
             --action=trim \
             -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC \
             -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT \
-            -j 2 \
             -e 0 \
             --no-indels \
             --minimum-length ${cutadapt_minlen} \
@@ -79,7 +78,6 @@ process cutadapt {
             --pair-adapters \
             -e 0 \
             --no-indels \
-            -j 2 \
             ${qualfilter} \
             --minimum-length ${cutadapt_minlen} \
             -o trimmed_demuxed/{name}_${pair_id}_trimmed_R1.fastq.gz \
