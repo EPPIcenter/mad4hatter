@@ -33,6 +33,11 @@ Modify the nextflow.config file:
 |sequencer|May leave as miseq for now. Not functional at the moment (default 'nextseq')|
 |QC_only|Whether to only run QC related workflows or all workflows (default 'F')|
 
+### Customizing for your institution
+
+There is a file named `custom.config` in `conf/` that can be used to tailor processes to your environment. By default,
+this file is used to tailor the pipeline for Wynton HPC at UCSF. This file may be altered to fit your institution's profile.
+
 ### Executing the Pipeline
 
 Potential ways to execute the pipeline:
