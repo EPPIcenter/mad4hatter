@@ -13,7 +13,7 @@ conda env create -f environment.yaml
 ```R
 install.packages(c('ggbeeswarm', 'tidyverse', 'gridExtra', 'rmarkdown', 'knitr'))
 
-remotes::install_github("m-murphy/moire")
+remotes::install_github("EPPIcenter/moire")
 
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
