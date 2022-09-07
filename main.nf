@@ -104,11 +104,12 @@ process cutadapt {
             ${reads[0]} \
             ${reads[1]} 1> ${pair_id}.cutadapt1_summary.txt
 
-        grep -E "Total read pairs processed:" ${pair_id}.cutadapt1_summary.txt | paste -s -d";\n"  | sed 's/Total read pairs processed://' | sed 's/ //g' | sed 's/,//g' \
+        grep -E "Total read pairs processed:" ${pair_id}.cutadapt1_summary.txt | sed -E 'N;s/(.*)\n(.*)/\1;\2/' | sed 's/Total read pairs processed://' | sed 's/ //g' | sed 's/,//g' \
            | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Input",\$1};' > ${pair_id}.SAMPLEsummary.txt
 
-        grep -E "Pairs discarded as untrimmed:" ${pair_id}.cutadapt1_summary.txt | paste -s -d";\n"  | sed 's/Pairs discarded as untrimmed://' | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' \
+        grep -E "Pairs discarded as untrimmed:" ${pair_id}.cutadapt1_summary.txt | sed -E 'N;s/(.*)\n(.*)/\1;\2/'  | sed 's/Pairs discarded as untrimmed://' | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' \
            | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "No Dimers",\$1};' >> ${pair_id}.SAMPLEsummary.txt
+
 
         cutadapt \
             --action=trim \
@@ -128,7 +129,7 @@ process cutadapt {
 
         grep -E "Pairs written" ${pair_id}.cutadapt2_summary.txt | cut -f 2- -d ":" | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Amplicons",\$1};' >> ${pair_id}.SAMPLEsummary.txt
 
-        grep -E "Adapter|Sequence" ${pair_id}.cutadapt2_summary.txt | paste -s -d";\n" | sed 's/=== //' | cut -f 1,5 -d ";" | grep First | cut -f 4,7 -d " " \
+        grep -E "Adapter|Sequence" ${pair_id}.cutadapt2_summary.txt | sed -E 'N;s/(.*)\n(.*)/\1;\2/' | sed 's/=== //' | cut -f 1,5 -d ";" | grep First | cut -f 4,7 -d " " \
            | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1,\$1,\$2};' > ${pair_id}.trim.AMPLICONsummary.txt
 
         if [ "\$(ls -A trimmed_demuxed/)" ]; then
