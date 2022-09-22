@@ -9,7 +9,7 @@ dependencies:
   - alsa-lib=1.2.6.1=h7f98852_0
   - bzip2=1.0.8=h7f98852_4
   - c-ares=1.18.1=h7f98852_0
-  - ca-certificates=2022.6.15=ha878542_0
+  - ca-certificates=2022.07.19=h06a4308_0
   - cairo=1.16.0=ha61ee94_1011
   - coreutils=8.25=1
   - curl=7.83.1=h2283fc2_0
@@ -62,6 +62,7 @@ dependencies:
   - nextflow=21.10.6=h4a94de4_0
   - openjdk=11.0.15=hc6918da_0
   - openssl=3.0.5=h166bdaf_0
+  - pandoc=2.12=h06a4308_0
   - pbzip2=1.1.13=0
   - pcre=8.45=h9c3ff4c_0
   - pigz=2.6=h27826a3_0
