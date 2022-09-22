@@ -43,12 +43,6 @@ read_pairs.into { read_pairs_cutadapt; read_pairs_qualitycheck }
 // Filter to only reads with primer detected and trim poly-g
 process cutadapt {
 
-        publishDir "${outDIR}",
-                saveAs: { filename ->
-                        if (filename.endsWith('cutadapt{1,2}_summary.txt')) "${pair_id}/logs/${filename}"
-                        else "${pair_id}/${filename}"
-                }
-
         input:
         tuple pair_id, file(reads) from read_pairs_cutadapt
         file fwd_primers
@@ -131,7 +125,7 @@ process qualitycheck {
         file amplicon_info
 
         output:
-        file '*.txt' into qualitycheck_report
+        file '*coverage.txt' into qualitycheck_report
         file('quality_report')
 
         
@@ -142,16 +136,16 @@ process qualitycheck {
 
         echo $summfile | tr ' ' '\n' | grep 'filt.AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_filt.AMPLICONsummary.txt
         echo $summfile | tr ' ' '\n' | grep 'trim.AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_trim.AMPLICONsummary.txt
-        echo $summfile | tr ' ' '\n' | grep 'SAMPLEsummary.txt' | tr '\n' ' ' | xargs cat > ALL_SAMPLEsummary.txt
+        echo $summfile | tr ' ' '\n' | grep 'SAMPLEsummary.txt' | tr '\n' ' ' | xargs cat > sample_coverage.txt
 
         if [ -s ALL_filt.AMPLICONsummary.txt ]; then
-        awk 'NR == FNR { key[\$1,\$2] = \$3; next } { \$3 = ((\$1,\$2) in key) ? key[\$1,\$2] : 0 };1' OFS="\t"  ALL_filt.AMPLICONsummary.txt ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
+        awk 'NR == FNR { key[\$1,\$2] = \$3; next } { \$3 = ((\$1,\$2) in key) ? key[\$1,\$2] : 0 };1' OFS="\t"  ALL_filt.AMPLICONsummary.txt ALL_trim.AMPLICONsummary.txt > amplicon_coverage.txt
         else
-        awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > ALL_filt.final.AMPLICONsummary.txt
+        awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > amplicon_coverage.txt
         fi
 
         mkdir quality_report
-        Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ALL_SAMPLEsummary.txt ${amplicon_info} quality_report
+        Rscript ${params.scriptDIR}/cutadapt_summaryplots.R amplicon_coverage.txt sample_coverage.txt ${amplicon_info} quality_report
         """
 }
 
@@ -175,7 +169,7 @@ process dada2_analysis {
         treat_no_overlap_differently = 'T'
 
         """
-        Rscript ${params.scriptDIR}/dada_overlaps.R ${trimmed_demuxed} ${amplicon_info} $treat_no_overlap_differently dada2_overlaps.RData
+        Rscript ${params.scriptDIR}/dada_overlaps.R ${trimmed_demuxed} ${amplicon_info} $treat_no_overlap_differently dada2_output.RData
         """
 }
 
