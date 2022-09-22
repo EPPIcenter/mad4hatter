@@ -1,4 +1,23 @@
-// Script parameters
+#!/usr/bin/env nextflow
+
+if ( params.readDIR == null ) {
+  System.err.println("ERROR: readDIR must be specified.")
+  System.exit(0)
+}
+
+// Expand user directory if exists
+outDIR = "${params.outDIR}".replaceFirst("^~", System.getProperty("user.home"))
+readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home"))
+
+// Set boilerplate parameters
+params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
+params.primerDIR       = "$projectDir/fastas"
+params.fwd_primers     = "${params.primerDIR}/v4_fwd.fasta"
+params.rev_primers     = "${params.primerDIR}/v4_rev.fasta"
+params.amplicon_info   = "$projectDir/vX_amplicon_info/v4_amplicon_info.tsv"
+params.scriptDIR       = "$projectDir/R_code"
+
+// Files
 fwd_primers = file( params.fwd_primers )
 rev_primers = file( params.rev_primers )
 amplicon_info = file( params.amplicon_info )
@@ -24,7 +43,7 @@ read_pairs.into { read_pairs_cutadapt; read_pairs_qualitycheck }
 // Filter to only reads with primer detected and trim poly-g
 process cutadapt {
 
-        publishDir "${params.outDIR}",
+        publishDir "${outDIR}",
                 saveAs: { filename ->
                         if (filename.endsWith('cutadapt{1,2}_summary.txt')) "${pair_id}/logs/${filename}"
                         else "${pair_id}/${filename}"
@@ -102,7 +121,7 @@ process cutadapt {
 
 // Quality checks on the cutadapt summary file
 process qualitycheck {
-        publishDir "${params.outDIR}",
+        publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
                }
 
@@ -139,7 +158,7 @@ process qualitycheck {
 // Dada2
 
 process dada2_analysis {
-        publishDir "${params.outDIR}",
+        publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
                }
 
@@ -163,7 +182,7 @@ process dada2_analysis {
 // Dada2 Postprocessing
 process dada2_postproc {
 
-        publishDir "${params.outDIR}",
+        publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
                }
 
@@ -185,7 +204,7 @@ process dada2_postproc {
 // Moire MOI
 process moire {
 
-        publishDir "${params.outDIR}",
+        publishDir "${outDIR}",
                saveAs: {filename -> "${filename}"
                }
 
