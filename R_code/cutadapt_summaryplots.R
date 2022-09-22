@@ -12,7 +12,7 @@ ampliconFILE=args[3]
 outDIR=args[4]
 
 
-df=read.delim(summaryFILE,header=F)
+df=read.table(summaryFILE,header=F)
 colnames(df)=c("SampleName","Amplicon","NumReads")
 df$SampleName=as.factor(df$SampleName)
 df$Amplicon=as.factor(df$Amplicon)
@@ -39,10 +39,10 @@ sample_stats=df1 %>%
   mutate(SampleName=sapply(str_split(SampleName,'_S(\\d+)'),head,1))
 sample_stats$SampleName=factor(sample_stats$SampleName,
                               levels=unique(samples$SampleName)) 
-sample_stats=sample_stats[,c("SampleNumber","SampleName","Input","Total.filtered","Final.filtered")]%>% 
+sample_stats=sample_stats[,c("SampleNumber","SampleName","Input","No.Dimers","Amplicons")]%>% 
   arrange(SampleNumber)
 
-colnames(sample_stats) = c("#","Sample","Input","No dimers","Amplicons")
+colnames(sample_stats) = c("#","Sample","Input","No Dimers","Amplicons")
 
 ampdata=read.delim(ampliconFILE,header=T)
 
