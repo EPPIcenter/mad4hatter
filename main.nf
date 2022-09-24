@@ -12,9 +12,10 @@ readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home")
 // Set boilerplate parameters
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
 params.primerDIR       = "$projectDir/fastas"
-params.fwd_primers     = "${params.primerDIR}/v4_fwd.fasta"
-params.rev_primers     = "${params.primerDIR}/v4_rev.fasta"
-params.amplicon_info   = "$projectDir/vX_amplicon_info/v4_amplicon_info.tsv"
+params.fwd_primers     = "${params.primerDIR}/v3_fwd.fasta"
+params.rev_primers     = "${params.primerDIR}/v3_rev.fasta"
+params.amplicon_info   = "$projectDir/vX_amplicon_info/v3_amplicon_info.tsv"
+params.refseq_fasta    = "$projectDir/fastas/Pf3D7_v3_refseq.fasta"
 params.scriptDIR       = "$projectDir/R_code"
 
 // Files
@@ -180,18 +181,24 @@ process dada2_postproc {
                saveAs: { filename -> "${filename}"
                }
 
- input:
+        input:
         file rdatafile from dada2_summary
+        file amplicon_info
 
         output:
-        file '*.{RDS,txt}' into dada2_proc
+        file '*.{RDS,txt,csv}' into dada2_proc
         
         when : QC_only != "T"
 
         script:
 
         """
-        Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile
+
+        test -d msa || mkdir msa 
+        test -d homopolymers || mkdir homopolymers
+        test -d amplicons || mkdir amplicons
+        Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} ${params.refseq_fasta} ${amplicon_info}
+         
         """
 }
 
@@ -213,7 +220,7 @@ process moire {
         script:
         
         """
-        rdsfile="\$(echo $asvfile | tr ' ' '\n' | grep RDS)"
+        rdsfile="\$(echo $asvfile | tr ' ' '\n' | grep allele_data.RDS)"
         
         Rscript ${params.scriptDIR}/moire_moi.R "\${rdsfile}"
         
