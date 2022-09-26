@@ -277,7 +277,7 @@ process resmarker {
        
        cd Mapping
        
-        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele;  ${bwaPATH} mem ${pf3D7_index} \$bfile | ${samtoolsPATH} sort -o \$allele".bam" - ; ${samtoolsPATH} index \$allele".bam" ; done
+        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele;  ${bwaPATH} mem -L 10000 ${pf3D7_index} \$bfile | ${samtoolsPATH} sort -o \$allele".bam" - ; ${samtoolsPATH} index \$allele".bam" ; done
         
         for cfile in *.bam; do allele=`echo \$cfile | cut -f 1-2 -d '.'`; echo \$allele; 
 ${bcftoolsPATH} mpileup -d 2000 -f ${refSequences} \$cfile | ${bcftoolsPATH} query --format '%CHROM\\t%POS\\t%REF\\t%ALT\\n' > \$allele".mpileup.txt"; done
