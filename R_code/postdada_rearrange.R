@@ -222,7 +222,7 @@ df_final <- foreach(refidx = 1:length(ref_names), .combine = "rbind") %dopar% {
                   if (sub_rge_end < length(ref_dna))
                       sub_rge_end <- sub_rge_end - 1
 
-                  ref_dna[sub_rge_start:sub_rge_end] <- "#" # "#" is homopolymer mask (for now)
+                  ref_dna[sub_rge_start:sub_rge_end] <- "N" # "N" is homopolymer mask
               }
           }
       }
@@ -239,7 +239,7 @@ df_final <- foreach(refidx = 1:length(ref_names), .combine = "rbind") %dopar% {
               base_run_end <- end(base_run[idx])
               lower_idx <- ifelse(base_run_start > 1, base_run_start - 1, base_run_start)
               upper_idx <- ifelse(base_run_end < length(ref_dna), base_run_end + 1, base_run_end)
-              ref_dna[lower_idx:upper_idx] <- "#" # "#" is homopolymer mask (for now)
+              ref_dna[lower_idx:upper_idx] <- "N" # "N" is homopolymer mask 
 
           }
       }
@@ -248,13 +248,15 @@ df_final <- foreach(refidx = 1:length(ref_names), .combine = "rbind") %dopar% {
 
   u_aln <- unmasked(aln)
   writeXStringSet(u_aln, paste0(ref_name, ".fasta"), append=FALSE,
-                compress=FALSE, compression_level=NA, format="fasta")  
+                compress=FALSE, compression_level=NA, format="fasta")
 
   asv_set <- NULL 
   for (idx in 2:nrow(aln)) {
       seq_mat <- as.matrix(u_aln[idx])
-      seq_mat[which(ref_dna == "#")] <- "#" # "#" is homopolymer mask (for now)
+      seq_mat[which(ref_dna == "N")] <- "N" 
+      seq_mat[which(ref_dna == "-")] <- "N" # mask no call
       seq_str <- paste(as.character(seq_mat), collapse="")
+      seq_str <- str_replace_all(seq_str, "-", "N")
       asv_set <- c(asv_set, seq_str)
   }
 
@@ -272,7 +274,7 @@ df_final <- foreach(refidx = 1:length(ref_names), .combine = "rbind") %dopar% {
             ))
     }
   }
-  return(df_amplicon)
+  return(filter(df_amplicon, counts != 0))
 }
 
 save(df_final, file="~/df_final.rda")
