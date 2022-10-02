@@ -10,7 +10,7 @@ inputDIR=args[4]
 
 ##Allele table from dada2##
 
-#alleledata_FILE="/home/isglobal.lan/ddatta/Projects/Pipeline/ampseq_workflow_dd/22_0085_Test/allele_data.txt"
+#alleledata_FILE="/home/isglobal.lan/ddatta/Projects/Pipeline/ampseq_workflow_dd/22_0085_Test3/allele_data_test.txt"
 alleledata=read.delim(alleledata_FILE,header=T,sep="\t")
 
 ##File containing amino acid code from DNA triplet##
@@ -26,7 +26,7 @@ res_markers_info=res_markers_info %>% filter(Codon_Start > 0, Codon_Start < ampI
 
 ##Directory containing the mpileup of all the alleles##
 
-#inputDIR="/home/isglobal.lan/ddatta/Projects/Pipeline/ampseq_workflow_dd/22_0085_Test/Mapping3"
+#inputDIR="/home/isglobal.lan/ddatta/Projects/Pipeline/ampseq_workflow_dd/22_0085_Test3/Mapping_Test"
 mpileupfiles<- list.files(path=inputDIR,pattern="*mpileup.txt$",full.names=T)
 allelenames=str_replace_all(basename(mpileupfiles),".mpileup.txt","")
 ampliconnames=sapply(strsplit(allelenames, "\\."), `[`, 1)
@@ -73,10 +73,73 @@ mat_altcodon[allele_name,resmarker]=altdna_codon
 }
 }
 
-
-##Matrix with rows consisting of the samples, while columns consisting of the different resistance markers##
 mat_refcodon=data.frame(mat_refcodon)
 mat_altcodon=data.frame(mat_altcodon)
+
+
+##################Haplotypes#################
+
+ multi_amplicons= res_markers_info %>% dplyr::count(amplicon) %>% filter(n>1) %>% select(amplicon)   ##Alleles which span multiple amplicon##
+ res_markers_multi_amplicons=res_markers_info %>% filter( amplicon %in% multi_amplicons$amplicon ) %>% data.frame()
+ 
+ pat="-1A$|-1B$|-1AB$|-1B2$|-2$"
+ 
+ ##Matrix with cols being the resistance markers which can form a haplotype and rows the alleles spanning them ( basically a subset of mat_altcodon )##
+altcodon_haps=mat_altcodon %>% filter(sapply(strsplit(rownames(mat_altcodon),"\\."),"[",1) %in% sapply(strsplit(res_markers_multi_amplicons$amplicon,pat),"[",1)) %>% select(str_replace_all(res_markers_multi_amplicons$V5,"-","."))
+ 
+ arr_altcodon_haps=rep("",nrow(altcodon_haps))  ##Array with haplotypes for each allele which spans multiple amplicons##
+ resmarker_haps=rep("",nrow(altcodon_haps))
+ 
+ for(kk1 in 1:nrow(altcodon_haps))
+ {
+  codons_to_combine=res_markers_multi_amplicons %>% filter(sapply(strsplit(amplicon,pat),"[",1) %in% strsplit(rownames(altcodon_haps)[kk1],"\\.")[[1]]) %>% mutate(V5=str_replace_all(V5,"-",".")) %>% select(V5)
+  resmarker_haps[kk1]=paste(str_replace_all(codons_to_combine$V5,"PF3D7_[0-9]+\\.",""),collapse="/")
+  arr_altcodon_haps[kk1]=paste(altcodon_haps[kk1,codons_to_combine$V5],collapse="/")
+ }
+ 
+names(arr_altcodon_haps)=rownames(altcodon_haps)
+
+mat_altcodon_haps= matrix("",nrow(altcodon_haps),length(unique(resmarker_haps)))   ##Matrix with cols being the haplotypes and rows the alleles spanning them##
+mat_altcodon_haps=data.frame(mat_altcodon_haps)
+rownames(mat_altcodon_haps)=rownames(altcodon_haps)
+colnames(mat_altcodon_haps)=unique(resmarker_haps)
+
+for(ii in 1:nrow(mat_altcodon_haps))
+{
+ mat_altcodon_haps[rownames(altcodon_haps)[ii],resmarker_haps[ii]]=arr_altcodon_haps[ii]
+}
+ 
+ ##Matrix with rows consisting of the samples, while columns consisting of the different resistance marker haplotypes##
+ 
+ sampleslist=unique(alleledata$sampleID)
+ 
+ sample_altcodon_haps=matrix("",length(sampleslist),ncol(mat_altcodon_haps))
+ sample_altcodon_haps=data.frame(sample_altcodon_haps)
+##Loop over each sample##
+
+for(dd1 in 1:length(sampleslist))
+{
+samplealleles=alleledata %>% filter(sampleID %in% sampleslist[dd1]) %>% select(allele) %>% data.frame()  ##Alleles for the sample##
+
+indmatch=which(rownames(mat_altcodon_haps) %in% samplealleles$allele)
+if(length(indmatch) > 0)
+{
+sample_altcodon_haps[dd1,]=mat_altcodon_haps[indmatch,] %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=""]),collapse=","))) 
+}
+}
+
+rownames(sample_altcodon_haps)=sampleslist
+colnames(sample_altcodon_haps)=colnames(mat_altcodon_haps)
+
+sample_altcodon_haps <- rownames_to_column(sample_altcodon_haps, "SampleName") 
+
+write.table(sample_altcodon_haps,file="resmarkers_haplotype_summary.txt",quote=F,sep="\t",col.names=T,row.names=F)
+
+
+
+##################Individual resistance markers#################
+
+##Matrix with rows consisting of the samples, while columns consisting of the different resistance markers##
 
 sampleslist=unique(alleledata$sampleID)
 

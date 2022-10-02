@@ -3,18 +3,6 @@ fwd_primers = file( params.fwd_primers )
 rev_primers = file( params.rev_primers )
 amplicon_info = file( params.amplicon_info )
 
-refSequences = file( params.refSequences )
-pf3D7_index = params.pf3D7_index
-codontable = file( params.codontable )
-resmarkers_amplicon = file( params.resmarkers_amplicon )
-
-       
-samtoolsPATH = params.samtoolsPATH
-bcftoolsPATH = params.bcftoolsPATH
-bwaPATH = params.bwaPATH
-
-
-
 QC_only = params.QC_only
 
 cutadapt_minlen = params.cutadapt_minlen
@@ -134,7 +122,6 @@ process cutadapt {
 
 
 // Quality checks on the cutadapt summary file
-/*
 process qualitycheck {
 
         publishDir "${params.outDIR}", 
@@ -172,7 +159,6 @@ process qualitycheck {
          Rscript ${params.scriptDIR}/cutadapt_summaryplots.R ALL_filt.final.AMPLICONsummary.txt ALL_SAMPLEsummary.txt ${amplicon_info} quality_report
         """
 }
-*/
 
 // Dada2 
 
@@ -222,7 +208,6 @@ process dada2_postproc {
 }
 
 // Moire MOI
-/*
 process moire {
 
         publishDir "${params.outDIR}",
@@ -244,48 +229,6 @@ process moire {
         
         Rscript ${params.scriptDIR}/moire_moi.R "\${rdsfile}"
         
-        """
-}
-*/
-
-// Resistance markers
-process resmarker {
-
-        publishDir "${params.outDIR}",
-               saveAs: {filename -> "${filename}"
-               }
-
- input:
-        file asvfile from dada2_proc.collect().ifEmpty([])
-
- output:
-        file '*.txt' into resmarker_genotype 
-        file('Mapping')
-             
-        when : QC_only != "T"
-
-        script:
-        """
-       #!/usr/bin/env bash
-       set -e
-       
-       rdsfile2="\$(echo $asvfile | tr ' ' '\n' | grep -v RDS)"
-       echo "\${rdsfile2}"    
-       mkdir -p Mapping
-       
-       awk 'BEGIN{FS=OFS="\\t";} {if(NR !=1) {print \$5,\$3}}' "\${rdsfile2}" | sort -u | awk 'BEGIN{FS=OFS="\\t"}{print">"\$1"\\n"\$2 >"Mapping/"\$1".fa"}'
-       
-       cd Mapping
-       
-        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele;  ${bwaPATH} mem -L 10000 ${pf3D7_index} \$bfile | ${samtoolsPATH} sort -o \$allele".bam" - ; ${samtoolsPATH} index \$allele".bam" ; done
-        
-        for cfile in *.bam; do allele=`echo \$cfile | cut -f 1-2 -d '.'`; echo \$allele; 
-${bcftoolsPATH} mpileup -d 2000 -f ${refSequences} \$cfile | ${bcftoolsPATH} query --format '%CHROM\\t%POS\\t%REF\\t%ALT\\n' > \$allele".mpileup.txt"; done
-
-       cd ..
-
-       Rscript ${params.scriptDIR}/resistance_marker_genotypes_bcftools_v3.R "\${rdsfile2}" ${codontable} ${resmarkers_amplicon} Mapping
-       
         """
 }
 
