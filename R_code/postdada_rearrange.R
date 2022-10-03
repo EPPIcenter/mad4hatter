@@ -278,8 +278,6 @@ df_final <- foreach(refidx = 1:length(ref_names), .combine = "rbind") %dopar% {
   return(filter(df_amplicon, counts != 0))
 }
 
-save(df_final, file="~/df_final.rda")
-
 ## III. Collapse sequences 
 
 seqtab.nochim.df <- df_final %>%

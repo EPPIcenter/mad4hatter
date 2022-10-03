@@ -11,11 +11,10 @@ readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home")
 
 // Set boilerplate parameters
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
-params.primerDIR       = "$projectDir/fastas"
-params.fwd_primers     = "${params.primerDIR}/v3_fwd.fasta"
-params.rev_primers     = "${params.primerDIR}/v3_rev.fasta"
-params.amplicon_info   = "$projectDir/vX_amplicon_info/v3_amplicon_info.tsv"
-params.refseq_fasta    = "$projectDir/fastas/Pf3D7_v3_refseq.fasta"
+params.fwd_primers     = "$projectDir/resources/${params.target}/${params.target}_fwd.fasta"
+params.rev_primers     = "$projectDir/resources/${params.target}/${params.target}_rev.fasta"
+params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
+params.refseq_fasta    = "$projectDir/resources/${params.target}/${params.target}_refseq.fasta"
 params.scriptDIR       = "$projectDir/R_code"
 
 // Files
@@ -197,12 +196,7 @@ process dada2_postproc {
         script:
 
         """
-
-        test -d msa || mkdir msa 
-        test -d homopolymers || mkdir homopolymers
-        test -d amplicons || mkdir amplicons
         Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} ${params.refseq_fasta} ${amplicon_info}
-         
         """
 }
 
