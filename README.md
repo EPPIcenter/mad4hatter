@@ -30,7 +30,7 @@ Modify the nextflow.config file:
 |---|---|
 |readDIR|The folder that contains all the fastq files (*required*)|
 |outDIR|The folder where you want the resulting data to be save (default 'results')|
-|sequencer|May leave as miseq for now. Not functional at the moment (default 'nextseq')|
+|sequencer|The sequencer used to produce your data (default 'nextseq')|
 |QC_only|Whether to only run QC related workflows or all workflows (default 'F')|
 
 ### Customizing for your institution

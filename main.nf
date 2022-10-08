@@ -43,6 +43,8 @@ read_pairs.into { read_pairs_cutadapt; read_pairs_qualitycheck }
 // Filter to only reads with primer detected and trim poly-g
 process cutadapt {
 
+        conda (params.enable_conda ? 'envs/cutadapt-env.yml' : null)
+
         input:
         tuple pair_id, file(reads) from read_pairs_cutadapt
         file fwd_primers
@@ -115,6 +117,8 @@ process cutadapt {
 
 // Quality checks on the cutadapt summary file
 process qualitycheck {
+        conda (params.enable_conda ? 'pandoc' : null)
+
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
                }
