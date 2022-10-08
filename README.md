@@ -2,12 +2,6 @@
 
 ## Setup
 
-### Environment
-
-```bash
-conda env create -f environment.yaml
-```
-
 ### R Dependencies
 
 ```R
