@@ -164,25 +164,26 @@ ref_sequences <- readDNAStringSet(refseq_fasta)
 ref_names <- unique(names(ref_sequences))
 
 df_final <- NULL
+df.seqtab.nochim <- as.data.frame(seqtab.nochim)
 registerDoMC(detectCores())
 df_final <- foreach(refidx = 1:length(ref_names), .combine = "rbind") %dopar% {
 
   ref_name <- ref_names[refidx]
   ref_seq <- getSeq(ref_sequences, ref_name)
 
-  if (sum(str_detect(rownames(seqtab.nochim), ref_name)) == 0) {
+  if (sum(str_detect(rownames(df.seqtab.nochim), ref_name)) == 0) {
     print(paste("WARN:", ref_name, "not found in sequence table!"))
     return(NULL)
   }
 
-  df_subset <- seqtab.nochim[str_detect(rownames(seqtab.nochim), ref_name), ]
-  if ((nrow(df_subset) == 1 && df_subset[1, colidx] == 0) || rowSums(df_subset) == 0) {
+  df_subset <- df.seqtab.nochim[str_detect(rownames(df.seqtab.nochim), ref_name), ]
+  if (rowSums(df_subset) == 0) {
     print(paste("WARN:", ref_name, "could not be linked to any sequences!"))
     return(NULL)
   }
 
-  colidx = unname(which(colSums(df_subset) > 0))
-  sequences = colnames(df_subset)[colidx]
+  colidx <- unname(which(colSums(df_subset) > 0))
+  sequences <- colnames(df_subset)[colidx]
 
   set <- DNAStringSet(c(ref_seq, sequences))
   aln <- muscle(set, quiet = TRUE)
