@@ -1,8 +1,11 @@
 #!/usr/bin/env nextflow
 
 if ( params.readDIR == null ) {
-  System.err.println("ERROR: readDIR must be specified.")
-  System.exit(0)
+  exit 0, "ERROR: readDIR must be specified."
+}
+
+if ( params.target == null ) {
+  exit 0, "ERROR: target must be specified."
 }
 
 // Expand user directory if exists
