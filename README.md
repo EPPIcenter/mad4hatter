@@ -38,10 +38,10 @@ Potential ways to execute the pipeline:
 
 ```bash
 # local executor
-nextflow run main.nf
+nextflow run main.nf --target v3
 
 # with a profile (currently only supports sge)
-nextflow run main.nf -profile sge
+nextflow run main.nf -profile sge --target v3
 ```
 
 If you need to resume after some processes were successfully executed, add -resume at the end of it
