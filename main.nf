@@ -14,15 +14,11 @@ readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home")
 
 // Set boilerplate parameters
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
-params.fwd_primers     = "$projectDir/resources/${params.target}/${params.target}_fwd.fasta"
-params.rev_primers     = "$projectDir/resources/${params.target}/${params.target}_rev.fasta"
 params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
 params.refseq_fasta    = "$projectDir/resources/${params.target}/${params.target}_refseq.fasta"
 params.scriptDIR       = "$projectDir/R_code"
 
 // Files
-fwd_primers = file( params.fwd_primers )
-rev_primers = file( params.rev_primers )
 amplicon_info = file( params.amplicon_info )
 
 QC_only = params.QC_only
@@ -50,8 +46,7 @@ process cutadapt {
 
         input:
         tuple pair_id, file(reads) from read_pairs_cutadapt
-        file fwd_primers
-        file rev_primers
+        file amplicon_info
         val cutadapt_minlen
         val qualfilter
 
@@ -63,6 +58,32 @@ process cutadapt {
         """
         #!/usr/bin/env bash
         set -e
+
+        fwd_primers_file="fwd_primers.fasta"
+        rev_primers_file="rev_primers.fasta"
+
+        cat $amplicon_info | awk 'NR==1 {
+          for (i = 1; i <= NF; i++) {
+            if ( \$i == "amplicon" ) {amplicon=i}
+            if ( \$i == "fwd_primer" ) {fwd_primer=i}
+            if ( \$i == "rev_primer" ) {rev_primer=i}
+          }
+        } NR>=1 {
+          print \$amplicon, \$fwd_primer, \$rev_primer
+        }' > adapters.txt
+
+        # sanity check. there should be 3 fields.
+        nfields="\$(head -n 1 adapters.txt | awk '{print NF}')"
+        if [[ \$nfields != 3 ]]; then echo "ERROR: Must have '\'fwd_primer\' and \'rev_primer\' in vX_amplicon_info file!!!"; exit 1; fi
+
+        # note: assumes order (1) amplicon, (2) fwd_adpater, (3) rev_adapter
+
+        echo 'NR>1 { printf(">%s\\n^%s\\n", \$1, \$2) }' > modify.awk
+        cat adapters.txt | cut -d ' ' -f 1,2 > fwd.txt
+        cat adapters.txt | cut -d ' ' -f 1,3 > rev.txt
+
+        awk -f modify.awk fwd.txt > \$fwd_primers_file
+        awk -f modify.awk rev.txt > \$rev_primers_file
 
         mkdir trimmed_demuxed
         mkdir trimmed_demuxed_unknown
@@ -91,8 +112,8 @@ process cutadapt {
 
         cutadapt \
             --action=trim \
-            -g file:${fwd_primers} \
-            -G file:${rev_primers} \
+            -g file:\${fwd_primers_file} \
+            -G file:\${rev_primers_file} \
             --pair-adapters \
             -e 0 \
             --no-indels \
@@ -189,7 +210,6 @@ process dada2_postproc {
 
         input:
         file rdatafile from dada2_summary
-        file amplicon_info
 
         output:
         file '*.{RDS,txt,csv}' into dada2_proc
@@ -199,33 +219,7 @@ process dada2_postproc {
         script:
 
         """
-        Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} ${params.refseq_fasta} ${amplicon_info}
+        Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} ${params.refseq_fasta}
         """
 }
-
-// Moire MOI
-process moire {
-
-        publishDir "${outDIR}",
-               saveAs: {filename -> "${filename}"
-               }
-
- input:
-        file asvfile from dada2_proc.collect().ifEmpty([])
-
-        output:
-        file '*.txt' into moire_moi
-        
-        when : QC_only != "T"
-
-        script:
-        
-        """
-        rdsfile="\$(echo $asvfile | tr ' ' '\n' | grep allele_data.RDS)"
-        
-        Rscript ${params.scriptDIR}/moire_moi.R "\${rdsfile}"
-        
-        """
-}
-
 
