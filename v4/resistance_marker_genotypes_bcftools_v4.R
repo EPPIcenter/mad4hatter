@@ -53,6 +53,8 @@ amplicon=sapply(strsplit(res_markers_info$amplicon[ii],pat),"[",1)
 ampliconmpileupfiles=mpileupfiles[str_detect(mpileupfiles, amplicon, negate = FALSE)] ##allele mpileup files for the resistance marker##
 print(amplicon)
 print(ampliconmpileupfiles)
+if(length(ampliconmpileupfiles) >0)
+{
 for ( jj in 1:length(ampliconmpileupfiles))  ##Calculate for each relevant allele##
 {
 allele_name=str_replace_all(basename(ampliconmpileupfiles[jj]),".mpileup.txt","")
@@ -70,6 +72,7 @@ if( gene_strand == "-" )  {altdna_triplet=intToUtf8(rev(utf8ToInt(chartr("ATGC",
 altdna_codon=codontable[which(codontable[,1]==altdna_triplet),3]
 mat_altcodon[allele_name,resmarker]=altdna_codon
 
+}
 }
 }
 
