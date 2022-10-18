@@ -178,7 +178,7 @@ if (homopolymer_threshold > 0) {
       }
 
       df_subset <- df.seqtab.nochim[str_detect(rownames(df.seqtab.nochim), ref_name), ]
-      if (rowSums(df_subset) == 0) {
+      if (all(rowSums(df_subset) == 0)) {
         print(paste("WARN:", ref_name, "could not be linked to any sequences!"))
         return(NULL)
       }
@@ -249,9 +249,6 @@ if (homopolymer_threshold > 0) {
 
 
       u_aln <- unmasked(aln)
-      writeXStringSet(u_aln, paste0(ref_name, ".fasta"), append=FALSE,
-                    compress=FALSE, compression_level=NA, format="fasta")
-
       asv_set <- NULL 
       for (idx in 2:nrow(aln)) {
           seq_mat <- as.matrix(u_aln[idx])
