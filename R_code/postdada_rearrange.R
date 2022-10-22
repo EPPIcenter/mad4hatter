@@ -12,9 +12,8 @@ args = commandArgs(trailingOnly=T)
 numargs=length(args)
 verbose=FALSE # todo: make that work
 # masked_fasta=[numargs - 3]
-homopolymer_threshold = as.integer(args[numargs - 2])
-refseq_fasta=args[numargs - 1]
-ampliconFILE=args[numargs]
+homopolymer_threshold = as.integer(args[numargs - 1])
+refseq_fasta=args[numargs]
 load (args[1])
 
 ## I. Check for non overlapping sequences. 
