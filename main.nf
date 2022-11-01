@@ -41,6 +41,7 @@ read_pairs.into { read_pairs_cutadapt; read_pairs_qualitycheck }
 // cutadapt based quality filtering and QC
 // Filter to only reads with primer detected and trim poly-g
 process cutadapt {
+        container "aarandad/ampseq_workflow:latest"
 
         conda (params.enable_conda ? 'envs/cutadapt-env.yml' : null)
 
@@ -141,6 +142,8 @@ process cutadapt {
 
 // Quality checks on the cutadapt summary file
 process qualitycheck {
+        container "aarandad/ampseq_workflow:latest"
+
         conda (params.enable_conda ? 'pandoc' : null)
 
         publishDir "${outDIR}",
@@ -180,6 +183,8 @@ process qualitycheck {
 // Dada2
 
 process dada2_analysis {
+        container "aarandad/ampseq_workflow:latest"
+
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
                }
@@ -203,6 +208,8 @@ process dada2_analysis {
 
 // Dada2 Postprocessing
 process dada2_postproc {
+
+        container "aarandad/ampseq_workflow:latest"
 
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"

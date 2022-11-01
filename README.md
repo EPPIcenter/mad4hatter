@@ -16,6 +16,24 @@ BiocManager::install("dada2", version = "3.14")
 
 ## Running the Pipeline
 
+### Docker
+
+The pipeline can be easily run with docker and is the recommended way to run it when not using an HPC.
+
+Follow the steps below to setup your docker image:
+
+*Note: [docker] (https://www.docker.com/) is a prerequisite.*
+
+```bash
+docker build -t aarandad/ampseq_worfklow .
+```
+
+And you're done! To run the pipeline, simply add `-profile docker`. 
+
+```bash
+nextflow run main.nf --readDIR </path/to/fastqs> -profile docker --target v4
+```
+
 ### Setting Parameters
 
 Modify the nextflow.config file:
