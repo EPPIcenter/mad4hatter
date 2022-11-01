@@ -15,7 +15,6 @@ readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home")
 // Set boilerplate parameters
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
 params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
-params.refseq_fasta    = "$projectDir/resources/${params.target}/${params.target}_refseq.fasta"
 params.scriptDIR       = "$projectDir/R_code"
 
 // Files
@@ -217,6 +216,7 @@ process dada2_postproc {
 
         input:
         file rdatafile from dada2_summary
+        file amplicon_info
 
         output:
         file '*.{RDS,txt,csv}' into dada2_proc
@@ -225,8 +225,16 @@ process dada2_postproc {
 
         script:
 
-        """
-        Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} ${params.refseq_fasta}
-        """
+        if ( params.refseq_fasta == null && params.genome != null )
+          """
+          Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${params.genome} "${params.target}_refseq.fasta"
+          Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} "${params.target}_refseq.fasta"
+          """
+        else if ( params.refseq_fasta != null )
+          """
+          Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} ${params.refseq_fasta}
+          """
+        else
+          error "Reference sequences must be provided, otherwise they must be generated from a provided genome"
 }
 
