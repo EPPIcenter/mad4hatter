@@ -21,6 +21,9 @@ refSequences           = "$projectDir/resources/${params.target}/ALL_refseq.fa"
 pf3D7_index            = "$projectDir/resources/${params.target}/3D7_ampseq"
 codontable             = "$projectDir/resources/${params.target}/codontable.txt"
 resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_v4.txt"
+samtoolsPATH           = ""
+bcftoolsPATH           = ""
+bwaPATH                = ""
 
 // Files
 amplicon_info = file( params.amplicon_info )
@@ -28,6 +31,11 @@ refSequences = file( params.refSequences )
 pf3D7_index = params.pf3D7_index
 codontable = file( params.codontable )
 resmarkers_amplicon = file( params.resmarkers_amplicon )
+
+// Software Paths
+samtoolsPATH = params.samtoolsPATH
+bcftoolsPATH = params.bcftoolsPATH
+bwaPATH = params.bwaPATH
 
 QC_only = params.QC_only
 
