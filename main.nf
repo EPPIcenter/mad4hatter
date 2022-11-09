@@ -13,6 +13,7 @@ outDIR = "${params.outDIR}".replaceFirst("^~", System.getProperty("user.home"))
 readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home"))
 
 // Set boilerplate parameters
+params.QC_only         = false
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
 params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
 params.scriptDIR       = "$projectDir/R_code"
@@ -195,7 +196,7 @@ process dada2_analysis {
         output:
         file '*.RData' into dada2_summary
         
-        when : QC_only != "T"
+        when : QC_only == false
 
         script:
         treat_no_overlap_differently = 'T'
@@ -221,7 +222,7 @@ process dada2_postproc {
         output:
         file '*.{RDS,txt,csv}' into dada2_proc
         
-        when : QC_only != "T"
+        when : QC_only == false
 
         script:
 
