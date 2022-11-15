@@ -1,6 +1,5 @@
 Bootstrap: docker
 From: rocker/tidyverse:4.2.1
-Stage: spython-base
 
 %post
 
@@ -10,6 +9,10 @@ pip install cutadapt
 mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/
 echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4)" | tee /usr/local/lib/R/etc/Rprofile.site | tee /usr/lib/R/etc/Rprofile.site
 R -e 'install.packages("remotes")'
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(version = "3.15")
 
 # Update apt-get
 Rscript -e 'install.packages("remotes", version = "2.4.2")'
