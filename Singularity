@@ -10,10 +10,6 @@ mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/
 echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4)" | tee /usr/local/lib/R/etc/Rprofile.site | tee /usr/lib/R/etc/Rprofile.site
 R -e 'install.packages("remotes")'
 
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install(version = "3.15")
-
 # Update apt-get
 Rscript -e 'install.packages("remotes", version = "2.4.2")'
 Rscript -e 'remotes::install_cran("ggbeeswarm", upgrade="never", version="0.6.1")'
@@ -23,7 +19,9 @@ Rscript -e 'remotes::install_cran("gridExtra",upgrade="never", version = "2.3")'
 Rscript -e 'remotes::install_cran("foreach",upgrade="never", version = "1.5.2")'
 Rscript -e 'remotes::install_cran("doMC",upgrade="never", version = "1.3.8")'
 
-Rscript -e 'BiocManager::install("dada2", version = "3.15", ask = FALSE)'
+Rscript -e 'if (!require("BiocManager", quietly = TRUE)) { install.packages("BiocManager"); }; BiocManager::install(version = "3.16");'
+
+Rscript -e 'BiocManager::install("dada2", version = "3.16", ask = FALSE)'
 Rscript -e 'BiocManager::install("muscle", ask = FALSE)'
 Rscript -e 'BiocManager::install("BSgenome", ask = FALSE)'
 
