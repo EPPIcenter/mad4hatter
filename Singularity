@@ -1,6 +1,5 @@
 Bootstrap: docker
 From: rocker/tidyverse:4.2.1
-Stage: spython-base
 
 %post
 
@@ -20,7 +19,9 @@ Rscript -e 'remotes::install_cran("gridExtra",upgrade="never", version = "2.3")'
 Rscript -e 'remotes::install_cran("foreach",upgrade="never", version = "1.5.2")'
 Rscript -e 'remotes::install_cran("doMC",upgrade="never", version = "1.3.8")'
 
-Rscript -e 'BiocManager::install("dada2", version = "3.15", ask = FALSE)'
+Rscript -e 'if (!require("BiocManager", quietly = TRUE)) { install.packages("BiocManager"); }; BiocManager::install(version = "3.16");'
+
+Rscript -e 'BiocManager::install("dada2", version = "3.16", ask = FALSE)'
 Rscript -e 'BiocManager::install("muscle", ask = FALSE)'
 Rscript -e 'BiocManager::install("BSgenome", ask = FALSE)'
 

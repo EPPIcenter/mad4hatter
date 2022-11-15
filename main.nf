@@ -36,6 +36,9 @@ QC_only = params.QC_only
 
 cutadapt_minlen = params.cutadapt_minlen
 if ( params.sequencer == 'miseq' ) { qualfilter = '--trim-n -q 10' } else { qualfilter = '--nextseq-trim=20' }
+if ( params.refseq_fasta != null ) { refseq_fasta = file( params.refseq_fasta ) } else { refseq_fasta = "" }
+if ( params.genome != null ) { genome = file( params.genome ) } else { genome = "" }
+
 
 /*
 Create 'read_pairs' channel that emits for each read pair a
@@ -52,7 +55,6 @@ read_pairs.into { read_pairs_cutadapt; read_pairs_qualitycheck }
 // cutadapt based quality filtering and QC
 // Filter to only reads with primer detected and trim poly-g
 process cutadapt {
-        container "aarandad/ampseq_workflow:latest"
 
         conda (params.enable_conda ? 'envs/cutadapt-env.yml' : null)
 
@@ -153,7 +155,6 @@ process cutadapt {
 
 // Quality checks on the cutadapt summary file
 process qualitycheck {
-        container "aarandad/ampseq_workflow:latest"
 
         conda (params.enable_conda ? 'pandoc' : null)
 
@@ -194,7 +195,6 @@ process qualitycheck {
 // Dada2
 
 process dada2_analysis {
-        container "aarandad/ampseq_workflow:latest"
 
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
@@ -220,13 +220,13 @@ process dada2_analysis {
 // Dada2 Postprocessing
 process dada2_postproc {
 
-        container "aarandad/ampseq_workflow:latest"
-
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
                }
 
         input:
+        val refseq_fasta
+        val genome
         file rdatafile from dada2_summary
         file amplicon_info
 
@@ -237,14 +237,14 @@ process dada2_postproc {
 
         script:
 
-        if ( params.refseq_fasta == null && params.genome != null )
+        if ( refseq_fasta == "" && genome != "" )
           """
-          Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${params.genome} "${params.target}_refseq.fasta"
+          Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} "${params.target}_refseq.fasta"
           Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} "${params.target}_refseq.fasta"
           """
-        else if ( params.refseq_fasta != null )
+        else if ( refseq_fasta != "" )
           """
-          Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} ${params.refseq_fasta}
+          Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} ${refseq_fasta}
           """
         else
           error "Reference sequences must be provided, otherwise they must be generated from a provided genome"

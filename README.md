@@ -2,19 +2,21 @@
 
 ## Setup
 
-### R Dependencies
+### Singularity
 
-```R
-install.packages(c('ggbeeswarm', 'tidyverse', 'gridExtra', 'rmarkdown', 'knitr'))
+If using singularity, please run the command below to generate the singularity image.
 
-remotes::install_github("EPPIcenter/moire")
-
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install("dada2", version = "3.14")
+```bash
+sudo singularity build ampseq_worfklow.sif Singularity
 ```
 
-## Running the Pipeline
+And then include the `singularity` profile on the command line. 
+
+*Note: you should also include executor you wish to run*
+
+```bash
+nextflow run main.nf --readDIR single --refseq_fasta v4_refseq.fasta --target v4 -profile sge,singularity
+```
 
 ### Docker
 
@@ -22,7 +24,7 @@ The pipeline can be easily run with docker and is the recommended way to run it 
 
 Follow the steps below to setup your docker image:
 
-*Note: [docker] (https://www.docker.com/) is a prerequisite.*
+*Note: [docker](https://www.docker.com/) is a prerequisite.*
 
 ```bash
 docker build -t aarandad/ampseq_worfklow .
@@ -31,7 +33,15 @@ docker build -t aarandad/ampseq_worfklow .
 And you're done! To run the pipeline, simply add `-profile docker`. 
 
 ```bash
-nextflow run main.nf --readDIR </path/to/fastqs> -profile docker --target v4
+nextflow run main.nf --readDIR single --target v4-profile -profile docker
+```
+
+### Conda
+
+To use conda, you must first install either [conda](https://docs.conda.io/en/latest/) or [miniconda](https://docs.conda.io/en/latest/miniconda.html). Once installed, include the `conda` profile on the command line.
+
+```bash
+nextflow run main.nf --readDIR single --target v3 -profile conda
 ```
 
 ### Setting Parameters
@@ -50,7 +60,7 @@ Modify the nextflow.config file:
 There is a file named `custom.config` in `conf/` that can be used to tailor processes to your environment. By default,
 this file is used to tailor the pipeline for Wynton HPC at UCSF. This file may be altered to fit your institution's profile.
 
-### Executing the Pipeline
+### Examples 
 
 Potential ways to execute the pipeline:
 
@@ -60,6 +70,15 @@ nextflow run main.nf --target v3
 
 # with a profile (currently only supports sge)
 nextflow run main.nf -profile sge --target v3
+
+# run with singularity on an HPC with specified reference sequences
+nextflow run main.nf --readDIR single -profile sge,singularity --refseq_fasta v4_refseq.fasta --target v4
+
+# or locally with docker
+nextflow run main.nf --readDIR ~/Documents/MAD4HATTER_example_data/single/ --target v4 -profile docker --refseq_fasta v4_refseq.fasta
+
+# genomes can be provided in lieu of reference sequences, which will be generated with the amplicon table
+nextflow run main.nf --readDIR ~/Documents/MAD4HATTER_example_data/single/ -w ~/work --target v4 -profile docker --genome PlasmoDB-59_Pfalciparum3D7_Genome.fasta
 ```
 
 If you need to resume after some processes were successfully executed, add -resume at the end of it
