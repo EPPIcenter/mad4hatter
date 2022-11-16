@@ -17,20 +17,9 @@ params.QC_only         = false
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
 params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
 params.scriptDIR       = "$projectDir/R_code"
-refSequences           = "$projectDir/resources/${params.target}/ALL_refseq.fa"
-pf3D7_index            = "$projectDir/resources/${params.target}/3D7_ampseq"
-codontable             = "$projectDir/resources/${params.target}/codontable.txt"
-resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_v4.txt"
-samtoolsPATH           = ""
-bcftoolsPATH           = ""
-bwaPATH                = ""
 
 // Files
 amplicon_info = file( params.amplicon_info )
-refSequences = file( params.refSequences )
-pf3D7_index = params.pf3D7_index
-codontable = file( params.codontable )
-resmarkers_amplicon = file( params.resmarkers_amplicon )
 
 QC_only = params.QC_only
 
@@ -250,42 +239,3 @@ process dada2_postproc {
           error "Reference sequences must be provided, otherwise they must be generated from a provided genome"
 }
 
-
-// Resistance markers
-process resmarker {
-
-        publishDir "${params.outDIR}",
-               saveAs: {filename -> "${filename}"
-               }
-
- input:
-        file asvfile from dada2_proc.collect().ifEmpty([])
-
- output:
-        file '*.txt' into resmarker_genotype 
-        file('Mapping')
-             
-        when : QC_only != "T"
-
-        script:
-        """
-       #!/usr/bin/env bash
-       set -e
-       
-       rdsfile2="\$(echo $asvfile | tr ' ' '\n' | grep -v RDS)"
-       echo "\${rdsfile2}"    
-       mkdir -p Mapping
-       
-       awk 'BEGIN{FS=OFS="\\t";} {if(NR !=1) {print \$5,\$3}}' "\${rdsfile2}" | sort -u | awk 'BEGIN{FS=OFS="\\t"}{print">"\$1"\\n"\$2 >"Mapping/"\$1".fa"}'
-       
-       cd Mapping
-       
-        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele;  ${bwaPATH} mem -L 10000 ${pf3D7_index} \$bfile | ${samtoolsPATH} sort -o \$allele".bam" - ; ${samtoolsPATH} index \$allele".bam" ; done
-        
-        for cfile in *.bam; do allele=`echo \$cfile | cut -f 1-2 -d '.'`; echo \$allele; 
-${bcftoolsPATH} mpileup -d 2000 -f ${refSequences} \$cfile | ${bcftoolsPATH} query --format '%CHROM\\t%POS\\t%REF\\t%ALT\\n' > \$allele".mpileup.txt"; done
-       cd ..
-       Rscript ${params.scriptDIR}/resistance_marker_genotypes_bcftools_v4.R "\${rdsfile2}" ${codontable} ${resmarkers_amplicon} Mapping
-       
-        """
-}
