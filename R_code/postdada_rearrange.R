@@ -162,139 +162,99 @@ if (length(non_overlaps_idx) > 0) {
 ref_sequences <- readDNAStringSet(refseq_fasta)
 ref_names <- unique(names(ref_sequences))
 
-df_final <- NULL
-df.seqtab.nochim <- as.data.frame(seqtab.nochim)
-if (homopolymer_threshold > 0) {
-    registerDoMC(detectCores())
-    df_final <- foreach(refidx = 1:length(ref_names), .combine = "rbind") %dopar% {
+sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
 
-      ref_name <- ref_names[refidx]
-      ref_seq <- getSeq(ref_sequences, ref_name)
-
-      if (sum(str_detect(rownames(df.seqtab.nochim), ref_name)) == 0) {
-        print(paste("WARN:", ref_name, "not found in sequence table!"))
-        return(NULL)
-      }
-
-      df_subset <- df.seqtab.nochim[str_detect(rownames(df.seqtab.nochim), ref_name), ]
-      if (all(rowSums(df_subset) == 0)) {
-        print(paste("WARN:", ref_name, "could not be linked to any sequences!"))
-        return(NULL)
-      }
-
-      colidx <- unname(which(colSums(df_subset) > 0))
-      sequences <- colnames(df_subset)[colidx]
-
-      set <- DNAStringSet(c(ref_seq, sequences))
-      aln <- muscle(set, quiet = TRUE)
-
-      ref_dna <- as.matrix(unmasked(aln)[1])
-      ref_rle <- Rle(ref_dna)
-      ref_rge <- ranges(ref_rle)
-
-
-      for (dna_base in DNA_ALPHABET[1:4]) {
-
-          # 1. find situations where we have 'AA--AA-A-A--'.
-          # A homopolymer exists if the same base is found repeatedly around no base calls,
-          # and the detected base count is greater than the set threshold. In the above 
-          # example, A equals 7, thus the homopolymer extends through the entire string.
-
-
-          indexes <- which(runValue(ref_rle) == "-" | runValue(ref_rle) == dna_base)
-          irange <- IRanges(indexes)
-          
-          # find ranges where "-" and dna_base are next to each other
-          sequential <- irange[width(irange) > 1]
-          if (length(sequential) > 0) {
-              for (i in seq.int(1,length(sequential))) {
-                  sub_rge <- ref_rge[start(sequential[i]):end(sequential[i])]
-                  sub_rge_start <- start(sub_rge[1])
-                  sub_rge_end <- end(sub_rge[length(sub_rge)])
-
-                  sub_rge_dna <- ref_dna[sub_rge_start:sub_rge_end]                
-                  homopolymer_len <- sum(sub_rge_dna == dna_base)
-                  if (homopolymer_len > homopolymer_threshold) {
-
-                      # exclude possible variation next to homopolymers
-                      if (sub_rge_start > 1)
-                          sub_rge_start <- sub_rge_start + 1
-
-                      if (sub_rge_end < length(ref_dna))
-                          sub_rge_end <- sub_rge_end - 1
-
-                      ref_dna[sub_rge_start:sub_rge_end] <- "N" # "N" is homopolymer mask
-                  }
-              }
-          }
-
-          # 2. find repeating base counts (ie. 'AAAAA')
-          base_run <- ref_rge[runValue(ref_rle) == dna_base]
-          base_run_target_indexes <- which(width(base_run) > homopolymer_threshold)
-
-          if (length(base_run_target_indexes) > 0) {
-              for (idx in base_run_target_indexes) {
-
-                  # exclude possible variation next to homopolymers
-                  base_run_start <- start(base_run[idx])
-                  base_run_end <- end(base_run[idx])
-                  lower_idx <- ifelse(base_run_start > 1, base_run_start - 1, base_run_start)
-                  upper_idx <- ifelse(base_run_end < length(ref_dna), base_run_end + 1, base_run_end)
-                  ref_dna[lower_idx:upper_idx] <- "N" # "N" is homopolymer mask 
-
-              }
-          }
-      } # end loop
-
-
-      u_aln <- unmasked(aln)
-      asv_set <- NULL 
-      for (idx in 2:nrow(aln)) {
-          seq_mat <- as.matrix(u_aln[idx])
-          seq_mat[which(ref_dna == "N")] <- "N" 
-          seq_mat[which(ref_dna == "-")] <- "N" # mask no call
-          seq_str <- paste(as.character(seq_mat), collapse="")
-          seq_str <- str_replace_all(seq_str, "-", "N")
-          asv_set <- c(asv_set, seq_str)
-      }
-
-      df_amplicon <- NULL
-      for (cidx in 1:length(colidx)) {
-        col <- colidx[cidx]
-        seq <- asv_set[cidx]
-        for (ridx in 1:nrow(df_subset)) {
-            df_amplicon <- rbind(df_amplicon,
-                data.frame(
-                  # amplicon = ref_name,
-                  sample = rownames(df_subset)[ridx],
-                  ref_sequences = seq,
-                  counts = unname(df_subset[ridx, col])
-                ))
-        }
-      }
-      return(filter(df_amplicon, counts != 0))
-    }
-
-    ## III. Collapse sequences 
-
-    seqtab.nochim.df <- df_final %>%
-        group_by(sample, ref_sequences) %>%
-        summarise(counts = sum(counts)) %>%
-        pivot_wider(names_from = ref_sequences, values_from = counts) %>%
-        ungroup()
-} else {
-    seqtab.nochim.df = as.data.frame(seqtab.nochim)
-    seqtab.nochim.df$sample = rownames(seqtab.nochim)
-    seqtab.nochim.df[seqtab.nochim.df==0]=NA    
+registerDoMC(detectCores())
+df_aln <- NULL
+df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
+  seq_1 <- sequences[seq1]
+  aln <- pairwiseAlignment(ref_sequences, seq_1, substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
+  num <- which.max(score(aln))
+  patt <- c(alignedPattern(aln[num]), alignedSubject(aln[num]))
+  dist <- adist(as.character(patt)[1], as.character(patt)[2])
+  ind <- sum(str_count(as.character(patt),"-"))
+  data.frame(
+    original = seq_1,
+    hapseq = as.character(patt)[2],
+    refseq = as.character(patt)[1],
+    refid = names(patt)[1],
+    score = score(aln[num]),
+    indels = ind
+  )
 }
 
+df_masked <- NULL
+df_masked <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
+# for (seq1 in 1:nrow(df_final)) {
+  seq_1 <- DNAString(df_aln$refseq[seq1])
+  ref_rle <- Rle(as.vector(seq_1))
+  ss <- ranges(ref_rle)[runLength(ref_rle) > homopolymer_threshold]
 
-## IV. Write allele tables
+  if (length(ss) == 0) {
+    # just return the haplotype
+    return (
+        data.frame(
+          refid = df_aln[seq1, ]$refid,
+          refseq = df_aln[seq1, ]$refseq,
+          hapseq = df_aln[seq1, ]$hapseq,
+          asv_prime = df_aln[seq1, ]$hapseq
+      )
+    )
+  }
+  
+  for (idx in 1:length(ss)) {
+    css <- ss[idx]
+    if (start(css) > 1) {
+      start(css) <- start(css) - 1
+    }
+    if (end(css) < length(seq_1) ) {
+      end(css) <- end(css) + 1
+    }
+    seq_1[start(css) : end(css)] <- "N"
+  }
 
+  data.frame(
+    refid = df_aln$refid[seq1],
+    refseq = df_aln[seq1, ]$refseq,
+    hapseq = df_aln[seq1, ]$hapseq,
+    asv_prime = as.character(seq_1)
+  )
+}
+
+df_seqs <- inner_join(df_aln, df_masked, by = c("refid", "refseq", "hapseq"))
+seqtab.nochim.df <- as.data.frame(t(seqtab.nochim))
+
+seqtab.nochim.df$original <- base::rownames(seqtab.nochim.df)
+df_seqs <- inner_join(df_seqs, seqtab.nochim.df, by = "original")
+
+# everything here makes sense
+
+df_final <- df_seqs %>%
+  pivot_longer(
+    cols = -c(original, hapseq, refseq, refid, score, indels, asv_prime),
+    names_to = "sample",
+    values_to = "counts"
+  )
+
+# todo: reorder the columns so that sample is first
+
+seqtab.nochim.df <- df_final %>%
+  group_by(sample, asv_prime) %>%
+  summarise(counts = sum(counts)) %>%
+  pivot_wider(names_from = asv_prime, values_from = counts) %>%
+  # filter(counts != 0) %>%
+  ungroup()
+
+print(length(colnames(seqtab.nochim.df[, 2:ncol(seqtab.nochim.df)])))
+print(colnames(seqtab.nochim.df[, 2:ncol(seqtab.nochim.df)]))
+
+x <- colSums(seqtab.nochim.df[, 2:ncol(seqtab.nochim.df)]) != 0
+seqtab.nochim.df <- seqtab.nochim.df[, c(TRUE, x)] # want the first 'sample' column (could write differently)
+seqtab.nochim.df[seqtab.nochim.df==0]=NA
 
 pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
 seqtab.nochim.df = seqtab.nochim.df %>% 
-  pivot_longer(cols = -sample, names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>% 
+  pivot_longer(cols = -c(sample), names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>% 
   mutate(locus = paste0(sapply(strsplit(sample,"_"),"[",1),"_",sapply(strsplit(sample,"_"),"[",2),"_",sapply(strsplit(sample,"_"),"[",3)))%>% 
   mutate(sampleID = sapply(strsplit(sapply(strsplit(sample,pat),"[",2),"_trimmed"),"[",1)) %>% 
   select(sampleID,locus,asv,reads)
@@ -322,5 +282,5 @@ allele.data = seqtab.nochim.df %>%
   mutate(norm.reads.locus = reads/sum(reads))%>% 
   mutate(n.alleles = n())
 
-  saveRDS(allele.data,file="allele_data.RDS")
-  write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
+saveRDS(allele.data,file="allele_data.RDS")
+write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
