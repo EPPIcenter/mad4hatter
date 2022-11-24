@@ -12,8 +12,9 @@ args = commandArgs(trailingOnly=T)
 numargs=length(args)
 verbose=FALSE # todo: make that work
 # masked_fasta=[numargs - 3]
-homopolymer_threshold = as.integer(args[numargs - 1])
-refseq_fasta=args[numargs]
+homopolymer_threshold = as.integer(args[numargs - 2])
+refseq_fasta=args[numargs - 1]
+masked_fasta=args[numargs]
 load (args[1])
 
 ## I. Check for non overlapping sequences. 
@@ -183,36 +184,49 @@ df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
   )
 }
 
+masked_sequences <- readDNAStringSet(masked_fasta)
 df_masked <- NULL
 df_masked <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
-# for (seq1 in 1:nrow(df_final)) {
+  # for (seq1 in 1:nrow(df_final)) {
   seq_1 <- DNAString(df_aln$refseq[seq1])
+  maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
+
   ref_rle <- Rle(as.vector(seq_1))
   ss <- ranges(ref_rle)[runLength(ref_rle) > homopolymer_threshold]
+  
+  # cover the flanks
+  start(ss) <- start(ss) - 1
+  end(ss) <- end(ss) + 1
+  
+  # mask the 
+  x <- DNAString(as.character(maskseq))
+  x <- Rle(as.vector(x))
+  ss <- append(ss, ranges(x)[runValue(x) == "N"])
 
+  
   if (length(ss) == 0) {
     # just return the haplotype
     return (
-        data.frame(
-          refid = df_aln[seq1, ]$refid,
-          refseq = df_aln[seq1, ]$refseq,
-          hapseq = df_aln[seq1, ]$hapseq,
-          asv_prime = df_aln[seq1, ]$hapseq
+      data.frame(
+        refid = df_aln[seq1, ]$refid,
+        refseq = df_aln[seq1, ]$refseq,
+        hapseq = df_aln[seq1, ]$hapseq,
+        asv_prime = df_aln[seq1, ]$hapseq
       )
     )
   }
   
   for (idx in 1:length(ss)) {
     css <- ss[idx]
-    if (start(css) > 1) {
-      start(css) <- start(css) - 1
+    if (start(css) <= 0) {
+      start(css) <- 1
     }
-    if (end(css) < length(seq_1) ) {
-      end(css) <- end(css) + 1
+    if (end(css) > length(seq_1) ) {
+      end(css) <- length(seq_1)
     }
     seq_1[start(css) : end(css)] <- "N"
   }
-
+  
   data.frame(
     refid = df_aln$refid[seq1],
     refseq = df_aln[seq1, ]$refseq,

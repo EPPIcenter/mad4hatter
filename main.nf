@@ -229,7 +229,8 @@ process dada2_postproc {
         if ( refseq_fasta == "" && genome != "" )
           """
           Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} "${params.target}_refseq.fasta"
-          Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} "${params.target}_refseq.fasta"
+          trf "${params.target}_refseq.fasta" 2 7 7 80 10 25 3 -h -m
+          Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} "${params.target}_refseq.fasta" "${params.target}_refseq.fasta.2.7.7.80.10.25.3.mask"
           """
         else if ( refseq_fasta != "" )
           """
