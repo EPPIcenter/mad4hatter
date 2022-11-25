@@ -230,11 +230,18 @@ process dada2_postproc {
           """
           Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} "${params.target}_refseq.fasta"
           trf "${params.target}_refseq.fasta" 2 7 7 80 10 25 3 -h -m
-          Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} "${params.target}_refseq.fasta" "${params.target}_refseq.fasta.2.7.7.80.10.25.3.mask"
+          Rscript ${params.scriptDIR}/postdada_rearrange.R \
+            --dada2 $rdatafile \
+            --homopolymer-threshold ${params.homopolymer_threshold} \
+            --refseq-fasta "${params.target}_refseq.fasta" \
+            --masked-fasta "${params.target}_refseq.fasta.2.7.7.80.10.25.3.mask"
           """
         else if ( refseq_fasta != "" )
           """
-          Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} ${refseq_fasta}
+          Rscript ${params.scriptDIR}/postdada_rearrange.R \
+            --dada2 $rdatafile \
+            --homopolymer-threshold ${params.homopolymer_threshold} \
+            --refseq-fasta "${params.target}_refseq.fasta"
           """
         else
           error "Reference sequences must be provided, otherwise they must be generated from a provided genome"

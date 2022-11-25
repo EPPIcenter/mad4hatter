@@ -7,15 +7,18 @@ library(parallel)
 library(doMC)
 library(muscle)
 library(BSgenome)
+library(argparse)
 
-args = commandArgs(trailingOnly=T)
-numargs=length(args)
-verbose=FALSE # todo: make that work
-# masked_fasta=[numargs - 3]
-homopolymer_threshold = as.integer(args[numargs - 2])
-refseq_fasta=args[numargs - 1]
-masked_fasta=args[numargs]
-load (args[1])
+parser <- ArgumentParser(description='Post process sequences')
+parser$add_argument('--homopolymer-threshold', type="integer",
+                   help='homopolymer threshold to begin masking')
+parser$add_argument('--refseq-fasta', type="character")
+parser$add_argument('--masked-fasta', type="character")
+parser$add_argument('--dada2', type="character", required = TRUE)
+
+parser$parse_args()
+
+load (parser$dada2)
 
 ## I. Check for non overlapping sequences. 
 
@@ -160,111 +163,114 @@ if (length(non_overlaps_idx) > 0) {
 
 ## II. Check for homopolymers. 
 
-ref_sequences <- readDNAStringSet(refseq_fasta)
-ref_names <- unique(names(ref_sequences))
+if (!is.null(args$HOMOPOLYMER_THRESHOLD) && args$HOMOPOLYMER_THRESHOLD > 0) {
 
-sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
+    ref_sequences <- readDNAStringSet(args$REFSEQ_FASTA)
+    ref_names <- unique(names(ref_sequences))
 
-registerDoMC(detectCores())
-df_aln <- NULL
-df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
-  seq_1 <- sequences[seq1]
-  aln <- pairwiseAlignment(ref_sequences, seq_1, substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
-  num <- which.max(score(aln))
-  patt <- c(alignedPattern(aln[num]), alignedSubject(aln[num]))
-  dist <- adist(as.character(patt)[1], as.character(patt)[2])
-  ind <- sum(str_count(as.character(patt),"-"))
-  data.frame(
-    original = seq_1,
-    hapseq = as.character(patt)[2],
-    refseq = as.character(patt)[1],
-    refid = names(patt)[1],
-    score = score(aln[num]),
-    indels = ind
-  )
-}
+    sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
 
-masked_sequences <- readDNAStringSet(masked_fasta)
-df_masked <- NULL
-df_masked <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
-  # for (seq1 in 1:nrow(df_final)) {
-  seq_1 <- DNAString(df_aln$refseq[seq1])
-  maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
-
-  ref_rle <- Rle(as.vector(seq_1))
-  ss <- ranges(ref_rle)[runLength(ref_rle) > homopolymer_threshold]
-  
-  # cover the flanks
-  start(ss) <- start(ss) - 1
-  end(ss) <- end(ss) + 1
-  
-  # mask the 
-  x <- DNAString(as.character(maskseq))
-  x <- Rle(as.vector(x))
-  ss <- append(ss, ranges(x)[runValue(x) == "N"])
-
-  
-  if (length(ss) == 0) {
-    # just return the haplotype
-    return (
+    registerDoMC(detectCores())
+    df_aln <- NULL
+    df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
+      seq_1 <- sequences[seq1]
+      aln <- pairwiseAlignment(ref_sequences, seq_1, substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
+      num <- which.max(score(aln))
+      patt <- c(alignedPattern(aln[num]), alignedSubject(aln[num]))
+      dist <- adist(as.character(patt)[1], as.character(patt)[2])
+      ind <- sum(str_count(as.character(patt),"-"))
       data.frame(
-        refid = df_aln[seq1, ]$refid,
+        original = seq_1,
+        hapseq = as.character(patt)[2],
+        refseq = as.character(patt)[1],
+        refid = names(patt)[1],
+        score = score(aln[num]),
+        indels = ind
+      )
+    }
+
+    masked_sequences <- readDNAStringSet(args$MASKED_FASTA)
+    df_masked <- NULL
+    df_masked <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
+      # for (seq1 in 1:nrow(df_final)) {
+      seq_1 <- DNAString(df_aln$refseq[seq1])
+      maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
+
+      ref_rle <- Rle(as.vector(seq_1))
+      ss <- ranges(ref_rle)[runLength(ref_rle) > args$HOMOPOLYMER_THRESHOLD]
+      
+      # mask the flanks
+      start(ss) <- start(ss) - 1
+      end(ss) <- end(ss) + 1
+      
+      # mask the 
+      x <- DNAString(as.character(maskseq))
+      x <- Rle(as.vector(x))
+      ss <- append(ss, ranges(x)[runValue(x) == "N"])
+
+      
+      if (length(ss) == 0) {
+        # just return the haplotype
+        return (
+          data.frame(
+            refid = df_aln[seq1, ]$refid,
+            refseq = df_aln[seq1, ]$refseq,
+            hapseq = df_aln[seq1, ]$hapseq,
+            asv_prime = df_aln[seq1, ]$hapseq
+          )
+        )
+      }
+      
+      for (idx in 1:length(ss)) {
+        css <- ss[idx]
+        if (start(css) <= 0) {
+          start(css) <- 1
+        }
+        if (end(css) > length(seq_1) ) {
+          end(css) <- length(seq_1)
+        }
+        seq_1[start(css) : end(css)] <- "N"
+      }
+      
+      data.frame(
+        refid = df_aln$refid[seq1],
         refseq = df_aln[seq1, ]$refseq,
         hapseq = df_aln[seq1, ]$hapseq,
-        asv_prime = df_aln[seq1, ]$hapseq
+        asv_prime = as.character(seq_1)
       )
-    )
-  }
-  
-  for (idx in 1:length(ss)) {
-    css <- ss[idx]
-    if (start(css) <= 0) {
-      start(css) <- 1
     }
-    if (end(css) > length(seq_1) ) {
-      end(css) <- length(seq_1)
-    }
-    seq_1[start(css) : end(css)] <- "N"
-  }
-  
-  data.frame(
-    refid = df_aln$refid[seq1],
-    refseq = df_aln[seq1, ]$refseq,
-    hapseq = df_aln[seq1, ]$hapseq,
-    asv_prime = as.character(seq_1)
-  )
+
+    df_seqs <- inner_join(df_aln, df_masked, by = c("refid", "refseq", "hapseq"))
+    seqtab.nochim.df <- as.data.frame(t(seqtab.nochim))
+
+    seqtab.nochim.df$original <- base::rownames(seqtab.nochim.df)
+    df_seqs <- inner_join(df_seqs, seqtab.nochim.df, by = "original")
+
+    # everything here makes sense
+
+    df_final <- df_seqs %>%
+      pivot_longer(
+        cols = -c(original, hapseq, refseq, refid, score, indels, asv_prime),
+        names_to = "sample",
+        values_to = "counts"
+      )
+
+    # todo: reorder the columns so that sample is first
+
+    seqtab.nochim.df <- df_final %>%
+      group_by(sample, asv_prime) %>%
+      summarise(counts = sum(counts)) %>%
+      pivot_wider(names_from = asv_prime, values_from = counts) %>%
+      # filter(counts != 0) %>%
+      ungroup()
+
+    seqtab.nochim.df[seqtab.nochim.df==0]=NA
+
+} else {
+    seqtab.nochim.df = as.data.frame(seqtab.nochim)
+    seqtab.nochim.df$sample = rownames(seqtab.nochim)
+    seqtab.nochim.df[seqtab.nochim.df==0]=NA    
 }
-
-df_seqs <- inner_join(df_aln, df_masked, by = c("refid", "refseq", "hapseq"))
-seqtab.nochim.df <- as.data.frame(t(seqtab.nochim))
-
-seqtab.nochim.df$original <- base::rownames(seqtab.nochim.df)
-df_seqs <- inner_join(df_seqs, seqtab.nochim.df, by = "original")
-
-# everything here makes sense
-
-df_final <- df_seqs %>%
-  pivot_longer(
-    cols = -c(original, hapseq, refseq, refid, score, indels, asv_prime),
-    names_to = "sample",
-    values_to = "counts"
-  )
-
-# todo: reorder the columns so that sample is first
-
-seqtab.nochim.df <- df_final %>%
-  group_by(sample, asv_prime) %>%
-  summarise(counts = sum(counts)) %>%
-  pivot_wider(names_from = asv_prime, values_from = counts) %>%
-  # filter(counts != 0) %>%
-  ungroup()
-
-print(length(colnames(seqtab.nochim.df[, 2:ncol(seqtab.nochim.df)])))
-print(colnames(seqtab.nochim.df[, 2:ncol(seqtab.nochim.df)]))
-
-x <- colSums(seqtab.nochim.df[, 2:ncol(seqtab.nochim.df)]) != 0
-seqtab.nochim.df <- seqtab.nochim.df[, c(TRUE, x)] # want the first 'sample' column (could write differently)
-seqtab.nochim.df[seqtab.nochim.df==0]=NA
 
 pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
 seqtab.nochim.df = seqtab.nochim.df %>% 
