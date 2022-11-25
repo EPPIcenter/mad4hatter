@@ -176,7 +176,7 @@ process qualitycheck {
         awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > amplicon_coverage.txt
         fi
 
-        mkdir quality_report
+        test -d quality_report || mkdir quality_report
         Rscript ${params.scriptDIR}/cutadapt_summaryplots.R amplicon_coverage.txt sample_coverage.txt ${amplicon_info} quality_report
         """
 }
@@ -231,7 +231,7 @@ process dada2_postproc {
           Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} "${params.target}_refseq.fasta"
           trf "${params.target}_refseq.fasta" 2 7 7 80 10 25 3 -h -m
           Rscript ${params.scriptDIR}/postdada_rearrange.R \
-            --dada2 $rdatafile \
+            --dada2-output $rdatafile \
             --homopolymer-threshold ${params.homopolymer_threshold} \
             --refseq-fasta "${params.target}_refseq.fasta" \
             --masked-fasta "${params.target}_refseq.fasta.2.7.7.80.10.25.3.mask"
@@ -239,7 +239,7 @@ process dada2_postproc {
         else if ( refseq_fasta != "" )
           """
           Rscript ${params.scriptDIR}/postdada_rearrange.R \
-            --dada2 $rdatafile \
+            --dada2-output $rdatafile \
             --homopolymer-threshold ${params.homopolymer_threshold} \
             --refseq-fasta "${params.target}_refseq.fasta"
           """
