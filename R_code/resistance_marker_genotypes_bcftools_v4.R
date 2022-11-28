@@ -10,23 +10,23 @@ inputDIR=args[4]
 
 ##Allele table from dada2##
 
-#alleledata_FILE="/home/isglobal.lan/ddatta/Projects/Pipeline/ampseq_workflow_dd/22_0085_Test4/allele_data_test.txt"
+#alleledata_FILE="/home/isglobal.lan/ddatta/Projects/Pipeline/Runs/220909_M07977_0002_000000000-K7C6V/allele_data.txt"
 alleledata=read.delim(alleledata_FILE,header=T,sep="\t")
 
 ##File containing amino acid code from DNA triplet##
 
-#codontable_FILE="/home/isglobal.lan/ddatta/Projects/Pipeline/ampseq_workflow_dd/codontable.txt"
+#codontable_FILE="/home/isglobal.lan/ddatta/Projects/Pipeline/Files/codontable.txt"
 codontable=read.delim(codontable_FILE,header=F,sep="\t")
 
 ##File containing the amplicon infos for the resistance marker positions##
 
-#res_markers_info_FILE="/home/isglobal.lan/ddatta/Projects/Pipeline/ampseq_workflow_dd/resistance_markers_amplicon_v4.txt"
+#res_markers_info_FILE="/home/isglobal.lan/ddatta/Projects/Pipeline/Files/resistance_markers_amplicon_v4.txt"
 res_markers_info=read.delim(res_markers_info_FILE,header=T,sep="\t")
 res_markers_info=res_markers_info %>% filter(Codon_Start > 0, Codon_Start < ampInsert_length) %>% distinct(V5, .keep_all = T)
 
 ##Directory containing the mpileup of all the alleles##
 
-#inputDIR="/home/isglobal.lan/ddatta/Projects/Pipeline/ampseq_workflow_dd/22_0085_Test4/Mapping_Test"
+#inputDIR="/home/isglobal.lan/ddatta/Projects/Pipeline/Runs/220909_M07977_0002_000000000-K7C6V/Mapping"
 mpileupfiles<- list.files(path=inputDIR,pattern="*mpileup.txt$",full.names=T)
 allelenames=str_replace_all(basename(mpileupfiles),".mpileup.txt","")
 ampliconnames=sapply(strsplit(allelenames, "\\."), `[`, 1)
@@ -125,25 +125,46 @@ sampleslist=unique(alleledata$sampleID)
 
  sample_altcodon_haps=matrix("",length(sampleslist),ncol(mat_altcodon_haps))
  sample_altcodon_haps=data.frame(sample_altcodon_haps)
+ 
+ sample_altcodon_haps_reads=sample_altcodon_haps
+ 
 ##Loop over each sample##
 
 for(dd1 in 1:length(sampleslist))
 {
-samplealleles=alleledata %>% filter(sampleID %in% sampleslist[dd1]) %>% select(allele) %>% data.frame()  ##Alleles for the sample##
+samplealleles=alleledata %>% filter(sampleID %in% sampleslist[dd1]) %>% select(allele,reads) %>% data.frame()  ##Alleles for the sample##
 
 indmatch=which(rownames(mat_altcodon_haps) %in% samplealleles$allele)
 if(length(indmatch) > 0)
 {
 sample_altcodon_haps[dd1,]=mat_altcodon_haps[indmatch,] %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=""]),collapse=","))) 
+
+temp2_alt_haps_reads=samplealleles[rep(2, each = ncol(mat_altcodon_haps))]
+colnames(temp2_alt_haps_reads)=colnames(mat_altcodon_haps)
+rownames(temp2_alt_haps_reads)=samplealleles$allele
+temp2_alt_haps_reads=temp2_alt_haps_reads %>% dplyr::filter(rownames(temp2_alt_haps_reads) %in% rownames(mat_altcodon_haps))
+gg1=mat_altcodon_haps %>% dplyr::filter(rownames(mat_altcodon_haps) %in% samplealleles$allele) %>% mutate_all(~ case_when(. != "" ~ 1, TRUE ~ 0)) %>% data.frame()
+temp2_alt_haps_reads2=temp2_alt_haps_reads*as.numeric(unlist(gg1)) 
+temp2_alt_haps_reads2=temp2_alt_haps_reads2 %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=0]),collapse=","))) 
+rownames(temp2_alt_haps_reads2)=sampleslist[dd1]
+sample_altcodon_haps_reads[dd1,]=temp2_alt_haps_reads2
+
 }
 }
 
 rownames(sample_altcodon_haps)=sampleslist
 colnames(sample_altcodon_haps)=colnames(mat_altcodon_haps)
-
 sample_altcodon_haps <- rownames_to_column(sample_altcodon_haps, "SampleName")
 
-write.table(sample_altcodon_haps,file="resmarkers_haplotype_summary.txt",quote=F,sep="\t",col.names=T,row.names=F)
+rownames(sample_altcodon_haps_reads)=sampleslist
+colnames(sample_altcodon_haps_reads)=colnames(mat_altcodon_haps)
+sample_altcodon_haps_reads <- rownames_to_column(sample_altcodon_haps_reads, "SampleName")
+
+sample_altcodon_haps_FINAL=sample_altcodon_haps
+sample_altcodon_haps_FINAL[-1] <- sprintf('%s (%s)', as.matrix(sample_altcodon_haps[-1]), as.matrix(sample_altcodon_haps_reads[-1]))
+sample_altcodon_haps_FINAL=sample_altcodon_haps_FINAL %>%  mutate_all(funs(str_replace_all(., "\\(\\)", "")))
+
+write.table(sample_altcodon_haps_FINAL,file="resmarkers_haplotype_summary.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
 
 ##################Individual resistance markers#################
@@ -155,12 +176,15 @@ sampleslist=unique(alleledata$sampleID)
 sample_refcodon=""
 sample_altcodon=""
 
+sample_altcodon_reads=""
+
+
 
 ##Loop over each sample##
 
 for(kk in 1:length(sampleslist))
 {
-samplealleles=alleledata %>% filter(sampleID %in% sampleslist[kk]) %>% select(allele) %>% data.frame()  ##Alleles for the sample##
+samplealleles=alleledata %>% filter(sampleID %in% sampleslist[kk]) %>% select(allele,reads) %>% data.frame()  ##Alleles for the sample##
 
 ##Ref Allele##
 temp2_ref=mat_refcodon %>% dplyr::filter(rownames(mat_refcodon) %in% samplealleles$allele) %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=""]),collapse=","))) 
@@ -171,6 +195,15 @@ sample_refcodon=rbind(sample_refcodon,temp2_ref)
 temp2_alt=mat_altcodon %>% dplyr::filter(rownames(mat_altcodon) %in% samplealleles$allele) %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=""]),collapse=","))) 
 rownames(temp2_alt)=sampleslist[kk]
 sample_altcodon=rbind(sample_altcodon,temp2_alt)
+
+temp2_alt_reads=samplealleles[rep(2, each = ncol(mat_altcodon))]
+colnames(temp2_alt_reads)=colnames(mat_altcodon)
+rownames(temp2_alt_reads)=samplealleles$allele
+gg2=mat_altcodon %>% dplyr::filter(rownames(mat_altcodon) %in% samplealleles$allele) %>% mutate_all(~ case_when(. != "" ~ 1, TRUE ~ 0)) %>% data.frame()
+temp2_alt_reads2=temp2_alt_reads*as.numeric(unlist(gg2)) 
+temp2_alt_reads2=temp2_alt_reads2 %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=0]),collapse=","))) 
+rownames(temp2_alt_reads2)=sampleslist[kk]
+sample_altcodon_reads=rbind(sample_altcodon_reads,temp2_alt_reads2)
 }
 
 sample_refcodon=sample_refcodon[-1,]
@@ -181,7 +214,18 @@ sample_altcodon=sample_altcodon[-1,]
 colnames(sample_altcodon)=res_markers_info$V5
 sample_altcodon <- rownames_to_column(sample_altcodon, "SampleName") %>% data.frame()
 
-write.table(sample_altcodon,file="resmarkers_summary.txt",quote=F,sep="\t",col.names=T,row.names=F)
+sample_altcodon_reads=sample_altcodon_reads[-1,]
+colnames(sample_altcodon_reads)=res_markers_info$V5
+sample_altcodon_reads <- rownames_to_column(sample_altcodon_reads, "SampleName") %>% data.frame()
+
+sample_altcodon_FINAL=sample_altcodon
+sample_altcodon_FINAL[-1] <- sprintf('%s (%s)', as.matrix(sample_altcodon[-1]), as.matrix(sample_altcodon_reads[-1]))
+sample_altcodon_FINAL=sample_altcodon_FINAL %>%  mutate_all(funs(str_replace_all(., "\\(\\)", "")))
+
+write.table(sample_altcodon_FINAL,file="resmarkers_summary.txt",quote=F,sep="\t",col.names=T,row.names=F)
+
+
+
 
 
 
