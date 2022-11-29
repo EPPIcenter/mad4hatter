@@ -29,13 +29,13 @@ And then include the `singularity` profile on the command line.
 *Note: you should also include executor you wish to run*
 
 ```bash
-nextflow run main.nf --readDIR single --refseq_fasta v4_refseq.fasta --target v4 -profile sge,singularity
+nextflow run main.nf --readDIR single --refseq_fasta v4_refseq.fasta --target v4 -profile sge,singularity -c conf/custom.config
 ```
 
 Below is an example using the genome parameter:
 
 ```bash
-nextflow run main.nf --readDIR ~/Documents/MAD4HATTER_example_data/single -w ~/Documents/work --target v4 -profile sge,singularity --genome PlasmoDB-59_Pfalciparum3D7_Genome.fasta
+nextflow run main.nf --readDIR ~/Documents/MAD4HATTER_example_data/single -w ~/Documents/work --target v4 -profile sge,singularity --genome PlasmoDB-59_Pfalciparum3D7_Genome.fasta -c conf/custom.config
 ```
 
 ### Docker
