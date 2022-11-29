@@ -19,6 +19,7 @@ Rscript -e 'remotes::install_cran("rmarkdown",upgrade="never", version = "2.17")
 Rscript -e 'remotes::install_cran("gridExtra",upgrade="never", version = "2.3")'
 Rscript -e 'remotes::install_cran("foreach",upgrade="never", version = "1.5.2")'
 Rscript -e 'remotes::install_cran("doMC",upgrade="never", version = "1.3.8")'
+Rscript -e 'remotes::install_cran("argparse",upgrade="never", version = "2.1.6")'
 
 Rscript -e 'if (!require("BiocManager", quietly = TRUE)) { install.packages("BiocManager"); }; BiocManager::install(version = "3.16");'
 

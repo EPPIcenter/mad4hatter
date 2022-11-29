@@ -176,7 +176,7 @@ process qualitycheck {
         awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt > amplicon_coverage.txt
         fi
 
-        mkdir quality_report
+        test -d quality_report || mkdir quality_report
         Rscript ${params.scriptDIR}/cutadapt_summaryplots.R amplicon_coverage.txt sample_coverage.txt ${amplicon_info} quality_report
         """
 }
@@ -229,11 +229,19 @@ process dada2_postproc {
         if ( refseq_fasta == "" && genome != "" )
           """
           Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} "${params.target}_refseq.fasta"
-          Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} "${params.target}_refseq.fasta"
+          trf "${params.target}_refseq.fasta" 2 7 7 80 10 25 3 -h -m
+          Rscript ${params.scriptDIR}/postdada_rearrange.R \
+            --dada2-output $rdatafile \
+            --homopolymer-threshold ${params.homopolymer_threshold} \
+            --refseq-fasta "${params.target}_refseq.fasta" \
+            --masked-fasta "${params.target}_refseq.fasta.2.7.7.80.10.25.3.mask"
           """
         else if ( refseq_fasta != "" )
           """
-          Rscript ${params.scriptDIR}/postdada_rearrange.R $rdatafile ${params.homopolymer_threshold} ${refseq_fasta}
+          Rscript ${params.scriptDIR}/postdada_rearrange.R \
+            --dada2-output $rdatafile \
+            --homopolymer-threshold ${params.homopolymer_threshold} \
+            --refseq-fasta "${params.target}_refseq.fasta"
           """
         else
           error "Reference sequences must be provided, otherwise they must be generated from a provided genome"

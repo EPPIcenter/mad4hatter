@@ -1,4 +1,3 @@
-library(tidyverse)
 library(stringr)
 library(dplyr)
 library(dada2)
@@ -7,14 +6,19 @@ library(parallel)
 library(doMC)
 library(muscle)
 library(BSgenome)
+library(argparse)
+library(tidyr)
 
-args = commandArgs(trailingOnly=T)
-numargs=length(args)
-verbose=FALSE # todo: make that work
-# masked_fasta=[numargs - 3]
-homopolymer_threshold = as.integer(args[numargs - 1])
-refseq_fasta=args[numargs]
-load (args[1])
+parser <- ArgumentParser(description='Post process dada2 inferred sequences')
+parser$add_argument('--homopolymer-threshold', type="integer",
+                   help='homopolymer threshold to begin masking')
+parser$add_argument('--refseq-fasta', type="character")
+parser$add_argument('--masked-fasta', type="character")
+parser$add_argument('--dada2-output', type="character", required = TRUE)
+# parser$add_argument('--parallel', type='boolean', default=FALSE)
+
+args <- parser$parse_args()
+load (args$dada2_output)
 
 ## I. Check for non overlapping sequences. 
 
@@ -26,275 +30,331 @@ non_overlaps_idx <- which(str_detect(sequences, paste(rep("N", 10), collapse = "
 # counts
 
 if (length(non_overlaps_idx) > 0) {
-
-    # Calculate the difference in length between
-    # real sequences, and see if the delta sequence
-    # has no conflicting bases at each position. If 
-    # they do, overwrite with N's and collapse the 
-    # resolved sequences. Else if each position is unique,
-    # assume that the sequences are part of the resolved
-    # sequence. 
-
-    non_overlaps <- sequences[non_overlaps_idx]
-    non_overlaps_split = strsplit(non_overlaps, paste(rep("N", 10), collapse = ""))
-
-    df_non_overlap <- data.frame(
-        column_indexes = non_overlaps_idx,
-        left_sequences = sapply(non_overlaps_split, "[[", 1),
-        right_sequences = sapply(non_overlaps_split, "[[", 2)
-    )
-
-    ordered_left_sequences <- df_non_overlap %>% 
-        arrange(left_sequences, str_length(left_sequences)) %>%
-        pull(left_sequences, name = column_indexes)            
-
-    idx <- 1
-    base_sequence <- ordered_left_sequences[idx]
-
-    # store modified left sequences in this list
-    processed_left_sequences <- c()
-
-    while (idx <= length(ordered_left_sequences)) {
-        # 'x' is all sequences that match the base sequence. they should
-        # already be together because of the prerequiste seqtab sorting above
-        x <- ordered_left_sequences[
-            startsWith(ordered_left_sequences, base_sequence)]
-
-        # 't' is table of lengths of unique sequences.
-        # if there are counts greater than 1 for unique sequences
-        # larger than the base sequence, then there must be empty
-        # spaces at those position. Thus, the actually base cannot
-        # be resolved between the unique sequences. 
-        t <- table(nchar(unique(x)))
-
-        # if there is more than one unique sequence that is longer
-        # than the base sequence, then replace with N's starting 
-        # at the end position. This includes other sequences longer 
-        # than these sequences. 
-        if (any(t > t[1])) {
-            deltas <- nchar(x) - nchar(base_sequence) + 1
-            substr(x, deltas, nchar(x)) <- rep("N", deltas)
-        } else { # there can only be one t[length(t)] here with above if
-            # note: replace with substr()
-            m <- which.max(nchar(x))
-            n <- names(x) # cache names
-            x <- rep(x[m], length(x))
-            names(x) <- n
-        }
-
-        # update processed sequences list
-        processed_left_sequences <- c(processed_left_sequences, x)
-        
-        # update index
-        idx <- idx + length(x)
+  
+  # Calculate the difference in length between
+  # real sequences, and see if the delta sequence
+  # has no conflicting bases at each position. If 
+  # they do, overwrite with N's and collapse the 
+  # resolved sequences. Else if each position is unique,
+  # assume that the sequences are part of the resolved
+  # sequence. 
+  
+  non_overlaps <- sequences[non_overlaps_idx]
+  non_overlaps_split = strsplit(non_overlaps, paste(rep("N", 10), collapse = ""))
+  
+  df_non_overlap <- data.frame(
+    column_indexes = non_overlaps_idx,
+    left_sequences = sapply(non_overlaps_split, "[[", 1),
+    right_sequences = sapply(non_overlaps_split, "[[", 2)
+  )
+  
+  ordered_left_sequences <- df_non_overlap %>% 
+    arrange(left_sequences, str_length(left_sequences)) %>%
+    pull(left_sequences, name = column_indexes)            
+  
+  idx <- 1
+  base_sequence <- ordered_left_sequences[idx]
+  
+  # store modified left sequences in this list
+  processed_left_sequences <- c()
+  
+  while (idx <= length(ordered_left_sequences)) {
+    # 'x' is all sequences that match the base sequence. they should
+    # already be together because of the prerequiste seqtab sorting above
+    x <- ordered_left_sequences[
+      startsWith(ordered_left_sequences, base_sequence)]
+    
+    # 't' is table of lengths of unique sequences.
+    # if there are counts greater than 1 for unique sequences
+    # larger than the base sequence, then there must be empty
+    # spaces at those position. Thus, the actually base cannot
+    # be resolved between the unique sequences. 
+    t <- table(nchar(unique(x)))
+    
+    # if there is more than one unique sequence that is longer
+    # than the base sequence, then replace with N's starting 
+    # at the end position. This includes other sequences longer 
+    # than these sequences. 
+    if (any(t > t[1])) {
+      deltas <- nchar(x) - nchar(base_sequence) + 1
+      substr(x, deltas, nchar(x)) <- rep("N", deltas)
+    } else { # there can only be one t[length(t)] here with above if
+      # note: replace with substr()
+      m <- which.max(nchar(x))
+      n <- names(x) # cache names
+      x <- rep(x[m], length(x))
+      names(x) <- n
     }
-
-    # Now do the same for the right hand sequences!
-
-    # reverse the sequences for easier comparison
-    tmp <- data.frame(
-        column_indexes = df_non_overlap$column_indexes,
-        reversed = sapply(lapply(strsplit(df_non_overlap$right_sequences, NULL), rev), paste, collapse="")
-    )
-    ordered_reversed_right_sequences <- tmp %>%
-        arrange(reversed, str_length(reversed)) %>%
-        pull(reversed, name = column_indexes)
-
-    idx <- 1
-    base_sequence <- ordered_reversed_right_sequences[1]
-    processed_right_sequences <- NULL
-
-    while (idx <= length(ordered_reversed_right_sequences)) {
-        x <- ordered_reversed_right_sequences[
-            startsWith(ordered_reversed_right_sequences, base_sequence)]
-
-        t <- table(nchar(unique(x)))
-
-        if (any(t > t[1])) {
-            deltas <- nchar(x) - nchar(base_sequence) + 1
-            substr(x, deltas, nchar(x)) <- rep("N", deltas)
-        } else { # there can only be one t[length(t)] here with above if
-            # note: replace with substr()
-            m <- which.max(nchar(x))
-            n <- names(x) # cache names
-            x <- rep(x[m], length(x))
-            names(x) <- n
-        }
-
-        # unreverse the strings
-        x <- sapply(lapply(strsplit(x, NULL), rev), paste, collapse="")
-
-        processed_right_sequences <- c(processed_right_sequences, x)
-        
-        # update index
-        idx <- idx + length(x)
+    
+    # update processed sequences list
+    processed_left_sequences <- c(processed_left_sequences, x)
+    
+    # update index
+    idx <- idx + length(x)
+  }
+  
+  # Now do the same for the right hand sequences!
+  
+  # reverse the sequences for easier comparison
+  tmp <- data.frame(
+    column_indexes = df_non_overlap$column_indexes,
+    reversed = sapply(lapply(strsplit(df_non_overlap$right_sequences, NULL), rev), paste, collapse="")
+  )
+  ordered_reversed_right_sequences <- tmp %>%
+    arrange(reversed, str_length(reversed)) %>%
+    pull(reversed, name = column_indexes)
+  
+  idx <- 1
+  base_sequence <- ordered_reversed_right_sequences[1]
+  processed_right_sequences <- NULL
+  
+  while (idx <= length(ordered_reversed_right_sequences)) {
+    x <- ordered_reversed_right_sequences[
+      startsWith(ordered_reversed_right_sequences, base_sequence)]
+    
+    t <- table(nchar(unique(x)))
+    
+    if (any(t > t[1])) {
+      deltas <- nchar(x) - nchar(base_sequence) + 1
+      substr(x, deltas, nchar(x)) <- rep("N", deltas)
+    } else { # there can only be one t[length(t)] here with above if
+      # note: replace with substr()
+      m <- which.max(nchar(x))
+      n <- names(x) # cache names
+      x <- rep(x[m], length(x))
+      names(x) <- n
     }
-
-    # re-order the sequences by their indexes (ie. [1..n])
-    processed_left_sequences <- processed_left_sequences[
-        order(as.integer(names(processed_left_sequences)))]
-
-    processed_right_sequences <- processed_right_sequences[
-        order(as.integer(names(processed_right_sequences)))]
-
-    # combine processed sequences
-    df_non_overlap <- cbind(df_non_overlap,
-        processed_left_sequences = processed_left_sequences,
-        processed_right_sequences = processed_right_sequences
-    )
-
-    # combine the processed sequences
-    df_non_overlap <- unite(
-        df_non_overlap,
-        combined,
-        c(
-            processed_left_sequences,
-            processed_right_sequences
-        ), sep="")
-
-    # finally write back to sequences
-    sequences[df_non_overlap$column_indexes] <- df_non_overlap$combined
+    
+    # unreverse the strings
+    x <- sapply(lapply(strsplit(x, NULL), rev), paste, collapse="")
+    
+    processed_right_sequences <- c(processed_right_sequences, x)
+    
+    # update index
+    idx <- idx + length(x)
+  }
+  
+  # re-order the sequences by their indexes (ie. [1..n])
+  processed_left_sequences <- processed_left_sequences[
+    order(as.integer(names(processed_left_sequences)))]
+  
+  processed_right_sequences <- processed_right_sequences[
+    order(as.integer(names(processed_right_sequences)))]
+  
+  # combine processed sequences
+  df_non_overlap <- cbind(df_non_overlap,
+                          processed_left_sequences = processed_left_sequences,
+                          processed_right_sequences = processed_right_sequences
+  )
+  
+  # combine the processed sequences
+  df_non_overlap <- unite(
+    df_non_overlap,
+    combined,
+    c(
+      processed_left_sequences,
+      processed_right_sequences
+    ), sep="")
+  
+  # finally write back to sequences
+  sequences[df_non_overlap$column_indexes] <- df_non_overlap$combined
 }
 
 
 ## II. Check for homopolymers. 
 
-ref_sequences <- readDNAStringSet(refseq_fasta)
-ref_names <- unique(names(ref_sequences))
+if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
+  
+  ref_sequences <- readDNAStringSet(args$refseq_fasta)
+  ref_names <- unique(names(ref_sequences))
+  
+  sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
+  
+  registerDoMC(detectCores())
+  df_aln <- NULL
+  df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
+    seq_1 <- sequences[seq1]
+    aln <- pairwiseAlignment(ref_sequences, seq_1, substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
+    num <- which.max(score(aln))
+    patt <- c(alignedPattern(aln[num]), alignedSubject(aln[num]))
+    ind <- sum(str_count(as.character(patt),"-"))
+    data.frame(
+      original = seq_1,
+      hapseq = as.character(patt)[2],
+      refseq = as.character(patt)[1],
+      refid = names(patt)[1],
+      score = score(aln[num]),
+      indels = ind
+    )
+  }
 
-df_final <- NULL
-df.seqtab.nochim <- as.data.frame(seqtab.nochim)
-if (homopolymer_threshold > 0) {
-    registerDoMC(detectCores())
-    df_final <- foreach(refidx = 1:length(ref_names), .combine = "rbind") %dopar% {
+  df_aln <- df_aln %>% filter(score > 0)
+  
+  masked_sequences <- readDNAStringSet(args$masked_fasta)
+  df_masked <- NULL
+  df_masked <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
+    # for (seq1 in 1:nrow(df_aln)) {
+    
+    mask_ranges <- NULL
+    
+    # mask homopolymers, and the bases flanking them
+    # input: reference sequence from pairwise alignment
+    seq_1 <- DNAString(df_aln$refseq[seq1])
+    asv_prime <-  DNAString(df_aln$hapseq[seq1])
+    
+    ref_rle <- Rle(as.vector(seq_1))
+    
+    # additionally, look for potential homopolymers that would exist in our 
+    # pairwise alignment reference sequence if it were not for insertions 
+    # in the sample haplotype in those regions. 
+    ref_rge <- ranges(ref_rle)
+    for (dna_base in DNA_ALPHABET[1:4]) {
 
-      ref_name <- ref_names[refidx]
-      ref_seq <- getSeq(ref_sequences, ref_name)
+      mask_ranges <- append(mask_ranges, ranges(ref_rle)[runValue(ref_rle) == dna_base & runLength(ref_rle) > args$homopolymer_threshold])
 
-      if (sum(str_detect(rownames(df.seqtab.nochim), ref_name)) == 0) {
-        print(paste("WARN:", ref_name, "not found in sequence table!"))
-        return(NULL)
-      }
-
-      df_subset <- df.seqtab.nochim[str_detect(rownames(df.seqtab.nochim), ref_name), ]
-      if (all(rowSums(df_subset) == 0)) {
-        print(paste("WARN:", ref_name, "could not be linked to any sequences!"))
-        return(NULL)
-      }
-
-      colidx <- unname(which(colSums(df_subset) > 0))
-      sequences <- colnames(df_subset)[colidx]
-
-      set <- DNAStringSet(c(ref_seq, sequences))
-      aln <- muscle(set, quiet = TRUE)
-
-      ref_dna <- as.matrix(unmasked(aln)[1])
-      ref_rle <- Rle(ref_dna)
-      ref_rge <- ranges(ref_rle)
-
-
-      for (dna_base in DNA_ALPHABET[1:4]) {
-
-          # 1. find situations where we have 'AA--AA-A-A--'.
-          # A homopolymer exists if the same base is found repeatedly around no base calls,
-          # and the detected base count is greater than the set threshold. In the above 
-          # example, A equals 7, thus the homopolymer extends through the entire string.
-
-
-          indexes <- which(runValue(ref_rle) == "-" | runValue(ref_rle) == dna_base)
-          irange <- IRanges(indexes)
+      indexes <- which(runValue(ref_rle) == "-" | runValue(ref_rle) == dna_base)
+      irange <- IRanges(indexes)
+      
+      # find ranges where "-" and dna_base are next to each other
+      # 'AAAA--A' = insertions in sample within homopolymer.
+      # this is what we want to catch
+      sequential <- irange[width(irange) > 2]  # eg. '-A-' or 'A-A'
+      
+      # move on if we don't have an 'A-' patterns
+      if (length(sequential) == 0)
+        next
+      
+      for (i in 1:length(sequential)) {
+        # 'sub_rge' = sub-range
+        # these are the indexes that contain dna base of interest and 
+        # '-' that are next to each other in the original sequence
+        sub_rge <- ref_rge[sequential[i]]
+        sub_rge_dna <- seq_1[sub_rge]
+        n_base <- sum(as.vector(sub_rge_dna) %in% dna_base)
+        if (n_base > args$homopolymer_threshold) {
+          # indels in the masked region should result in a mask that is the same
+          # length as the homopolymer region in the reference
+          # note: there is probably a better way to do this....
+          replacement <- paste(as(Rle(dna_base, n_base), 'character'), collapse = "")
+          left_str <- subseq(asv_prime, 1, start(sub_rge[1]) - 1)
+          right_str <- subseq(asv_prime, end(sub_rge[length(sub_rge)]) + 1)
+          asv_prime <- DNAString(paste(c(as(left_str, "character"), replacement, as(right_str, "character")), collapse = ""))
           
-          # find ranges where "-" and dna_base are next to each other
-          sequential <- irange[width(irange) > 1]
-          if (length(sequential) > 0) {
-              for (i in seq.int(1,length(sequential))) {
-                  sub_rge <- ref_rge[start(sequential[i]):end(sequential[i])]
-                  sub_rge_start <- start(sub_rge[1])
-                  sub_rge_end <- end(sub_rge[length(sub_rge)])
-
-                  sub_rge_dna <- ref_dna[sub_rge_start:sub_rge_end]                
-                  homopolymer_len <- sum(sub_rge_dna == dna_base)
-                  if (homopolymer_len > homopolymer_threshold) {
-
-                      # exclude possible variation next to homopolymers
-                      if (sub_rge_start > 1)
-                          sub_rge_start <- sub_rge_start + 1
-
-                      if (sub_rge_end < length(ref_dna))
-                          sub_rge_end <- sub_rge_end - 1
-
-                      ref_dna[sub_rge_start:sub_rge_end] <- "N" # "N" is homopolymer mask
-                  }
-              }
-          }
-
-          # 2. find repeating base counts (ie. 'AAAAA')
-          base_run <- ref_rge[runValue(ref_rle) == dna_base]
-          base_run_target_indexes <- which(width(base_run) > homopolymer_threshold)
-
-          if (length(base_run_target_indexes) > 0) {
-              for (idx in base_run_target_indexes) {
-
-                  # exclude possible variation next to homopolymers
-                  base_run_start <- start(base_run[idx])
-                  base_run_end <- end(base_run[idx])
-                  lower_idx <- ifelse(base_run_start > 1, base_run_start - 1, base_run_start)
-                  upper_idx <- ifelse(base_run_end < length(ref_dna), base_run_end + 1, base_run_end)
-                  ref_dna[lower_idx:upper_idx] <- "N" # "N" is homopolymer mask 
-
-              }
-          }
-      } # end loop
-
-
-      u_aln <- unmasked(aln)
-      asv_set <- NULL 
-      for (idx in 2:nrow(aln)) {
-          seq_mat <- as.matrix(u_aln[idx])
-          seq_mat[which(ref_dna == "N")] <- "N" 
-          seq_mat[which(ref_dna == "-")] <- "N" # mask no call
-          seq_str <- paste(as.character(seq_mat), collapse="")
-          seq_str <- str_replace_all(seq_str, "-", "N")
-          asv_set <- c(asv_set, seq_str)
-      }
-
-      df_amplicon <- NULL
-      for (cidx in 1:length(colidx)) {
-        col <- colidx[cidx]
-        seq <- asv_set[cidx]
-        for (ridx in 1:nrow(df_subset)) {
-            df_amplicon <- rbind(df_amplicon,
-                data.frame(
-                  # amplicon = ref_name,
-                  sample = rownames(df_subset)[ridx],
-                  ref_sequences = seq,
-                  counts = unname(df_subset[ridx, col])
-                ))
+          # we masked above but this will let us mask the flanks using the logic below
+          new_range <- IRanges(start = start(sub_rge)[1], end = end(sub_rge)[length(sub_rge)] - (length(sub_rge) - n_base))
+          mask_ranges <- append(mask_ranges, new_range)
         }
       }
-      return(filter(df_amplicon, counts != 0))
     }
-
-    ## III. Collapse sequences 
-
-    seqtab.nochim.df <- df_final %>%
-        group_by(sample, ref_sequences) %>%
-        summarise(counts = sum(counts)) %>%
-        pivot_wider(names_from = ref_sequences, values_from = counts) %>%
-        ungroup()
+    
+    
+    # as mentioned, add additional masking around homopolymers.
+    # if out of range, this will be taken care of during the actual masking.
+    if (!is.null(mask_ranges))
+      start(mask_ranges) <- start(mask_ranges) - 1
+    if (!is.null(mask_ranges))
+      end(mask_ranges) <- end(mask_ranges) + 1
+    
+    
+    # mask tandem repeats
+    # input: masked sequences from the pipeline
+    
+    maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
+    trseq <- DNAString(as.character(maskseq))
+    tr_rle <- Rle(as.vector(trseq))
+    tr_rge <- ranges(tr_rle)[runValue(tr_rle) == "N"]
+    
+    if (length(tr_rge) > 0) {
+      for (i in 1:length(tr_rge)) {
+        # count how many gaps there are in the reference sequence from insertions,
+        # and adjust the tandem repeat masks accordingly
+        ref_dna <- DNAString(df_aln$refseq[seq1])
+        n_gaps <- str_count(ref_dna[1:start(tr_rge[i])], "-")
+        new_range <- IRanges(start = start(tr_rge[i]) + n_gaps, end = end(tr_rge[i]) + n_gaps)
+        replacement <- paste(as(Rle('N', width(tr_rge[i])), 'character'), collapse = "")
+        
+        # adjust the mask like before so that the masked range 
+        left_str <- subseq(asv_prime, 1, start(tr_rge[i]) - 1)
+        right_str <- subseq(asv_prime, end(tr_rge[i]) + 1)
+        asv_prime <- DNAString(paste(c(as(left_str, "character"), replacement, as(right_str, "character")), collapse = ""))
+        
+        # note: don't worry about appending the mask here because we technically did already,
+        # and we don't need to worry about masking the sides of the mask
+        # mask_ranges <- append(mask_ranges, new_range)
+      }
+    }
+    
+    # mask_ranges <- append(mask_ranges, ranges(trseq)[runValue(trseq) == "N"])
+    
+    # if there is nothing to mask, just return
+    if (length(mask_ranges) == 0) {
+      return (
+        data.frame(
+          original = df_aln[seq1, ]$original,
+          refid = df_aln[seq1, ]$refid,
+          refseq = df_aln[seq1, ]$refseq,
+          hapseq = df_aln[seq1, ]$hapseq,
+          asv_prime = as.character(asv_prime)
+        )
+      )
+    }
+    
+    for (idx in 1:length(mask_ranges)) {
+      css <- mask_ranges[idx]
+      if (start(css) <= 0) {
+        start(css) <- 1
+      }
+      if (end(css) > length(asv_prime) ) {
+        end(css) <- length(asv_prime)
+      }
+      asv_prime[start(css) : end(css)] <- "N"
+    }
+    
+    data.frame(
+      original = df_aln[seq1, ]$original,
+      refid = df_aln$refid[seq1],
+      refseq = df_aln[seq1, ]$refseq,
+      hapseq = df_aln[seq1, ]$hapseq,
+      asv_prime = as.character(asv_prime)
+    )
+  }
+  
+  df_seqs <- inner_join(df_aln, df_masked, by = c("original", "refid", "refseq", "hapseq"))
+    
+  seqtab.nochim.df <- as.data.frame(t(seqtab.nochim))
+  seqtab.nochim.df$original <- base::rownames(seqtab.nochim.df)
+  df_seqs <- inner_join(df_seqs, seqtab.nochim.df, by = "original")
+  
+  # everything here makes sense
+  
+  df_final <- df_seqs %>%
+    pivot_longer(
+      cols = -c(original, hapseq, refseq, refid, score, indels, asv_prime),
+      names_to = "sample",
+      values_to = "counts"
+    )
+  
+  # todo: reorder the columns so that sample is first
+  
+  seqtab.nochim.df <- df_final %>%
+    group_by(sample, asv_prime) %>%
+    summarise(counts = sum(counts)) %>%
+    pivot_wider(names_from = asv_prime, values_from = counts) %>%
+    # filter(counts != 0) %>%
+    ungroup()
+  
+  seqtab.nochim.df[seqtab.nochim.df==0]=NA
+  
 } else {
-    seqtab.nochim.df = as.data.frame(seqtab.nochim)
-    seqtab.nochim.df$sample = rownames(seqtab.nochim)
-    seqtab.nochim.df[seqtab.nochim.df==0]=NA    
+  seqtab.nochim.df = as.data.frame(seqtab.nochim)
+  seqtab.nochim.df$sample = rownames(seqtab.nochim)
+  seqtab.nochim.df[seqtab.nochim.df==0]=NA    
 }
-
-
-## IV. Write allele tables
 
 
 pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
 seqtab.nochim.df = seqtab.nochim.df %>% 
-  pivot_longer(cols = -sample, names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>% 
+  pivot_longer(cols = -c(sample), names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>% 
   mutate(locus = paste0(sapply(strsplit(sample,"_"),"[",1),"_",sapply(strsplit(sample,"_"),"[",2),"_",sapply(strsplit(sample,"_"),"[",3)))%>% 
   mutate(sampleID = sapply(strsplit(sapply(strsplit(sample,pat),"[",2),"_trimmed"),"[",1)) %>% 
   select(sampleID,locus,asv,reads)
@@ -322,5 +382,5 @@ allele.data = seqtab.nochim.df %>%
   mutate(norm.reads.locus = reads/sum(reads))%>% 
   mutate(n.alleles = n())
 
-  saveRDS(allele.data,file="allele_data.RDS")
-  write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
+saveRDS(allele.data,file="allele_data.RDS")
+write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
