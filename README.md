@@ -2,6 +2,20 @@
 
 ## Setup
 
+### Setting Parameters
+
+Modify the nextflow.config file:
+
+|Parameter|Description|
+|---|---|
+|readDIR|The folder that contains all the fastq files (*required*)|
+|outDIR|The folder where you want the resulting data to be save (default 'results')|
+|sequencer|The sequencer used to produce your data (default 'nextseq')|
+|QC_only|Whether to only run QC related workflows or all workflows|
+|refseq_fasta **or** genome|Path to reference sequences **or** path to genome (*one* is **required**)|
+
+Additionally, the nextflow parameter `-profile` can be use to target the infrastructure you wish to run the pipeline on. The different profiles are listed below, including any setup that is required.
+
 ### Singularity
 
 If using singularity, please run the command below to generate the singularity image.
@@ -16,6 +30,12 @@ And then include the `singularity` profile on the command line.
 
 ```bash
 nextflow run main.nf --readDIR single --refseq_fasta v4_refseq.fasta --target v4 -profile sge,singularity
+```
+
+Below is an example using the genome parameter:
+
+```bash
+nextflow run main.nf --readDIR ~/Documents/MAD4HATTER_example_data/single -w ~/Documents/work --target v4 -profile sge,singularity --genome PlasmoDB-59_Pfalciparum3D7_Genome.fasta
 ```
 
 ### Docker
@@ -43,17 +63,6 @@ To use conda, you must first install either [conda](https://docs.conda.io/en/lat
 ```bash
 nextflow run main.nf --readDIR single --target v3 -profile conda
 ```
-
-### Setting Parameters
-
-Modify the nextflow.config file:
-
-|Parameter|Description|
-|---|---|
-|readDIR|The folder that contains all the fastq files (*required*)|
-|outDIR|The folder where you want the resulting data to be save (default 'results')|
-|sequencer|The sequencer used to produce your data (default 'nextseq')|
-|QC_only|Whether to only run QC related workflows or all workflows (default 'F')|
 
 ### Customizing for your institution
 
