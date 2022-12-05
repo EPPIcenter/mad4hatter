@@ -25,37 +25,70 @@ QC_only = params.QC_only
 
 cutadapt_minlen = params.cutadapt_minlen
 if ( params.sequencer == 'miseq' ) { qualfilter = '--trim-n -q 10' } else { qualfilter = '--nextseq-trim=20' }
-if ( params.refseq_fasta != null ) { refseq_fasta = file( params.refseq_fasta ) } else { refseq_fasta = "" }
-if ( params.genome != null ) { genome = file( params.genome ) } else { genome = "" }
-
 
 /*
 Create 'read_pairs' channel that emits for each read pair a
 tuple containing 3 elements: pair_id, R1, R2
 */
-Channel
-    .fromFilePairs( params.reads )
-        .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
-        .set { read_pairs }
 
-//Split the Channel
-read_pairs.into { read_pairs_cutadapt; read_pairs_qualitycheck }
+workflow {
+  read_pairs_ch = channel.fromFilePairs( params.reads, checkIfExists: true )  
+
+  CUTADAPT(read_pairs_ch, params.amplicon_info, params.cutadapt_minlen, qualfilter)
+  QUALITY_CHECK(read_pairs_ch, CUTADAPT.out[1], params.amplicon_info)
+
+  if (params.QC_only == false) {
+    
+    DADA2_ANALYSIS(CUTADAPT.out[0], params.amplicon_info)
+
+    if (params.refseq_fasta == null || params.masked_fasta == null) {
+      if (params.genome == null) {
+        error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequence"
+      }
+
+      CREATE_REF_SEQUENCES(params.amplicon_info, params.genome, "${params.target}_refseq.fasta")
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REF_SEQUENCES.out[0], CREATE_REF_SEQUENCES.out[1])
+    } else {
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta)
+    }
+  }
+}
+
+process CREATE_REF_SEQUENCES {
+
+          input:
+          path amplicon_info
+          path genome
+          val refseq_fasta
+
+          output:
+          path "*.fasta"
+          path "*.mask"
+
+          script:
+
+          """
+          Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} ${refseq_fasta}
+          trf "${params.target}_refseq.fasta" 2 7 7 80 10 25 3 -h -m
+          """
+}
+
 
 // cutadapt based quality filtering and QC
 // Filter to only reads with primer detected and trim poly-g
-process cutadapt {
+process CUTADAPT {
 
         conda (params.enable_conda ? 'envs/cutadapt-env.yml' : null)
 
         input:
-        tuple pair_id, file(reads) from read_pairs_cutadapt
-        file amplicon_info
+        tuple val(pair_id), path(reads)
+        path amplicon_info
         val cutadapt_minlen
         val qualfilter
 
         output:
-        file('trimmed_demuxed') into dada2
-        file '*{AMPLICON,SAMPLE}summary.txt' into cutadapt_report
+        file('trimmed_demuxed')
+        file '*{AMPLICON,SAMPLE}summary.txt'
 
         script:
         """
@@ -143,7 +176,7 @@ process cutadapt {
 }
 
 // Quality checks on the cutadapt summary file
-process qualitycheck {
+process QUALITY_CHECK {
 
         conda (params.enable_conda ? 'pandoc' : null)
 
@@ -152,12 +185,12 @@ process qualitycheck {
                }
 
         input:
-        tuple pair_id, file(reads) from read_pairs_qualitycheck
-        file summfile from cutadapt_report.collect().ifEmpty([])
-        file amplicon_info
+        tuple val(pair_id), path(reads) 
+        path summfile
+        path amplicon_info
 
         output:
-        file '*coverage.txt' into qualitycheck_report
+        path '*coverage.txt'
         file('quality_report')
 
         
@@ -183,21 +216,19 @@ process qualitycheck {
 
 // Dada2
 
-process dada2_analysis {
+process DADA2_ANALYSIS {
 
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
                }
 
         input:
-        file 'trimmed_demuxed' from dada2.collect().ifEmpty([])
-        file amplicon_info
+        path 'trimmed_demuxed'
+        path amplicon_info
 
         output:
-        file '*.RData' into dada2_summary
+        path '*.RData'
         
-        when : QC_only == false
-
         script:
         treat_no_overlap_differently = 'T'
 
@@ -207,43 +238,28 @@ process dada2_analysis {
 }
 
 // Dada2 Postprocessing
-process dada2_postproc {
+process DADA2_POSTPROC {
 
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
                }
 
         input:
-        val refseq_fasta
-        val genome
-        file rdatafile from dada2_summary
-        file amplicon_info
+        path rdatafile
+        val homopolymer_threshold
+        path refseq_fasta
+        path masked_fasta
 
         output:
-        file '*.{RDS,txt,csv}' into dada2_proc
+        path '*.{RDS,txt,csv}'
         
-        when : QC_only == false
-
         script:
-
-        if ( refseq_fasta == "" && genome != "" )
-          """
-          Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} "${params.target}_refseq.fasta"
-          trf "${params.target}_refseq.fasta" 2 7 7 80 10 25 3 -h -m
-          Rscript ${params.scriptDIR}/postdada_rearrange.R \
-            --dada2-output $rdatafile \
-            --homopolymer-threshold ${params.homopolymer_threshold} \
-            --refseq-fasta "${params.target}_refseq.fasta" \
-            --masked-fasta "${params.target}_refseq.fasta.2.7.7.80.10.25.3.mask"
-          """
-        else if ( refseq_fasta != "" )
           """
           Rscript ${params.scriptDIR}/postdada_rearrange.R \
-            --dada2-output $rdatafile \
-            --homopolymer-threshold ${params.homopolymer_threshold} \
-            --refseq-fasta "${params.target}_refseq.fasta"
+            --dada2-output ${rdatafile} \
+            --homopolymer-threshold ${homopolymer_threshold} \
+            --refseq-fasta ${refseq_fasta} \
+            --masked-fasta ${masked_fasta}
           """
-        else
-          error "Reference sequences must be provided, otherwise they must be generated from a provided genome"
 }
 
