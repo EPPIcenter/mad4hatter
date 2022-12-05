@@ -17,13 +17,9 @@ params.QC_only         = false
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
 params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
 params.scriptDIR       = "$projectDir/R_code"
-refSequences           = "$projectDir/resources/${params.target}/ALL_refseq.fa"
-pf3D7_index            = "$projectDir/resources/${params.target}/3D7_ampseq"
-codontable             = "$projectDir/resources/${params.target}/codontable.txt"
+// pf3D7_index            = "$projectDir/resources/${params.target}/3D7_ampseq"
+// codontable             = "$projectDir/resources/${params.target}/codontable.txt"
 resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_v4.txt"
-samtoolsPATH           = ""
-bcftoolsPATH           = ""
-bwaPATH                = ""
 
 // Files
 amplicon_info = file( params.amplicon_info )
@@ -31,13 +27,6 @@ refSequences = file( params.refSequences )
 pf3D7_index = params.pf3D7_index
 codontable = file( params.codontable )
 resmarkers_amplicon = file( params.resmarkers_amplicon )
-
-// Software Paths
-samtoolsPATH = params.samtoolsPATH
-bcftoolsPATH = params.bcftoolsPATH
-bwaPATH = params.bwaPATH
-
-QC_only = params.QC_only
 
 cutadapt_minlen = params.cutadapt_minlen
 if ( params.sequencer == 'miseq' ) { qualfilter = '--trim-n -q 10' } else { qualfilter = '--nextseq-trim=20' }
@@ -48,8 +37,17 @@ tuple containing 3 elements: pair_id, R1, R2
 */
 
 workflow {
-  read_pairs_ch = channel.fromFilePairs( params.reads, checkIfExists: true )  
+  // declare variables upfront
+  read_pairs_ch = channel.fromFilePairs( params.reads, checkIfExists: true )
 
+  // if this is null, the sequences will need to be generated below
+  refseq_fastq = params.refseq_fasta
+
+  // if this is null, a template codontable will be used
+  codontable = params.codontable != null ? params.codontable : "$projectDir/templates/codontable.txt"
+
+
+  // All workflows will produce a QC report (cutadapt needed by QC for length statistics)
   CUTADAPT(read_pairs_ch, params.amplicon_info, params.cutadapt_minlen, qualfilter)
   QUALITY_CHECK(read_pairs_ch, CUTADAPT.out[1], params.amplicon_info)
 
@@ -59,18 +57,42 @@ workflow {
 
     if (params.refseq_fasta == null || params.masked_fasta == null) {
       if (params.genome == null) {
-        error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequence"
+        error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequences"
       }
 
-      CREATE_REF_SEQUENCES(params.amplicon_info, params.genome, "${params.target}_refseq.fasta")
+      refseq_fastq = "${params.target}_refseq.fasta"
       DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REF_SEQUENCES.out[0], CREATE_REF_SEQUENCES.out[1])
     } else {
       DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta)
     }
+
+    if (params.pf3D7_index == null) {
+      if (params.genome == null) {
+        error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequences"
+      }
+
+      BUILD_GENOME_INDEX(params.genome)
+      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], refseq_fasta, BUILD_GENOME_INDEX.out[0], codontable)
+    } else {
+      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], refseq_fasta, params.pf3D7_index, codontable)
+    }
   }
 }
 
-process CREATE_REF_SEQUENCES {
+process BUILD_GENOME_INDEX {
+  input:
+  path genome
+
+  output:
+  path "*.fai"
+
+  script:
+  """
+  samtools faidx ${genome}
+  """
+}
+
+process CREATE_REFERENCE_SEQUENCES {
 
           input:
           path amplicon_info
@@ -281,21 +303,22 @@ process DADA2_POSTPROC {
 
 
 // Resistance markers
-process resmarker {
+process RESISTANCE_MARKERS {
 
         publishDir "${params.outDIR}",
                saveAs: {filename -> "${filename}"
                }
 
  input:
-        file asvfile from dada2_proc.collect().ifEmpty([])
+        path asvfile
+        path refseq_fasta
+        path pf3D7_index
+        path codontable
 
  output:
-        file '*.txt' into resmarker_genotype
+        path '*.txt' 
         file('Mapping')
              
-        when : QC_only != "T"
-
         script:
         """
        #!/usr/bin/env bash
@@ -309,10 +332,10 @@ process resmarker {
        
        cd Mapping
        
-        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele;  ${bwaPATH} mem -L 10000 ${pf3D7_index} \$bfile | ${samtoolsPATH} sort -o \$allele".bam" - ; ${samtoolsPATH} index \$allele".bam" ; done
+        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele; bwa mem -L 10000 ${pf3D7_index} \$bfile | samtools sort -o \$allele".bam" - ; samtools index \$allele".bam" ; done
         
         for cfile in *.bam; do allele=`echo \$cfile | cut -f 1-2 -d '.'`; echo \$allele; 
-${bcftoolsPATH} mpileup -d 2000 -f ${refSequences} \$cfile | ${bcftoolsPATH} query --format '%CHROM\\t%POS\\t%REF\\t%ALT\\n' > \$allele".mpileup.txt"; done
+bcftools mpileup -d 2000 -f ${refseq_fasta} \$cfile | bcftools query --format '%CHROM\\t%POS\\t%REF\\t%ALT\\n' > \$allele".mpileup.txt"; done
        cd ..
        Rscript ${params.scriptDIR}/resistance_marker_genotypes_bcftools_v4.R "\${rdsfile2}" ${codontable} ${resmarkers_amplicon} Mapping
        
