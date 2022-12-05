@@ -19,14 +19,9 @@ params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target
 params.scriptDIR       = "$projectDir/R_code"
 // pf3D7_index            = "$projectDir/resources/${params.target}/3D7_ampseq"
 // codontable             = "$projectDir/resources/${params.target}/codontable.txt"
-resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_v4.txt"
+// resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_v4.txt"
 
 // Files
-amplicon_info = file( params.amplicon_info )
-refSequences = file( params.refSequences )
-pf3D7_index = params.pf3D7_index
-codontable = file( params.codontable )
-resmarkers_amplicon = file( params.resmarkers_amplicon )
 
 cutadapt_minlen = params.cutadapt_minlen
 if ( params.sequencer == 'miseq' ) { qualfilter = '--trim-n -q 10' } else { qualfilter = '--nextseq-trim=20' }
@@ -61,9 +56,10 @@ workflow {
       }
 
       refseq_fastq = "${params.target}_refseq.fasta"
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REF_SEQUENCES.out[0], CREATE_REF_SEQUENCES.out[1])
+      CREATE_REFERENCE_SEQUENCES(params.amplicon_info, params.genome, refseq_fastq)
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REFERENCE_SEQUENCES.out[0], CREATE_REFERENCE_SEQUENCES.out[1], params.parallel)
     } else {
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta)
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta, params.parallel)
     }
 
     if (params.pf3D7_index == null) {
@@ -72,9 +68,9 @@ workflow {
       }
 
       BUILD_GENOME_INDEX(params.genome)
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], refseq_fasta, BUILD_GENOME_INDEX.out[0], codontable)
+      // RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], refseq_fasta, BUILD_GENOME_INDEX.out[0], codontable)
     } else {
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], refseq_fasta, params.pf3D7_index, codontable)
+      // RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], refseq_fasta, params.pf3D7_index, codontable, params.resmarkers_amplicon)
     }
   }
 }
@@ -287,6 +283,7 @@ process DADA2_POSTPROC {
         val homopolymer_threshold
         path refseq_fasta
         path masked_fasta
+        val parallel
 
         output:
         path '*.{RDS,txt,csv}'
@@ -297,7 +294,8 @@ process DADA2_POSTPROC {
             --dada2-output ${rdatafile} \
             --homopolymer-threshold ${homopolymer_threshold} \
             --refseq-fasta ${refseq_fasta} \
-            --masked-fasta ${masked_fasta}
+            --masked-fasta ${masked_fasta} \
+            --parallel ${parallel}
           """
 }
 
@@ -314,6 +312,7 @@ process RESISTANCE_MARKERS {
         path refseq_fasta
         path pf3D7_index
         path codontable
+        path resmarkers_amplicon
 
  output:
         path '*.txt' 
