@@ -47,7 +47,7 @@ workflow {
     
     DADA2_ANALYSIS(CUTADAPT.out[0], params.amplicon_info)
 
-    if (params.refseq_fasta == null || params.masked_fasta == null) {
+    if (params.refseq_fasta == null) {
       if (params.genome == null) {
         error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequences"
       }
@@ -89,10 +89,17 @@ process CREATE_REFERENCE_SEQUENCES {
 
           script:
 
-          """
-          Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} ${refseq_fasta}
-          trf "${params.target}_refseq.fasta" 2 7 7 80 10 25 3 -h -m
-          """
+          if( params.add_mask )
+            """
+            Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} ${refseq_fasta}
+            trf "${params.target}_refseq.fasta" 2 7 7 80 10 25 3 -h -m
+            """
+          else
+            """
+            Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} ${refseq_fasta}
+            cp $refseq_fasta dummy.mask
+            """
+
 }
 
 
