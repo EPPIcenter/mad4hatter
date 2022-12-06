@@ -19,7 +19,7 @@ params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target
 params.scriptDIR       = "$projectDir/R_code"
 // pf3D7_index            = "$projectDir/resources/${params.target}/3D7_ampseq"
 // codontable             = "$projectDir/resources/${params.target}/codontable.txt"
-// resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_v4.txt"
+params.resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_${params.target}.txt"
 
 // Files
 
@@ -34,9 +34,6 @@ tuple containing 3 elements: pair_id, R1, R2
 workflow {
   // declare variables upfront
   read_pairs_ch = channel.fromFilePairs( params.reads, checkIfExists: true )
-
-  // if this is null, the sequences will need to be generated below
-  refseq_fastq = params.refseq_fasta
 
   // if this is null, a template codontable will be used
   codontable = params.codontable != null ? params.codontable : "$projectDir/templates/codontable.txt"
@@ -55,37 +52,28 @@ workflow {
         error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequences"
       }
 
-      refseq_fastq = "${params.target}_refseq.fasta"
-      CREATE_REFERENCE_SEQUENCES(params.amplicon_info, params.genome, refseq_fastq)
+      CREATE_REFERENCE_SEQUENCES(params.amplicon_info, params.genome, "${params.target}_refseq.fasta")
       DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REFERENCE_SEQUENCES.out[0], CREATE_REFERENCE_SEQUENCES.out[1], params.parallel)
-    } else {
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta, params.parallel)
-    }
-
-    if (params.pf3D7_index == null) {
+    
       if (params.genome == null) {
         error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequences"
       }
 
-      BUILD_GENOME_INDEX(params.genome)
-      // RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], refseq_fasta, BUILD_GENOME_INDEX.out[0], codontable)
+      // BUILD_GENOME_INDEX(params.genome)
+      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], CREATE_REFERENCE_SEQUENCES.out[0], params.genome, codontable, params.resmarkers_amplicon)
+
     } else {
-      // RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], refseq_fasta, params.pf3D7_index, codontable, params.resmarkers_amplicon)
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta, params.parallel)
+
+      if (params.genome == null) {
+        error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequences"
+      }
+
+      // BUILD_GENOME_INDEX(params.genome)
+      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], CREATE_REFERENCE_SEQUENCES.out[0], params.genome, codontable, params.resmarkers_amplicon)
+
     }
   }
-}
-
-process BUILD_GENOME_INDEX {
-  input:
-  path genome
-
-  output:
-  path "*.fai"
-
-  script:
-  """
-  samtools faidx ${genome}
-  """
 }
 
 process CREATE_REFERENCE_SEQUENCES {
@@ -310,7 +298,7 @@ process RESISTANCE_MARKERS {
  input:
         path asvfile
         path refseq_fasta
-        path pf3D7_index
+        path genome
         path codontable
         path resmarkers_amplicon
 
@@ -322,19 +310,19 @@ process RESISTANCE_MARKERS {
         """
        #!/usr/bin/env bash
        set -e
-       
+       bwa index ${genome}
        rdsfile2="\$(echo $asvfile | tr ' ' '\n' | grep -v RDS)"
-       echo "\${rdsfile2}"    
+       echo "\${rdsfile2}"
        mkdir -p Mapping
-       
-       awk 'BEGIN{FS=OFS="\\t";} {if(NR !=1) {print \$5,\$3}}' "\${rdsfile2}" | sort -u | awk 'BEGIN{FS=OFS="\\t"}{print">"\$1"\\n"\$2 >"Mapping/"\$1".fa"}'
-       
+       cp ${refseq_fasta} Mapping
+        awk 'BEGIN{FS=OFS="\\t";} {if(NR !=1) {print \$5,\$3}}' "\${rdsfile2}" | sort -u | awk 'BEGIN{FS=OFS="\\t"}{print">"\$1"\\n"\$2 >"Mapping/"\$1".fa"}'
+
+
        cd Mapping
-       
-        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele; bwa mem -L 10000 ${pf3D7_index} \$bfile | samtools sort -o \$allele".bam" - ; samtools index \$allele".bam" ; done
-        
+        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele; bwa mem -L 10000 ../${genome} \$bfile | samtools sort -o \$allele".bam" - ; samtools index \$allele".bam" ; done
+
         for cfile in *.bam; do allele=`echo \$cfile | cut -f 1-2 -d '.'`; echo \$allele; 
-bcftools mpileup -d 2000 -f ${refseq_fasta} \$cfile | bcftools query --format '%CHROM\\t%POS\\t%REF\\t%ALT\\n' > \$allele".mpileup.txt"; done
+bcftools mpileup -d 2000 -f ../${refseq_fasta} \$cfile | bcftools query --format '%CHROM\\t%POS\\t%REF\\t%ALT\\n' > \$allele".mpileup.txt"; done
        cd ..
        Rscript ${params.scriptDIR}/resistance_marker_genotypes_bcftools_v4.R "\${rdsfile2}" ${codontable} ${resmarkers_amplicon} Mapping
        
