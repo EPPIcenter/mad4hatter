@@ -269,7 +269,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
         # count how many gaps there are in the reference sequence from insertions,
         # and adjust the tandem repeat masks accordingly
         ref_dna <- DNAString(df_aln$refseq[seq1])
-        n_gaps <- str_count(ref_dna[1:start(tr_rge[i])], "-")
+        n_gaps <- str_count(as.character(ref_dna[1:start(tr_rge[i])]), "-")
         new_range <- IRanges(start = start(tr_rge[i]) + n_gaps, end = end(tr_rge[i]) + n_gaps)
         replacement <- paste(as(Rle('N', width(tr_rge[i])), 'character'), collapse = "")
         
