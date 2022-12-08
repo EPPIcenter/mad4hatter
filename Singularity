@@ -3,7 +3,7 @@ From: rocker/r-ubuntu:22.04
 
 %post
 
-apt-get update && apt-get install -y build-essential python3-pip libbz2-dev libsdl1.2-dev liblzma-dev libcurl4-openssl-dev zlib1g-dev libxml2-dev r-cran-tidyverse trf && rm -rf /var/lib/apt/lists/*
+apt-get update && apt-get install -y build-essential python3-pip libbz2-dev libsdl1.2-dev liblzma-dev libcurl4-openssl-dev zlib1g-dev libxml2-dev r-cran-tidyverse trf bwa bcftools samtools && rm -rf /var/lib/apt/lists/*
 pip install cutadapt
 
 mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/
