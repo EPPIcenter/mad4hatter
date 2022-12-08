@@ -95,14 +95,14 @@ mat_altcodon=data.frame(mat_altcodon)
  pat="-1A$|-1B$|-1AB$|-1B2$|-2$"
  
  ##Matrix with cols being the resistance markers which can form a haplotype and rows the alleles spanning them ( basically a subset of mat_altcodon )##
-altcodon_haps=mat_altcodon %>% filter(sapply(strsplit(rownames(mat_altcodon),"\\."),"[",1) %in% sapply(strsplit(res_markers_multi_amplicons$amplicon,pat),"[",1)) %>% select(str_replace_all(res_markers_multi_amplicons$V5,"-","."))
- 
+ altcodon_haps=mat_altcodon %>% filter(sapply(strsplit(rownames(mat_altcodon),"\\."),"[",1) %in% res_markers_multi_amplicons$amplicon) %>% select(str_replace_all(res_markers_multi_amplicons$V5,"-","."))
+
  arr_altcodon_haps=rep("",nrow(altcodon_haps))  ##Array with haplotypes for each allele which spans multiple amplicons##
  resmarker_haps=rep("",nrow(altcodon_haps))
  
  for(kk1 in 1:nrow(altcodon_haps))
  {
-  codons_to_combine=res_markers_multi_amplicons %>% filter(sapply(strsplit(amplicon,pat),"[",1) %in% strsplit(rownames(altcodon_haps)[kk1],"\\.")[[1]]) %>% mutate(V5=str_replace_all(V5,"-",".")) %>% select(V5)
+  codons_to_combine=res_markers_multi_amplicons %>% filter(amplicon %in% strsplit(rownames(altcodon_haps)[kk1],"\\.")[[1]]) %>% mutate(V5=str_replace_all(V5,"-",".")) %>% select(V5)
   resmarker_haps[kk1]=paste(str_replace_all(codons_to_combine$V5,"PF3D7_[0-9]+\\.",""),collapse="/")
   arr_altcodon_haps[kk1]=paste(altcodon_haps[kk1,codons_to_combine$V5],collapse="/")
  }

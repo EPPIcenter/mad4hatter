@@ -20,6 +20,8 @@ params.scriptDIR       = "$projectDir/R_code"
 // pf3D7_index            = "$projectDir/resources/${params.target}/3D7_ampseq"
 // codontable             = "$projectDir/resources/${params.target}/codontable.txt"
 params.resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_${params.target}.txt"
+params.codontable      = "$projectDir/templates/codontable.txt"
+
 
 // Files
 
@@ -35,18 +37,14 @@ workflow {
   // declare variables upfront
   read_pairs_ch = channel.fromFilePairs( params.reads, checkIfExists: true )
 
-  // if this is null, a template codontable will be used
-  codontable = params.codontable != null ? params.codontable : "$projectDir/templates/codontable.txt"
-
-
   // All workflows will produce a QC report (cutadapt needed by QC for length statistics)
   CUTADAPT(read_pairs_ch, params.amplicon_info, params.cutadapt_minlen, qualfilter)
 
-  QUALITY_CHECK(read_pairs_ch, CUTADAPT.out[1], params.amplicon_info)
+  QUALITY_CHECK(read_pairs_ch, CUTADAPT.out[1].collect(), params.amplicon_info)
 
   if (params.QC_only == false) {
     
-    DADA2_ANALYSIS(CUTADAPT.out[0], params.amplicon_info)
+    DADA2_ANALYSIS(CUTADAPT.out[0].collect(), params.amplicon_info)
 
 
     // Create reference sequences from genome
@@ -61,41 +59,32 @@ workflow {
 
       if (params.masked_fasta == null && params.add_mask) {
         MASK_SEQUENCES(CREATE_REFERENCE_SEQUENCES.out[0], params.trf_min_score, params.trf_max_period)
+      } else {
+        MASK_SEQUENCES(CREATE_REFERENCE_SEQUENCES.out[0], 0, 0)
       }
 
       DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REFERENCE_SEQUENCES.out[0], MASK_SEQUENCES.out[0], params.parallel)
     
-      // BUILD_GENOME_INDEX(params.genome)
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], CREATE_REFERENCE_SEQUENCES.out[0], params.genome, codontable, params.resmarkers_amplicon)
-
+      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], CREATE_REFERENCE_SEQUENCES.out[0], params.codontable, params.resmarkers_amplicon)
 
     } else if (params.masked_fasta == null) {
 
       if (params.add_mask) {
-
         MASK_SEQUENCES(params.refseq_fasta , params.trf_min_score, params.trf_max_period)
-
       } else {
-
-        // apply no mask
         MASK_SEQUENCES(params.refseq_fasta, 0, 0)
-
       }
 
       DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, MASK_SEQUENCES.out[0], params.parallel)
 
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.genome, codontable, params.resmarkers_amplicon)
+      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon)
 
     } else {
 
       DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta, params.parallel)
 
-      if (params.genome == null) {
-        error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequences"
-      }
+      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon)
 
-      // BUILD_GENOME_INDEX(params.genome)
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], CREATE_REFERENCE_SEQUENCES.out[0], params.genome, codontable, params.resmarkers_amplicon)
     }
   }
 }
@@ -338,7 +327,6 @@ process RESISTANCE_MARKERS {
  input:
         path asvfile
         path refseq_fasta
-        path genome
         path codontable
         path resmarkers_amplicon
 
@@ -350,20 +338,24 @@ process RESISTANCE_MARKERS {
         """
         #!/usr/bin/env bash
         set -e
-        bwa index ${genome}
+
         rdsfile2="\$(echo $asvfile | tr ' ' '\n' | grep -v RDS)"
-        echo "\${rdsfile2}"
+        echo "\${rdsfile2}"    
         mkdir -p Mapping
+        bwa index ${refseq_fasta}
+
         awk 'BEGIN{FS=OFS="\\t";} {if(NR !=1) {print \$5,\$3}}' "\${rdsfile2}" | sort -u | awk 'BEGIN{FS=OFS="\\t"}{print">"\$1"\\n"\$2 >"Mapping/"\$1".fa"}'
 
-
         cd Mapping
-        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele; bwa mem -L 10000 ../${genome} \$bfile | samtools sort -o \$allele".bam" - ; samtools index \$allele".bam" ; done
 
-        for cfile in *.bam; do allele=`echo \$cfile | cut -f 1-2 -d '.'`; echo \$allele; bcftools mpileup -d 2000 -f ../${refseq_fasta} \$cfile | bcftools query --format '%CHROM\\t%POS\\t%REF\\t%ALT\\n' > \$allele".mpileup.txt"; done
+        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele; bwa mem -L 10000 ../${refseq_fasta} \$bfile | samtools sort -o \$allele".bam" - ; samtools index \$allele".bam" ; done
+
+        for cfile in *.bam; do allele=`echo \$cfile | cut -f 1-2 -d '.'`; echo \$allele; 
+        bcftools mpileup -d 2000 -f ../${refseq_fasta} \$cfile | bcftools query --format '%CHROM\\t%POS\\t%REF\\t%ALT\\n' > \$allele".mpileup.txt"; done
         cd ..
         Rscript ${params.scriptDIR}/resistance_marker_genotypes_bcftools_v4.R "\${rdsfile2}" ${codontable} ${resmarkers_amplicon} Mapping
 
         """
 }
+
 
