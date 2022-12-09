@@ -2,15 +2,17 @@ library(BSgenome)
 library(Biostrings)
 library(stringr)
 library(dplyr)
+library(argparse)
 
-args = commandArgs(trailingOnly=T)
-numargs=length(args)
-ampliconFILE=args[numargs - 2]
-genome=args[numargs - 1]
-output=args[numargs]
+parser <- ArgumentParser(description='Create reference sequences using amplicon table')
+parser$add_argument('--output', type="character", help='name of fasta to output', required = TRUE)
+parser$add_argument('--ampliconFILE', type="character", required = TRUE)
+parser$add_argument('--genome', type="character", required = TRUE)
 
-amplicon_info <- read.table(ampliconFILE, header = TRUE)
-ref_sequences <- Biostrings::readDNAStringSet(genome)
+args <- parser$parse_args()
+
+amplicon_info <- read.table(args$ampliconFILE, header = TRUE)
+ref_sequences <- Biostrings::readDNAStringSet(args$genome)
 final_seqs <- NULL
 
 for (idx in 1:nrow(amplicon_info)) {
@@ -40,4 +42,4 @@ for (idx in 1:nrow(amplicon_info)) {
 }
 
 set <- DNAStringSet(final_seqs)
-Biostrings::writeXStringSet(set, output)
+Biostrings::writeXStringSet(set, args$output)

@@ -119,7 +119,7 @@ process CREATE_REFERENCE_SEQUENCES {
 
           script:
           """
-          Rscript ${params.scriptDIR}/create_refseq.R ${amplicon_info} ${genome} ${refseq_fasta}
+          Rscript ${params.scriptDIR}/create_refseq.R --ampliconFILE ${amplicon_info} --genome ${genome} --output ${refseq_fasta}
           """
 
 }
