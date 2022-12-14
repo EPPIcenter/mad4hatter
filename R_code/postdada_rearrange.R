@@ -188,6 +188,9 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     )
   }
 
+  saveRDS(df_aln,file="alignments.RDS")
+  write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
+
   df_aln <- df_aln %>% filter(score > 0)
   
   masked_sequences <- readDNAStringSet(args$masked_fasta)
@@ -241,7 +244,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
             asv_prime <- DNAString(paste(c(as(left_str, "character"), replacement, as(right_str, "character")), collapse = ""))
             
             # we masked above but this will let us mask the flanks using the logic below
-            new_range <- IRanges(start = start(sub_rge)[1], end = end(sub_rge)[length(sub_rge)] - (length(sub_rge) - n_base))
+            new_range <- IRanges(start = start(sub_rge)[1], end = end(sub_rge)[length(sub_rge)] - (sum(width(sub_rge)) - n_base))
             mask_ranges <- append(mask_ranges, new_range)
           }
         }
@@ -367,7 +370,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
             asv_prime <- DNAString(paste(c(as(left_str, "character"), replacement, as(right_str, "character")), collapse = ""))
             
             # we masked above but this will let us mask the flanks using the logic below
-            new_range <- IRanges(start = start(sub_rge)[1], end = end(sub_rge)[length(sub_rge)] - (length(sub_rge) - n_base))
+            new_range <- IRanges(start = start(sub_rge)[1], end = end(sub_rge)[length(sub_rge)] - (sum(width(sub_rge)) - n_base))
             mask_ranges <- append(mask_ranges, new_range)
           }
         }
