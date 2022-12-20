@@ -1,24 +1,22 @@
-
 library(tidyverse)
 library(dada2)
+library(argparse)
 
-args = commandArgs(trailingOnly=T)
+parser <- ArgumentParser(prog="DADA2 Workflow", description='DADA2 workflow script')
+parser$add_argument('--trimmed-path', type="character",
+                   help='homopolymer threshold to begin masking', nargs='+', required = TRUE)
+parser$add_argument('--ampliconFILE', type="character", required = TRUE)
+parser$add_argument('--no-overlaps', action="store_true")
+parser$add_argument('--dada2-rdata-output', type="character", required = TRUE)
+parser$add_argument('--pool', type="character", default="false")
+parser$add_argument('--band-size', type='integer', default=16)
+parser$add_argument('--omega-a', type='double', default=1e-120)
 
-#treat.no.overlap.differently = T
-#trimmed_path = "~/Data/test_times/results/cutadapt_TES_quarter_demux_new"
-#ampliconFILE = "v3_amplicon_info.tsv"
+args <- parser$parse_args()
+print(args)
 
-numargs=length(args)
-
-trimmed_path=args[c(1:(numargs-3))]
-ampliconFILE=args[(numargs-2)]
-treat.no.overlap.differently=args[(numargs-1)]
-dada2RData=args[numargs]
-
-print(trimmed_path)
-
-fnFs <- sort(list.files(path=trimmed_path, pattern="_R1.fastq.gz", recursive=T, full.names = TRUE))
-fnRs <- sort(list.files(path=trimmed_path, pattern="_R2.fastq.gz", recursive=T, full.names = TRUE))
+fnFs <- sort(list.files(path=args$trimmed_path, pattern="_R1.fastq.gz", recursive=T, full.names = TRUE))
+fnRs <- sort(list.files(path=args$trimmed_path, pattern="_R2.fastq.gz", recursive=T, full.names = TRUE))
 
 #fnFs = sort(grep("_R1.fastq.gz",trimmed_path,value=T))
 #fnRs = sort(grep("_R2.fastq.gz",trimmed_path,value=T))
@@ -27,8 +25,8 @@ fnRs <- sort(list.files(path=trimmed_path, pattern="_R2.fastq.gz", recursive=T, 
 sample.names <- sapply(strsplit(basename(fnFs), "_R1"), `[`, 1)
 print(sample.names)
 
-filtFs <- paste0(trimmed_path,"/filtered/",sample.names,"_F_filt.fastq.gz")
-filtRs <- paste0(trimmed_path,"/filtered/",sample.names,"_R_filt.fastq.gz")
+filtFs <- paste0(args$trimmed_path,"/filtered/",sample.names,"_F_filt.fastq.gz")
+filtRs <- paste0(args$trimmed_path,"/filtered/",sample.names,"_R_filt.fastq.gz")
 
 #filtFs <- paste0(dirname(trimmed_path),"/filtered/",sample.names,"_F_filt.fastq.gz")
 #filtRs <- paste0(dirname(trimmed_path),"/filtered/",sample.names,"_R_filt.fastq.gz")
@@ -51,10 +49,20 @@ errR <- learnErrors(filtRs[out[,2]>0], multithread=TRUE,MAX_CONSIST=10,randomize
 derepFs <- derepFastq(filtFs[out[,2]>0], verbose = TRUE)
 derepRs <- derepFastq(filtRs[out[,2]>0], verbose = TRUE)
 
-dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, OMEGA_A=1e-120)
-dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, OMEGA_A=1e-120)
 
-if(treat.no.overlap.differently == T){
+pool=switch(args$pool,
+  "true" = TRUE,
+  "false" = FALSE,
+  "pseudo" = "pseudo")
+
+print(pool)
+dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+
+print(dadaFs)
+print(dadaRs)
+
+if(args$no_overlaps){
   
   # extract name of locus from filename
   amplicon.info = data.frame(
@@ -62,7 +70,7 @@ if(treat.no.overlap.differently == T){
     sum.mean.length.reads  = sapply(sapply(unlist(lapply(dadaFs,"[","sequence"),recursive = F),nchar),mean)+
       sapply(sapply(unlist(lapply(dadaRs,"[","sequence"),recursive = F),nchar),mean)
   ) %>% 
-    left_join(read.table(ampliconFILE,header=T) %>% 
+    left_join(read.table(args$ampliconFILE,header=T) %>% 
                 select(amplicon,ampInsert_length),
               by=c("names"="amplicon"))
   rownames(amplicon.info)=names(dadaFs)
@@ -100,8 +108,9 @@ if(treat.no.overlap.differently == T){
                          maxMismatch=1)
   }
 
+
 seqtab <- makeSequenceTable(mergers)
 
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
-save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim, file = dada2RData)
+save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim, file = args$dada2_rdata_output)
