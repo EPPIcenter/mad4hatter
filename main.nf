@@ -23,7 +23,7 @@ params.resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistan
 params.codontable      = "$projectDir/templates/codontable.txt"
 params.pool            = "false"
 params.band_size       = 16 // default
-params.omega_a         = 1e-40
+params.omega_a         = 1e-120
 
 // Files
 
