@@ -237,7 +237,9 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
       
           seq_1[new_range] <- "N" # mask refseq prime
           if (length(rge_in_tr_gaps) > 0) {
-            seq_1[rge_in_tr_gaps] <- "-"
+            for (j in 1:length(rge_in_tr_gaps)) {
+              seq_1[rge_in_tr_gaps[j]] <- "-"
+            }
           }
         }
       }
@@ -353,7 +355,9 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
       
           seq_1[new_range] <- "N" # mask refseq prime
           if (length(rge_in_tr_gaps) > 0) {
-            seq_1[rge_in_tr_gaps] <- "-"
+            for (j in 1:length(rge_in_tr_gaps)) {
+              seq_1[rge_in_tr_gaps[j]] <- "-"
+            }
           }
         }
       }
