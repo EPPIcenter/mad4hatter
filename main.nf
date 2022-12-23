@@ -290,7 +290,8 @@ process DADA2_ANALYSIS {
           --dada2-rdata-output dada2_output.RData \
           --pool ${params.pool} \
           --band-size ${params.band_size} \
-          --omega-a ${params.omega_a}
+          --omega-a ${params.omega_a} \
+          --concat-non-overlaps 
         """
 }
 

@@ -6,11 +6,11 @@ parser <- ArgumentParser(prog="DADA2 Workflow", description='DADA2 workflow scri
 parser$add_argument('--trimmed-path', type="character",
                    help='homopolymer threshold to begin masking', nargs='+', required = TRUE)
 parser$add_argument('--ampliconFILE', type="character", required = TRUE)
-parser$add_argument('--no-overlaps', action="store_true")
 parser$add_argument('--dada2-rdata-output', type="character", required = TRUE)
 parser$add_argument('--pool', type="character", default="false")
 parser$add_argument('--band-size', type='integer', default=16)
 parser$add_argument('--omega-a', type='double', default=1e-120)
+parser$add_argument('--concat-non-overlaps', type='store_true')
 
 args <- parser$parse_args()
 print(args)
@@ -62,7 +62,7 @@ dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TR
 print(dadaFs)
 print(dadaRs)
 
-if(args$no_overlaps){
+if(args$concat_non_overlaps){
   
   # extract name of locus from filename
   amplicon.info = data.frame(
