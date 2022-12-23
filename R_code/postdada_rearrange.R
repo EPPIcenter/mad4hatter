@@ -200,55 +200,53 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     df_masked <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
       
       seq_1 <- DNAString(df_aln$refseq[seq1])
-  
+
       asv_prime <-  DNAString(df_aln$hapseq[seq1])
       ref_rle <- Rle(as.vector(seq_1))
-      
+
       # additionally, look for potential homopolymers that would exist in our
       # pairwise alignment reference sequence if it were not for insertions
       # in the sample haplotype in those regions.
-      
+
       ref_rge <- ranges(ref_rle)
       mask_ranges <- IRanges()
       for (dna_base in DNA_ALPHABET[1:4]) {
         dna_ranges <- reduce(ref_rge[runValue(ref_rle) == dna_base | runValue(ref_rle) == "-"])
-      
+
         vb <- NULL
         for (i in 1:length(dna_ranges)) {
           vb <- c(vb, sum(as.vector(seq_1[dna_ranges[i]]) %in% dna_base) > args$homopolymer_threshold)
         }
-      
+
         mask_ranges <- append(mask_ranges, dna_ranges[vb])
       }
-      
+
       maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
       trseq <- DNAString(as.character(maskseq))
       tr_rle <- Rle(as.vector(trseq))
-      
+
       tr_rge <- ranges(tr_rle)[runValue(tr_rle) == "N"]
       gap_range <- ref_rge[runValue(ref_rle) == "-"]
-      
+
       if (length(tr_rge) > 0) {
         for (i in 1:length(tr_rge)) {
           n_inserts <- sum(as.vector(seq_1[1:start(tr_rge[i])]) == '-')
-          rge_in_tr_gaps <- gap_range[gap_range %within% tr_rge]
-          n_in_range_gaps <- ifelse(length(rge_in_tr_gaps) == 0, 0, width(rge_in_tr_gaps))
-          new_range <- IRanges(start = start(tr_rge[i]) + n_inserts, end = end(tr_rge[i]) + n_inserts + n_in_range_gaps)
-      
+          gaps_over_tr_rge <- gap_range[gap_range %over% shift(tr_rge[i], n_inserts)]
+          n_over_range_gaps <- ifelse(length(gaps_over_tr_rge) == 0, 0, width(gaps_over_tr_rge))
+          new_range <- IRanges(start = start(tr_rge[i]) + n_inserts, end = end(tr_rge[i]) + n_inserts + n_over_range_gaps)
+
           seq_1[new_range] <- "N" # mask refseq prime
-          if (length(rge_in_tr_gaps) > 0) {
-            for (j in 1:length(rge_in_tr_gaps)) {
-              seq_1[rge_in_tr_gaps[j]] <- "-"
-            }
+          if (length(gaps_over_tr_rge) > 0) {
+            seq_1[gaps_over_tr_rge] <- "-"
           }
         }
       }
-      
+
       tr_masks <- IRanges()
       ref_rle <- Rle(as.vector(seq_1))
       ref_rge <- ranges(ref_rle)
       tr_ranges <- reduce(ref_rge[runValue(ref_rle) == 'N' | runValue(ref_rle) == "-"])
-      
+
       if (length(tr_ranges) > 0) {
         for (i in 1:length(tr_ranges)) {
           vseq <- as.vector(seq_1[tr_ranges[i]])
@@ -257,7 +255,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
           }
         }
       }
-      
+
       mask_ranges <- unique(sort(mask_ranges))
       reference_ranges <- mask_ranges
 
@@ -318,55 +316,61 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     for (seq1 in 1:nrow(df_aln)) {
       
       seq_1 <- DNAString(df_aln$refseq[seq1])
-      
+
       asv_prime <-  DNAString(df_aln$hapseq[seq1])
       ref_rle <- Rle(as.vector(seq_1))
-      
+
       # additionally, look for potential homopolymers that would exist in our
       # pairwise alignment reference sequence if it were not for insertions
       # in the sample haplotype in those regions.
-      
+
       ref_rge <- ranges(ref_rle)
       mask_ranges <- IRanges()
       for (dna_base in DNA_ALPHABET[1:4]) {
         dna_ranges <- reduce(ref_rge[runValue(ref_rle) == dna_base | runValue(ref_rle) == "-"])
-      
+
         vb <- NULL
         for (i in 1:length(dna_ranges)) {
           vb <- c(vb, sum(as.vector(seq_1[dna_ranges[i]]) %in% dna_base) > args$homopolymer_threshold)
         }
-      
+
         mask_ranges <- append(mask_ranges, dna_ranges[vb])
       }
-      
+
       maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
+
+      output <- FALSE
+      if (df_aln$refid[seq1] == "Pf3D7_07_v3-404325-404590-1B") {
+        message("Turning on output")
+        output <- TRUE
+      }
+
       trseq <- DNAString(as.character(maskseq))
       tr_rle <- Rle(as.vector(trseq))
-      
+
       tr_rge <- ranges(tr_rle)[runValue(tr_rle) == "N"]
       gap_range <- ref_rge[runValue(ref_rle) == "-"]
-      
+
       if (length(tr_rge) > 0) {
         for (i in 1:length(tr_rge)) {
           n_inserts <- sum(as.vector(seq_1[1:start(tr_rge[i])]) == '-')
-          rge_in_tr_gaps <- gap_range[gap_range %within% tr_rge]
-          n_in_range_gaps <- ifelse(length(rge_in_tr_gaps) == 0, 0, width(rge_in_tr_gaps))
-          new_range <- IRanges(start = start(tr_rge[i]) + n_inserts, end = end(tr_rge[i]) + n_inserts + n_in_range_gaps)
-      
+          
+          gaps_over_tr_rge <- gap_range[gap_range %over% shift(tr_rge[i], n_inserts)]
+          n_over_range_gaps <- ifelse(length(gaps_over_tr_rge) == 0, 0, width(gaps_over_tr_rge))
+          new_range <- IRanges(start = start(tr_rge[i]) + n_inserts, end = end(tr_rge[i]) + n_inserts + n_over_range_gaps)
+
           seq_1[new_range] <- "N" # mask refseq prime
-          if (length(rge_in_tr_gaps) > 0) {
-            for (j in 1:length(rge_in_tr_gaps)) {
-              seq_1[rge_in_tr_gaps[j]] <- "-"
-            }
+          if (length(gaps_over_tr_rge) > 0) {
+            seq_1[gaps_over_tr_rge] <- "-"
           }
         }
       }
-      
+
       tr_masks <- IRanges()
       ref_rle <- Rle(as.vector(seq_1))
       ref_rge <- ranges(ref_rle)
       tr_ranges <- reduce(ref_rge[runValue(ref_rle) == 'N' | runValue(ref_rle) == "-"])
-      
+
       if (length(tr_ranges) > 0) {
         for (i in 1:length(tr_ranges)) {
           vseq <- as.vector(seq_1[tr_ranges[i]])
@@ -375,7 +379,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
           }
         }
       }
-      
+
       mask_ranges <- unique(sort(mask_ranges))
       reference_ranges <- mask_ranges
 
