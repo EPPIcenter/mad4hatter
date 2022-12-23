@@ -23,7 +23,7 @@ params.resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistan
 params.codontable      = "$projectDir/templates/codontable.txt"
 params.pool            = "false"
 params.band_size       = 16 // default
-params.omega_a         = 1e-40
+params.omega_a         = 1e-120
 
 // Files
 
@@ -356,7 +356,7 @@ process RESISTANCE_MARKERS {
 
         # this code removes deletion characters in the alleles demarcated by '-'.
         # since each fasta contains a specific allele, we can assume that there will be 2 lines (the header followed by the string).
-        ls -1 *.fa | while read fasta; do sed -E '2~2s/[-]+//' -i \$fasta; done 
+        ls -1 *.fa | while read fasta; do sed -E '2~2s/[-]+//g' -i \$fasta; done 
 
         for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele; bwa mem -L 10000 ../${refseq_fasta} \$bfile | samtools sort -o \$allele".bam" - ; samtools index \$allele".bam" ; done
 
