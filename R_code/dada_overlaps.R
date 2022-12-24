@@ -10,7 +10,7 @@ parser$add_argument('--dada2-rdata-output', type="character", required = TRUE)
 parser$add_argument('--pool', type="character", default="false")
 parser$add_argument('--band-size', type='integer', default=16)
 parser$add_argument('--omega-a', type='double', default=1e-120)
-parser$add_argument('--concat-non-overlaps', type='store_true')
+parser$add_argument('--concat-non-overlaps', action='store_true')
 
 args <- parser$parse_args()
 print(args)
@@ -55,25 +55,55 @@ pool=switch(args$pool,
   "false" = FALSE,
   "pseudo" = "pseudo")
 
-print(pool)
 dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
 dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
 
-print(dadaFs)
-print(dadaRs)
-
 if(args$concat_non_overlaps){
   
-  # extract name of locus from filename
+
   amplicon.info = data.frame(
-    names = sapply(strsplit(names(dadaFs),"_trimmed"),"[",1),
-    sum.mean.length.reads  = sapply(sapply(unlist(lapply(dadaFs,"[","sequence"),recursive = F),nchar),mean)+
-      sapply(sapply(unlist(lapply(dadaRs,"[","sequence"),recursive = F),nchar),mean)
-  ) %>% 
-    left_join(read.table(args$ampliconFILE,header=T) %>% 
-                select(amplicon,ampInsert_length),
-              by=c("names"="amplicon"))
+    names = sapply(strsplit(names(dadaFs),"_trimmed"),"[",1)
+  )
+
+  pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
+  locus_names <- strsplit(amplicon.info$names, pat)
+  loci <- NULL
+
+  for (i in 1:length(locus_names)) {
+    loci <- c(loci, unlist(locus_names[i])[1])
+  }
+
+  amplicon.info$amplicon <- loci
+
+  amplicon.table <- read.table(args$ampliconFILE,header=T) %>% 
+    select(amplicon, ampInsert_length)
+
+  locus_names <- strsplit(amplicon.table$amplicon, "-")
+  pool <- NULL
+  amplicon2 <- NULL
+  for (i in 1:length(locus_names)) {
+    pool <- c(pool, unlist(locus_names[i])[4])
+    tmp <- unlist(locus_names[i])
+    amplicon2 <- c(amplicon2, paste(c(tmp[1], tmp[2], tmp[3]), collapse = "-"))
+  }
+
+  amplicon.table$pool <- pool
+  amplicon.table$amplicon_no_pool <- amplicon2
+  # amplicon.table <- unite(amplicon.table, amplicon, c(amplicon_no_pool, pool), sep = '-')
+
+  amplicon.info <- amplicon.info %>% 
+    left_join(amplicon.table,
+              by=c("amplicon"="amplicon_no_pool"))
+
+  amplicon.info <- amplicon.info %>% 
+    select(amplicon, ampInsert_length) %>%
+    mutate(
+      sum.mean.length.reads = sapply(sapply(unlist(lapply(dadaFs,"[","sequence"),recursive = F),nchar),mean)+
+        sapply(sapply(unlist(lapply(dadaRs,"[","sequence"),recursive = F),nchar),mean)
+    )
+
   rownames(amplicon.info)=names(dadaFs)
+
   
 #  sample.names.no.overlap = sample.names[as.numeric(sapply(strsplit(sample.names ,"-"),"[",3)) - as.numeric(sapply(strsplit(sample.names ,"-"),"[",2))>275]
 #  sample.names.overlap = sample.names[as.numeric(sapply(strsplit(sample.names ,"-"),"[",3)) - as.numeric(sapply(strsplit(sample.names ,"-"),"[",2))<276]
@@ -95,8 +125,11 @@ if(args$concat_non_overlaps){
                                   verbose=TRUE, 
                                   justConcatenate=TRUE)
   
+
   mergers = c(mergers.overlap,mergers.no.overlap)[names(dadaFs)]
-  }else{
+  save(file = 'mergers.rda', mergers, mergers.overlap, mergers.no.overlap, amplicon.info, dadaFs, dadaRs, args)
+
+}else{
     mergers=  mergePairs(dadaFs,
                          derepFs, 
                          dadaRs, 
