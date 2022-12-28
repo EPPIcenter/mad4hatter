@@ -15,7 +15,8 @@ parser$add_argument('--homopolymer-threshold', type="integer",
 parser$add_argument('--refseq-fasta', type="character")
 parser$add_argument('--masked-fasta', type="character")
 parser$add_argument('--dada2-output', type="character", required = TRUE)
-parser$add_argument('--parallel', type='logical', default=FALSE)
+parser$add_argument('--parallel', action='store_true')
+
 
 args <- parser$parse_args()
 load (args$dada2_output)

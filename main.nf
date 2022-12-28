@@ -1,5 +1,7 @@
 #!/usr/bin/env nextflow
 
+nextflow.enable.dsl = 2
+
 if ( params.readDIR == null ) {
   exit 0, "ERROR: readDIR must be specified."
 }
@@ -319,7 +321,7 @@ process DADA2_POSTPROC {
             --homopolymer-threshold ${homopolymer_threshold} \
             --refseq-fasta ${refseq_fasta} \
             --masked-fasta ${masked_fasta} \
-            --parallel ${parallel}
+            --parallel
           """
 }
 
