@@ -21,7 +21,7 @@ Additionally, the nextflow parameter `-profile` can be use to target the infrast
 If using singularity, please run the command below to generate the singularity image.
 
 ```bash
-sudo singularity build ampseq_worfklow.sif Singularity
+sudo singularity build ampseq_workflow.sif Singularity
 ```
 
 And then include the `singularity` profile on the command line. 
