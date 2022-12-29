@@ -65,37 +65,14 @@ if(args$concat_non_overlaps){
     names = sapply(strsplit(names(dadaFs),"_trimmed"),"[",1)
   )
 
-  pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
-  locus_names <- strsplit(amplicon.info$names, pat)
-  loci <- NULL
+  amplicon.info <- amplicon.info %>%
+    mutate(names=sapply(str_split(names,'_S(\\d+)'),head,1)) %>% 
+    mutate(amplicon=unlist(lapply(str_split(names,'_'), function(x) { paste(x[1:3], collapse = "_") }))) %>%
+    inner_join(read.table("v2_amplicon_info.tsv",header=T) %>% 
+             select(amplicon, ampInsert_length), by = c("amplicon")) %>%
+    # mutate(Pool=sapply(str_split(Amplicon,'-'),tail,1)) %>% 
+    # mutate(Amplicon=unlist(lapply(str_split(Amplicon,'-'), function(x) { paste(x[1:2], collapse = "-") })))
 
-  for (i in 1:length(locus_names)) {
-    loci <- c(loci, unlist(locus_names[i])[1])
-  }
-
-  amplicon.info$amplicon <- loci
-
-  amplicon.table <- read.table(args$ampliconFILE,header=T) %>% 
-    select(amplicon, ampInsert_length)
-
-  locus_names <- strsplit(amplicon.table$amplicon, "-")
-  pool <- NULL
-  amplicon2 <- NULL
-  for (i in 1:length(locus_names)) {
-    pool <- c(pool, unlist(locus_names[i])[4])
-    tmp <- unlist(locus_names[i])
-    amplicon2 <- c(amplicon2, paste(c(tmp[1], tmp[2], tmp[3]), collapse = "-"))
-  }
-
-  amplicon.table$pool <- pool
-  amplicon.table$amplicon_no_pool <- amplicon2
-  # amplicon.table <- unite(amplicon.table, amplicon, c(amplicon_no_pool, pool), sep = '-')
-
-  amplicon.info <- amplicon.info %>% 
-    left_join(amplicon.table,
-              by=c("amplicon"="amplicon_no_pool"))
-
-  amplicon.info <- amplicon.info %>% 
     select(amplicon, ampInsert_length) %>%
     mutate(
       sum.mean.length.reads = sapply(sapply(unlist(lapply(dadaFs,"[","sequence"),recursive = F),nchar),mean)+
