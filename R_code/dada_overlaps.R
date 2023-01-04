@@ -68,7 +68,7 @@ if(args$concat_non_overlaps){
   amplicon.info <- amplicon.info %>%
     mutate(names=sapply(str_split(names,'_S(\\d+)'),head,1)) %>% 
     mutate(amplicon=unlist(lapply(str_split(names,'_'), function(x) { paste(x[1:3], collapse = "_") }))) %>%
-    inner_join(read.table("v2_amplicon_info.tsv",header=T) %>% 
+    inner_join(read.table(args$ampliconFILE,header=T) %>% 
              select(amplicon, ampInsert_length), by = c("amplicon")) %>%
     # mutate(Pool=sapply(str_split(Amplicon,'-'),tail,1)) %>% 
     # mutate(Amplicon=unlist(lapply(str_split(Amplicon,'-'), function(x) { paste(x[1:2], collapse = "-") })))
