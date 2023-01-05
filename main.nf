@@ -54,11 +54,6 @@ workflow {
     // Create reference sequences from genome
     if (params.refseq_fasta == null) {
 
-      if (params.genome == null) {
-        // note: look up how to print errors correctly
-        error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequences"
-      }
-
       CREATE_REFERENCE_SEQUENCES(params.amplicon_info, params.genome, "${params.target}_refseq.fasta")
 
       if (params.masked_fasta == null && params.add_mask) {
@@ -92,7 +87,6 @@ workflow {
     }
   }
 }
-
 
 process MASK_SEQUENCES {
 
