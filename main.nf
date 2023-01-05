@@ -90,6 +90,8 @@ workflow {
 
 process MASK_SEQUENCES {
 
+          conda 'envs/trf-env.yml'
+
           input:
           path refseq_fasta
           val min_score
@@ -127,7 +129,7 @@ process CREATE_REFERENCE_SEQUENCES {
 // Filter to only reads with primer detected and trim poly-g
 process CUTADAPT {
 
-        conda (params.enable_conda ? 'envs/cutadapt-env.yml' : null)
+        conda 'envs/cutadapt-env.yml'
 
         input:
         tuple val(pair_id), path(reads)
@@ -227,7 +229,7 @@ process CUTADAPT {
 // Quality checks on the cutadapt summary file
 process QUALITY_CHECK {
 
-        conda (params.enable_conda ? 'pandoc' : null)
+        conda 'pandoc'
 
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
@@ -293,6 +295,8 @@ process DADA2_ANALYSIS {
 // Dada2 Postprocessing
 process DADA2_POSTPROC {
 
+        conda 'pandoc'
+
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
                }
@@ -321,6 +325,8 @@ process DADA2_POSTPROC {
 
 // Resistance markers
 process RESISTANCE_MARKERS {
+
+        conda 'envs/resmarker-env.yml'
 
         publishDir "${params.outDIR}",
                saveAs: {filename -> "${filename}"
