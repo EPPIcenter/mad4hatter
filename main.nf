@@ -1,5 +1,7 @@
 #!/usr/bin/env nextflow
 
+nextflow.enable.dsl = 2
+
 if ( params.readDIR == null ) {
   exit 0, "ERROR: readDIR must be specified."
 }
@@ -52,11 +54,6 @@ workflow {
     // Create reference sequences from genome
     if (params.refseq_fasta == null) {
 
-      if (params.genome == null) {
-        // note: look up how to print errors correctly
-        error 1, "If reference sequences are not provided, a path to a genome must be provided to create reference sequences"
-      }
-
       CREATE_REFERENCE_SEQUENCES(params.amplicon_info, params.genome, "${params.target}_refseq.fasta")
 
       if (params.masked_fasta == null && params.add_mask) {
@@ -91,8 +88,9 @@ workflow {
   }
 }
 
-
 process MASK_SEQUENCES {
+
+          conda 'envs/trf-env.yml'
 
           input:
           path refseq_fasta
@@ -131,7 +129,7 @@ process CREATE_REFERENCE_SEQUENCES {
 // Filter to only reads with primer detected and trim poly-g
 process CUTADAPT {
 
-        conda (params.enable_conda ? 'envs/cutadapt-env.yml' : null)
+        conda 'envs/cutadapt-env.yml'
 
         input:
         tuple val(pair_id), path(reads)
@@ -231,7 +229,7 @@ process CUTADAPT {
 // Quality checks on the cutadapt summary file
 process QUALITY_CHECK {
 
-        conda (params.enable_conda ? 'pandoc' : null)
+        conda 'pandoc'
 
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
@@ -297,6 +295,8 @@ process DADA2_ANALYSIS {
 // Dada2 Postprocessing
 process DADA2_POSTPROC {
 
+        conda 'pandoc'
+
         publishDir "${outDIR}",
                saveAs: { filename -> "${filename}"
                }
@@ -318,13 +318,15 @@ process DADA2_POSTPROC {
             --homopolymer-threshold ${homopolymer_threshold} \
             --refseq-fasta ${refseq_fasta} \
             --masked-fasta ${masked_fasta} \
-            --parallel ${parallel}
+            --parallel
           """
 }
 
 
 // Resistance markers
 process RESISTANCE_MARKERS {
+
+        conda 'envs/resmarker-env.yml'
 
         publishDir "${params.outDIR}",
                saveAs: {filename -> "${filename}"
