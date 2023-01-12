@@ -1,0 +1,9 @@
+name: resmarker
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bwa
+  - bcftools
+  - samtools

@@ -1,0 +1,7 @@
+name: trf
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - trf
