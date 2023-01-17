@@ -47,7 +47,7 @@ Follow the steps below to setup your docker image:
 *Note: [docker](https://www.docker.com/) is a prerequisite.*
 
 ```bash
-docker build -t aarandad/ampseq_worfklow .
+docker build -t aarandad/ampseq_worfklow:latest .
 ```
 
 And you're done! To run the pipeline, simply add `-profile docker`. 
