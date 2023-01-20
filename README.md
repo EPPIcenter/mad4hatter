@@ -40,20 +40,24 @@ nextflow run main.nf --readDIR ~/Documents/MAD4HATTER_example_data/single -w ~/D
 
 ### Docker
 
-The pipeline can be easily run with docker and is the recommended way to run it when not using an HPC.
-
-Follow the steps below to setup your docker image:
-
 *Note: [docker](https://www.docker.com/) is a prerequisite.*
 
-```bash
-docker build -t aarandad/ampseq_worfklow:latest .
-```
+The pipeline can be easily run with docker and is the recommended way to run it when not using an HPC.
 
-And you're done! To run the pipeline, simply add `-profile docker`. 
+The EPPIcenter has a repository for images, and the docker image for the pipeline will be automatically pulled in the background when first running the pipeline. The image will then be stored locally on your machine and reused. 
+
+To run the  with docker, simply add `-profile docker` in your command. 
 
 ```bash
 nextflow run main.nf --readDIR single --target v4-profile -profile docker
+```
+
+Alternatively, you can build the docker image on your machine using the Dockerfile recipe, although this is not the recommended way to set up the docker image.
+
+Follow the steps below to build the docker image:
+
+```bash
+docker build -t aarandad/ampseq_worfklow:latest .
 ```
 
 ### Conda
