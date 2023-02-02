@@ -239,6 +239,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
       }
 
       mask_ranges <- unique(sort(mask_ranges))
+      mask_ranges <- reduce(mask_ranges)
       reference_ranges <- mask_ranges
 
       pos <- c(DNA_ALPHABET[1:4], "N")
