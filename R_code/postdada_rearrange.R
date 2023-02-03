@@ -173,7 +173,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   saveRDS(df_aln,file="alignments.RDS")
   write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
-  df_aln <- df_aln %>% filter(score > 0)
+  df_aln <- df_aln %>% filter(score > 60)
 
   masked_sequences <- readDNAStringSet(args$masked_fasta)
   df_masked <- NULL
