@@ -11,6 +11,8 @@ parser$add_argument('--pool', type="character", default="false")
 parser$add_argument('--band-size', type='integer', default=16)
 parser$add_argument('--omega-a', type='double', default=1e-120)
 parser$add_argument('--concat-non-overlaps', action='store_true')
+parser$add_argument('--use-quals', type="character", default="false")
+parser$add_argument('--homop-gap-penalty', type='integer') # null if not set, which is the default for dada2
 
 args <- parser$parse_args()
 print(args)
@@ -50,13 +52,21 @@ derepFs <- derepFastq(filtFs[out[,2]>0], verbose = TRUE)
 derepRs <- derepFastq(filtRs[out[,2]>0], verbose = TRUE)
 
 
-pool=switch(args$pool,
+pool=switch(
+  args$pool,
   "true" = TRUE,
   "false" = FALSE,
-  "pseudo" = "pseudo")
+  "pseudo" = "pseudo"
+)
 
-dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
-dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+use_quals=switch(
+  args$use_quals,
+  "true" = TRUE,
+  "false" = FALSE
+)
+
+dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a, USE_QUALS=use_quals, HOMOPOLYMER_GAP_PENALTY=args$homop_gap_penalty)
+dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a, USE_QUALS=use_quals, HOMOPOLYMER_GAP_PENALTY=args$homop_gap_penalty)
 
 if(args$concat_non_overlaps){
   

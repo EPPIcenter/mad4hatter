@@ -20,7 +20,7 @@ library(muscle)
 library(BSgenome)
 library(tidyr)
 
-readRDS(args$dada2_output)
+seqtab.nochim <- readRDS(args$dada2_output)
 
 ## I. Check for non overlapping sequences.
 

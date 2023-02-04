@@ -26,6 +26,8 @@ params.codontable      = "$projectDir/templates/codontable.txt"
 params.pool            = "false"
 params.band_size       = 16 // default
 params.omega_a         = 1e-120
+params.use_quals       = "false"
+params.homop_gap_penalty = 5
 
 // Files
 
@@ -278,7 +280,7 @@ process DADA2_ANALYSIS {
         path amplicon_info
 
         output:
-        path '*.RData'
+        path '*.RDS'
         
         script:
         """
@@ -289,6 +291,8 @@ process DADA2_ANALYSIS {
           --pool ${params.pool} \
           --band-size ${params.band_size} \
           --omega-a ${params.omega_a} \
+          --use-quals ${params.use_quals} \
+          --homop-gap-penalty ${params.homop_gap_penalty} \
           --concat-non-overlaps
         """
 }
