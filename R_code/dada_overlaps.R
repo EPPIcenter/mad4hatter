@@ -65,8 +65,10 @@ use_quals=switch(
   "false" = FALSE
 )
 
-dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a, USE_QUALS=use_quals, HOMOPOLYMER_GAP_PENALTY=args$homop_gap_penalty)
-dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a, USE_QUALS=use_quals, HOMOPOLYMER_GAP_PENALTY=args$homop_gap_penalty)
+homop_gap_penalty <- ifelse(args$homop_gap_penalty <= 0, NULL, args$homop_gap_penalty)
+
+dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a, USE_QUALS=use_quals, HOMOPOLYMER_GAP_PENALTY=homop_gap_penalty)
+dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a, USE_QUALS=use_quals, HOMOPOLYMER_GAP_PENALTY=homop_gap_penalty)
 
 if(args$concat_non_overlaps){
   
