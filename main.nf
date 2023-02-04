@@ -285,7 +285,7 @@ process DADA2_ANALYSIS {
         Rscript ${params.scriptDIR}/dada_overlaps.R \
           --trimmed-path ${trimmed_demuxed} \
           --ampliconFILE ${amplicon_info} \
-          --dada2-rdata-output dada2_output.RData \
+          --dada2-rdata-output dada2_output.RDS \
           --pool ${params.pool} \
           --band-size ${params.band_size} \
           --omega-a ${params.omega_a} \

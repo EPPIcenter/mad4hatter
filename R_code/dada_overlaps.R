@@ -123,4 +123,4 @@ seqtab <- makeSequenceTable(mergers)
 
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
-save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim, file = args$dada2_rdata_output)
+saveRDS(seqtab.nochim, file = args$dada2_rdata_output)

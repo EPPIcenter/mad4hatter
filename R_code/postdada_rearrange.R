@@ -20,7 +20,7 @@ library(muscle)
 library(BSgenome)
 library(tidyr)
 
-load (args$dada2_output)
+readRDS(args$dada2_output)
 
 ## I. Check for non overlapping sequences.
 
