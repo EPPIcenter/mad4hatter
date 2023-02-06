@@ -6,6 +6,7 @@ parser$add_argument('--homopolymer-threshold', type="integer",
 parser$add_argument('--refseq-fasta', type="character")
 parser$add_argument('--masked-fasta', type="character")
 parser$add_argument('--dada2-output', type="character", required = TRUE)
+parser$add_argument('--alignment-threshold', type="integer", default = 60)
 parser$add_argument('--parallel', action='store_true')
 
 args <- parser$parse_args()
@@ -173,7 +174,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   saveRDS(df_aln,file="alignments.RDS")
   write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
-  df_aln <- df_aln %>% filter(score > 60)
+  df_aln <- df_aln %>% filter(score > args$alignment_threshold)
 
   masked_sequences <- readDNAStringSet(args$masked_fasta)
   df_masked <- NULL
