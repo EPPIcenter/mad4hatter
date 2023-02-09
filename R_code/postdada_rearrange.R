@@ -6,7 +6,9 @@ parser$add_argument('--homopolymer-threshold', type="integer",
 parser$add_argument('--refseq-fasta', type="character")
 parser$add_argument('--masked-fasta', type="character")
 parser$add_argument('--dada2-output', type="character", required = TRUE)
+parser$add_argument('--alignment-threshold', type="integer", default = 60)
 parser$add_argument('--parallel', action='store_true')
+parser$add_argument('--n-cores', type = 'integer', default = -1)
 
 args <- parser$parse_args()
 
@@ -20,7 +22,7 @@ library(muscle)
 library(BSgenome)
 library(tidyr)
 
-load (args$dada2_output)
+seqtab.nochim <- readRDS(args$dada2_output)
 
 ## I. Check for non overlapping sequences.
 
@@ -152,7 +154,8 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
   sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
 
-  registerDoMC(detectCores())
+  n_cores <- ifelse(args$n_cores <= 0, detectCores(), args$n_cores)
+  registerDoMC(n_cores)
   df_aln <- NULL
   df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
     seq_1 <- sequences[seq1]
@@ -173,7 +176,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   saveRDS(df_aln,file="alignments.RDS")
   write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
-  df_aln <- df_aln %>% filter(score > 0)
+  df_aln <- df_aln %>% filter(score > args$alignment_threshold)
 
   masked_sequences <- readDNAStringSet(args$masked_fasta)
   df_masked <- NULL
@@ -219,7 +222,9 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
           seq_1[new_range] <- "N" # mask refseq prime
           if (length(gaps_over_tr_rge) > 0) {
-            seq_1[gaps_over_tr_rge] <- "-"
+            for (j in 1:length(gaps_over_tr_rge)) {
+              seq_1[gaps_over_tr_rge[j]] <- "-"
+            }
           }
         }
       }
@@ -239,6 +244,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
       }
 
       mask_ranges <- unique(sort(mask_ranges))
+      mask_ranges <- reduce(mask_ranges)
       reference_ranges <- mask_ranges
 
       pos <- c(DNA_ALPHABET[1:4], "N")
@@ -337,7 +343,9 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
           seq_1[new_range] <- "N" # mask refseq prime
           if (length(gaps_over_tr_rge) > 0) {
-            seq_1[gaps_over_tr_rge] <- "-"
+            for (j in 1:length(gaps_over_tr_rge)) {
+              seq_1[gaps_over_tr_rge[j]] <- "-"
+            }
           }
         }
       }

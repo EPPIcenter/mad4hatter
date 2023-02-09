@@ -11,6 +11,10 @@ parser$add_argument('--pool', type="character", default="false")
 parser$add_argument('--band-size', type='integer', default=16)
 parser$add_argument('--omega-a', type='double', default=1e-120)
 parser$add_argument('--concat-non-overlaps', action='store_true')
+parser$add_argument('--use-quals', type="character", default="false")
+parser$add_argument('--homop-gap-penalty', type='integer') # null if not set, which is the default for dada2
+parser$add_argument('--maxEE', type="integer", default=2)
+
 
 args <- parser$parse_args()
 print(args)
@@ -37,7 +41,7 @@ names(filtRs) <- sample.names
 # 
 
 out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs,
-              maxN=0, maxEE=c(2,2), truncQ=c(5,5), rm.phix=TRUE,
+              maxN=0, maxEE=c(args$maxEE, args$maxEE), truncQ=c(5,5), rm.phix=TRUE,
               compress=TRUE, multithread=TRUE,
               trimRight = c(0,0),trimLeft = 1, minLen=75,matchIDs=TRUE) 
 head(out)
@@ -50,13 +54,23 @@ derepFs <- derepFastq(filtFs[out[,2]>0], verbose = TRUE)
 derepRs <- derepFastq(filtRs[out[,2]>0], verbose = TRUE)
 
 
-pool=switch(args$pool,
+pool=switch(
+  args$pool,
   "true" = TRUE,
   "false" = FALSE,
-  "pseudo" = "pseudo")
+  "pseudo" = "pseudo"
+)
 
-dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
-dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+use_quals=switch(
+  args$use_quals,
+  "true" = TRUE,
+  "false" = FALSE
+)
+
+homop_gap_penalty <- ifelse(args$homop_gap_penalty <= 0, NULL, args$homop_gap_penalty)
+
+dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a, USE_QUALS=use_quals, HOMOPOLYMER_GAP_PENALTY=homop_gap_penalty)
+dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a, USE_QUALS=use_quals, HOMOPOLYMER_GAP_PENALTY=homop_gap_penalty)
 
 if(args$concat_non_overlaps){
   
@@ -123,4 +137,5 @@ seqtab <- makeSequenceTable(mergers)
 
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
-save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim, file = args$dada2_rdata_output)
+save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim, file = "DADA2.RData")
+saveRDS(seqtab.nochim, file = args$dada2_rdata_output)
