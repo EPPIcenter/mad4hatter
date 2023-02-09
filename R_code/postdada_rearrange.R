@@ -8,6 +8,7 @@ parser$add_argument('--masked-fasta', type="character")
 parser$add_argument('--dada2-output', type="character", required = TRUE)
 parser$add_argument('--alignment-threshold', type="integer", default = 60)
 parser$add_argument('--parallel', action='store_true')
+parser$add_argument('--n-cores', type = 'integer', default = -1)
 
 args <- parser$parse_args()
 
@@ -153,7 +154,8 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
   sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
 
-  registerDoMC(detectCores())
+  n_cores <- ifelse(args$n_cores <= 0, detectCores(), args$n_cores)
+  registerDoMC(n_cores)
   df_aln <- NULL
   df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
     seq_1 <- sequences[seq1]

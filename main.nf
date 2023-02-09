@@ -29,6 +29,7 @@ params.omega_a         = 1e-120
 params.use_quals       = "false"
 params.homop_gap_penalty = 5
 params.maxEE = 2
+params.n_cores = 4
 
 // Files
 
@@ -327,6 +328,7 @@ process DADA2_POSTPROC {
             --homopolymer-threshold ${homopolymer_threshold} \
             --refseq-fasta ${refseq_fasta} \
             --masked-fasta ${masked_fasta} \
+            --n-cores ${params.n_cores} \
             --parallel
           """
 }
