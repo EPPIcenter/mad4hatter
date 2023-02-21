@@ -11,16 +11,17 @@ parser$add_argument('--parallel', action='store_true')
 parser$add_argument('--n-cores', type = 'integer', default = -1)
 
 args <- parser$parse_args()
+print(args)
 
 library(stringr)
 library(dplyr)
 library(dada2)
 library(foreach)
 library(parallel)
-library(doMC)
 library(muscle)
 library(BSgenome)
 library(tidyr)
+library(doMC)
 
 seqtab.nochim <- readRDS(args$dada2_output)
 
@@ -145,6 +146,16 @@ if (length(non_overlaps_idx) > 0) {
 }
 
 
+## Setup parallel backend if asked
+
+if (args$parallel) {
+  n_cores <- ifelse(args$n_cores <= 0, detectCores(), args$n_cores)
+  registerDoMC(n_cores)
+} else {
+  registerDoSEQ()
+}
+
+
 ## II. Check for homopolymers.
 
 if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
@@ -154,8 +165,6 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
   sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
 
-  n_cores <- ifelse(args$n_cores <= 0, detectCores(), args$n_cores)
-  registerDoMC(n_cores)
   df_aln <- NULL
   df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
     seq_1 <- sequences[seq1]
@@ -181,249 +190,123 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   masked_sequences <- readDNAStringSet(args$masked_fasta)
   df_masked <- NULL
 
-  if (args$parallel) {
-    df_masked <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
+  df_masked <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
 
-      seq_1 <- DNAString(df_aln$refseq[seq1])
+    seq_1 <- DNAString(df_aln$refseq[seq1])
 
-      asv_prime <-  DNAString(df_aln$hapseq[seq1])
-      ref_rle <- Rle(as.vector(seq_1))
+    asv_prime <-  DNAString(df_aln$hapseq[seq1])
+    ref_rle <- Rle(as.vector(seq_1))
 
-      # additionally, look for potential homopolymers that would exist in our
-      # pairwise alignment reference sequence if it were not for insertions
-      # in the sample haplotype in those regions.
+    # additionally, look for potential homopolymers that would exist in our
+    # pairwise alignment reference sequence if it were not for insertions
+    # in the sample haplotype in those regions.
 
-      ref_rge <- ranges(ref_rle)
-      mask_ranges <- IRanges()
-      for (dna_base in DNA_ALPHABET[1:4]) {
-        dna_ranges <- reduce(ref_rge[runValue(ref_rle) == dna_base | runValue(ref_rle) == "-"])
+    ref_rge <- ranges(ref_rle)
+    mask_ranges <- IRanges()
+    for (dna_base in DNA_ALPHABET[1:4]) {
+      dna_ranges <- reduce(ref_rge[runValue(ref_rle) == dna_base | runValue(ref_rle) == "-"])
 
-        vb <- NULL
-        for (i in 1:length(dna_ranges)) {
-          vb <- c(vb, sum(as.vector(seq_1[dna_ranges[i]]) %in% dna_base) > args$homopolymer_threshold)
-        }
-
-        mask_ranges <- append(mask_ranges, dna_ranges[vb])
+      vb <- NULL
+      for (i in 1:length(dna_ranges)) {
+        vb <- c(vb, sum(as.vector(seq_1[dna_ranges[i]]) %in% dna_base) > args$homopolymer_threshold)
       }
 
-      maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
-      trseq <- DNAString(as.character(maskseq))
-      tr_rle <- Rle(as.vector(trseq))
+      mask_ranges <- append(mask_ranges, dna_ranges[vb])
+    }
 
-      tr_rge <- ranges(tr_rle)[runValue(tr_rle) == "N"]
-      gap_range <- ref_rge[runValue(ref_rle) == "-"]
+    maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
+    trseq <- DNAString(as.character(maskseq))
+    tr_rle <- Rle(as.vector(trseq))
 
-      if (length(tr_rge) > 0) {
-        for (i in 1:length(tr_rge)) {
-          n_inserts <- sum(as.vector(seq_1[1:start(tr_rge[i])]) == '-')
-          gaps_over_tr_rge <- gap_range[gap_range %over% shift(tr_rge[i], n_inserts)]
-          n_over_range_gaps <- ifelse(length(gaps_over_tr_rge) == 0, 0, width(gaps_over_tr_rge))
-          new_range <- IRanges(start = start(tr_rge[i]) + n_inserts, end = end(tr_rge[i]) + n_inserts + n_over_range_gaps)
+    tr_rge <- ranges(tr_rle)[runValue(tr_rle) == "N"]
+    gap_range <- ref_rge[runValue(ref_rle) == "-"]
 
-          seq_1[new_range] <- "N" # mask refseq prime
-          if (length(gaps_over_tr_rge) > 0) {
-            for (j in 1:length(gaps_over_tr_rge)) {
-              seq_1[gaps_over_tr_rge[j]] <- "-"
-            }
+    if (length(tr_rge) > 0) {
+      for (i in 1:length(tr_rge)) {
+        n_inserts <- sum(as.vector(seq_1[1:start(tr_rge[i])]) == '-')
+        gaps_over_tr_rge <- gap_range[gap_range %over% shift(tr_rge[i], n_inserts)]
+        n_over_range_gaps <- ifelse(length(gaps_over_tr_rge) == 0, 0, width(gaps_over_tr_rge))
+        new_range <- IRanges(start = start(tr_rge[i]) + n_inserts, end = end(tr_rge[i]) + n_inserts + n_over_range_gaps)
+
+        seq_1[new_range] <- "N" # mask refseq prime
+        if (length(gaps_over_tr_rge) > 0) {
+          for (j in 1:length(gaps_over_tr_rge)) {
+            seq_1[gaps_over_tr_rge[j]] <- "-"
           }
         }
       }
+    }
 
-      tr_masks <- IRanges()
-      ref_rle <- Rle(as.vector(seq_1))
-      ref_rge <- ranges(ref_rle)
-      tr_ranges <- reduce(ref_rge[runValue(ref_rle) == 'N' | runValue(ref_rle) == "-"])
+    tr_masks <- IRanges()
+    ref_rle <- Rle(as.vector(seq_1))
+    ref_rge <- ranges(ref_rle)
+    tr_ranges <- reduce(ref_rge[runValue(ref_rle) == 'N' | runValue(ref_rle) == "-"])
 
-      if (length(tr_ranges) > 0) {
-        for (i in 1:length(tr_ranges)) {
-          vseq <- as.vector(seq_1[tr_ranges[i]])
-          if (all(c('N', '-') %in% vseq) || 'N' %in% vseq) {
-            mask_ranges <- append(mask_ranges, tr_ranges[i])
-          }
+    if (length(tr_ranges) > 0) {
+      for (i in 1:length(tr_ranges)) {
+        vseq <- as.vector(seq_1[tr_ranges[i]])
+        if (all(c('N', '-') %in% vseq) || 'N' %in% vseq) {
+          mask_ranges <- append(mask_ranges, tr_ranges[i])
         }
       }
+    }
 
-      mask_ranges <- unique(sort(mask_ranges))
-      mask_ranges <- reduce(mask_ranges)
-      reference_ranges <- mask_ranges
+    mask_ranges <- unique(sort(mask_ranges))
+    mask_ranges <- reduce(mask_ranges)
+    reference_ranges <- mask_ranges
 
-      pos <- c(DNA_ALPHABET[1:4], "N")
-      if (length(mask_ranges) > 0) {
-        for (i in 1:length(mask_ranges)) {
+    pos <- c(DNA_ALPHABET[1:4], "N")
+    if (length(mask_ranges) > 0) {
+      for (i in 1:length(mask_ranges)) {
 
-          vec_subseq <- as.vector(seq_1[reference_ranges[i]])
-          ibase <- which(DNA_ALPHABET[1:4] %in% vec_subseq)
-          dna_base <- ifelse(length(ibase) == 0, "N", DNA_ALPHABET[1:4][ibase])
+        vec_subseq <- as.vector(seq_1[reference_ranges[i]])
+        ibase <- which(DNA_ALPHABET[1:4] %in% vec_subseq)
+        dna_base <- ifelse(length(ibase) == 0, "N", DNA_ALPHABET[1:4][ibase])
 
-          n_base <- sum(vec_subseq == dna_base)
-          n_gaps <- sum(vec_subseq == '-')
-          mask_ranges[i] <- mask_ranges[i] + sum(dna_base != 'N')
+        n_base <- sum(vec_subseq == dna_base)
+        n_gaps <- sum(vec_subseq == '-')
+        mask_ranges[i] <- mask_ranges[i] + sum(dna_base != 'N')
 
-          replacement <- NULL
+        replacement <- NULL
 
-          # for homopolymers, replacement should be N * length of the mask
-          # for tandem repeats, replacement should be length of original N mask
-          trun <- end(mask_ranges[i]) - length(asv_prime)
-          trun <- ifelse(trun < 0, 0, trun)
-          if (dna_base %in% DNA_ALPHABET[1:4]) {
-            replacement <- paste(as(Rle('N', width(mask_ranges[i]) - n_gaps - trun), 'character'), collapse = "")
-          } else {
-            replacement <- paste(as(Rle('N', n_base - trun), 'character'), collapse = "")
-          }
-
-          left_str <- ifelse(start(mask_ranges[i]) <= 1, "", as(subseq(asv_prime, 1, start(mask_ranges[i]) - 1), "character"))
-          right_str <- ifelse(end(mask_ranges[i]) >= length(asv_prime), "", as(subseq(asv_prime, end(mask_ranges[i]) + 1, length(asv_prime)), "character"))
-          asv_prime <- DNAString(paste(c(left_str, replacement, right_str), collapse = ""))
-
-          mask_ranges <- shift(mask_ranges, -n_gaps)
+        # for homopolymers, replacement should be N * length of the mask
+        # for tandem repeats, replacement should be length of original N mask
+        trun <- end(mask_ranges[i]) - length(asv_prime)
+        trun <- ifelse(trun < 0, 0, trun)
+        if (dna_base %in% DNA_ALPHABET[1:4]) {
+          replacement <- paste(as(Rle('N', width(mask_ranges[i]) - n_gaps - trun), 'character'), collapse = "")
+        } else {
+          replacement <- paste(as(Rle('N', n_base - trun), 'character'), collapse = "")
         }
-      }
 
-      # if there is nothing to mask, just return
-      if (length(mask_ranges) == 0) {
-        return (
-          data.frame(
-            original = df_aln[seq1, ]$original,
-            refid = df_aln[seq1, ]$refid,
-            refseq = df_aln[seq1, ]$refseq,
-            hapseq = df_aln[seq1, ]$hapseq,
-            asv_prime = as.character(asv_prime)
-          )
+        left_str <- ifelse(start(mask_ranges[i]) <= 1, "", as(subseq(asv_prime, 1, start(mask_ranges[i]) - 1), "character"))
+        right_str <- ifelse(end(mask_ranges[i]) >= length(asv_prime), "", as(subseq(asv_prime, end(mask_ranges[i]) + 1, length(asv_prime)), "character"))
+        asv_prime <- DNAString(paste(c(left_str, replacement, right_str), collapse = ""))
+
+        mask_ranges <- shift(mask_ranges, -n_gaps)
+      }
+    }
+
+    # if there is nothing to mask, just return
+    if (length(mask_ranges) == 0) {
+      return (
+        data.frame(
+          original = df_aln[seq1, ]$original,
+          refid = df_aln[seq1, ]$refid,
+          refseq = df_aln[seq1, ]$refseq,
+          hapseq = df_aln[seq1, ]$hapseq,
+          asv_prime = as.character(asv_prime)
         )
-      }
-
-      data.frame(
-        original = df_aln[seq1, ]$original,
-        refid = df_aln$refid[seq1],
-        refseq = df_aln[seq1, ]$refseq,
-        hapseq = df_aln[seq1, ]$hapseq,
-        asv_prime = as.character(asv_prime)
       )
     }
-  } else {
-    for (seq1 in 1:nrow(df_aln)) {
 
-      seq_1 <- DNAString(df_aln$refseq[seq1])
-
-      asv_prime <-  DNAString(df_aln$hapseq[seq1])
-      ref_rle <- Rle(as.vector(seq_1))
-
-      # additionally, look for potential homopolymers that would exist in our
-      # pairwise alignment reference sequence if it were not for insertions
-      # in the sample haplotype in those regions.
-
-      ref_rge <- ranges(ref_rle)
-      mask_ranges <- IRanges()
-      for (dna_base in DNA_ALPHABET[1:4]) {
-        dna_ranges <- reduce(ref_rge[runValue(ref_rle) == dna_base | runValue(ref_rle) == "-"])
-
-        vb <- NULL
-        for (i in 1:length(dna_ranges)) {
-          vb <- c(vb, sum(as.vector(seq_1[dna_ranges[i]]) %in% dna_base) > args$homopolymer_threshold)
-        }
-
-        mask_ranges <- append(mask_ranges, dna_ranges[vb])
-      }
-
-      maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
-
-      trseq <- DNAString(as.character(maskseq))
-      tr_rle <- Rle(as.vector(trseq))
-
-      tr_rge <- ranges(tr_rle)[runValue(tr_rle) == "N"]
-      gap_range <- ref_rge[runValue(ref_rle) == "-"]
-
-      if (length(tr_rge) > 0) {
-        for (i in 1:length(tr_rge)) {
-          n_inserts <- sum(as.vector(seq_1[1:start(tr_rge[i])]) == '-')
-
-          gaps_over_tr_rge <- gap_range[gap_range %over% shift(tr_rge[i], n_inserts)]
-          n_over_range_gaps <- ifelse(length(gaps_over_tr_rge) == 0, 0, width(gaps_over_tr_rge))
-          new_range <- IRanges(start = start(tr_rge[i]) + n_inserts, end = end(tr_rge[i]) + n_inserts + n_over_range_gaps)
-
-          seq_1[new_range] <- "N" # mask refseq prime
-          if (length(gaps_over_tr_rge) > 0) {
-            for (j in 1:length(gaps_over_tr_rge)) {
-              seq_1[gaps_over_tr_rge[j]] <- "-"
-            }
-          }
-        }
-      }
-
-      tr_masks <- IRanges()
-      ref_rle <- Rle(as.vector(seq_1))
-      ref_rge <- ranges(ref_rle)
-      tr_ranges <- reduce(ref_rge[runValue(ref_rle) == 'N' | runValue(ref_rle) == "-"])
-
-      if (length(tr_ranges) > 0) {
-        for (i in 1:length(tr_ranges)) {
-          vseq <- as.vector(seq_1[tr_ranges[i]])
-          if (all(c('N', '-') %in% vseq) || 'N' %in% vseq) {
-            mask_ranges <- append(mask_ranges, tr_ranges[i])
-          }
-        }
-      }
-
-      mask_ranges <- unique(sort(mask_ranges))
-      reference_ranges <- mask_ranges
-
-      pos <- c(DNA_ALPHABET[1:4], "N")
-      if (length(mask_ranges) > 0) {
-        for (i in 1:length(mask_ranges)) {
-
-          vec_subseq <- as.vector(seq_1[reference_ranges[i]])
-          ibase <- which(DNA_ALPHABET[1:4] %in% vec_subseq)
-          dna_base <- ifelse(length(ibase) == 0, "N", DNA_ALPHABET[1:4][ibase])
-
-          n_base <- sum(vec_subseq == dna_base)
-          n_gaps <- sum(vec_subseq == '-')
-          mask_ranges[i] <- mask_ranges[i] + sum(dna_base != 'N')
-
-          replacement <- NULL
-
-          # for homopolymers, replacement should be N * length of the mask
-          # for tandem repeats, replacement should be length of original N mask
-          trun <- end(mask_ranges[i]) - length(asv_prime)
-          trun <- ifelse(trun < 0, 0, trun)
-          if (dna_base %in% DNA_ALPHABET[1:4]) {
-            replacement <- paste(as(Rle('N', width(mask_ranges[i]) - n_gaps - trun), 'character'), collapse = "")
-          } else {
-            replacement <- paste(as(Rle('N', n_base - trun), 'character'), collapse = "")
-          }
-
-          left_str <- ifelse(start(mask_ranges[i]) <= 1, "", as(subseq(asv_prime, 1, start(mask_ranges[i]) - 1), "character"))
-          right_str <- ifelse(end(mask_ranges[i]) >= length(asv_prime), "", as(subseq(asv_prime, end(mask_ranges[i]) + 1, length(asv_prime)), "character"))
-          asv_prime <- DNAString(paste(c(left_str, replacement, right_str), collapse = ""))
-
-          mask_ranges <- shift(mask_ranges, -n_gaps)
-        }
-      }
-
-      # if there is nothing to mask, just return
-      if (length(mask_ranges) == 0) {
-        df_masked <- rbind(df_masked,
-                           data.frame(
-                             original = df_aln[seq1, ]$original,
-                             refid = df_aln[seq1, ]$refid,
-                             refseq = df_aln[seq1, ]$refseq,
-                             hapseq = df_aln[seq1, ]$hapseq,
-                             asv_prime = as.character(asv_prime)
-                           )
-        )
-
-        next
-      }
-
-      df_masked <- rbind(df_masked,
-                         data.frame(
-                           original = df_aln[seq1, ]$original,
-                           refid = df_aln[seq1, ]$refid,
-                           refseq = df_aln[seq1, ]$refseq,
-                           hapseq = df_aln[seq1, ]$hapseq,
-                           asv_prime = as.character(asv_prime)
-                         )
-      )
-    }
+    data.frame(
+      original = df_aln[seq1, ]$original,
+      refid = df_aln$refid[seq1],
+      refseq = df_aln[seq1, ]$refseq,
+      hapseq = df_aln[seq1, ]$hapseq,
+      asv_prime = as.character(asv_prime)
+    )
   }
 
   df_seqs <- inner_join(df_aln, df_masked, by = c("original", "refid", "refseq", "hapseq"))
