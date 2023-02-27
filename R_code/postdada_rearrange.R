@@ -165,6 +165,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
   sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
 
+  # This object contains the aligned ASV sequences
   df_aln <- NULL
   df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
     seq_1 <- sequences[seq1]
@@ -287,22 +288,9 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
       }
     }
 
-    # if there is nothing to mask, just return
-    if (length(mask_ranges) == 0) {
-      return (
-        data.frame(
-          original = df_aln[seq1, ]$original,
-          refid = df_aln[seq1, ]$refid,
-          refseq = df_aln[seq1, ]$refseq,
-          hapseq = df_aln[seq1, ]$hapseq,
-          asv_prime = as.character(asv_prime)
-        )
-      )
-    }
-
     data.frame(
       original = df_aln[seq1, ]$original,
-      refid = df_aln$refid[seq1],
+      refid = df_aln[seq1, ]$refid,
       refseq = df_aln[seq1, ]$refseq,
       hapseq = df_aln[seq1, ]$hapseq,
       asv_prime = as.character(asv_prime)
@@ -315,19 +303,19 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   seqtab.nochim.df$original <- base::rownames(seqtab.nochim.df)
   df_seqs <- inner_join(df_seqs, seqtab.nochim.df, by = "original")
 
-  df_final <- df_seqs %>%
+  seqtab.nochim.df <- df_seqs %>%
+    select(-c(original, hapseq, refseq, refid, score, indels)) %>%
+    distinct() %>%
     pivot_longer(
-      cols = -c(original, hapseq, refseq, refid, score, indels, asv_prime),
+      cols = -c(asv_prime),
       names_to = "sample",
       values_to = "counts"
-    )
-
-  seqtab.nochim.df <- df_final %>%
+    ) %>%
     group_by(sample, asv_prime) %>%
     summarise(counts = sum(counts)) %>%
     pivot_wider(names_from = asv_prime, values_from = counts) %>%
     # filter(counts != 0) %>%
-    ungroup()
+    ungroup()    
 
   seqtab.nochim.df[seqtab.nochim.df==0]=NA
 
@@ -371,4 +359,11 @@ allele.data = seqtab.nochim.df %>%
 saveRDS(allele.data,file="allele_data.RDS")
 write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
+# get memory footprint of environment
+# out <- as.data.frame(sort( sapply(ls(),function(x){object.size(get(x))})))
+# colnames(out) <- "bytes"
+# out <- out %>% dplyr::mutate(MB = bytes / 1e6, GB = bytes / 1e9)
+# write.csv(out, "postproc_memory_profile.csv")
 
+# saveRDS(df_seqs, file = "df_seqs.RDS")
+# saveRDS(df_final, file = "df_final.RDS")

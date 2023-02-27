@@ -53,12 +53,12 @@ derepFs <- derepFastq(filtFs[out[,2]>0], verbose = TRUE)
 derepRs <- derepFastq(filtRs[out[,2]>0], verbose = TRUE)
 
 
-# pool=switch(
-#   args$pool,
-#   "true" = TRUE,
-#   "false" = FALSE,
-#   "pseudo" = "pseudo"
-# )
+pool=switch(
+  args$pool,
+  "true" = TRUE,
+  "false" = FALSE,
+  "pseudo" = "pseudo"
+)
 
 # use_quals=switch(
 #   args$use_quals,
