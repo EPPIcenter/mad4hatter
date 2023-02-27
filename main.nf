@@ -287,7 +287,6 @@ process DADA2_ANALYSIS {
           --band-size ${params.band_size} \
           --omega-a ${params.omega_a} \
           --use-quals ${params.use_quals} \
-          --homop-gap-penalty ${params.homop_gap_penalty} \
           --maxEE ${params.maxEE} \
           --concat-non-overlaps
         """

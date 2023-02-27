@@ -22,3 +22,5 @@ RUN Rscript -e 'BiocManager::install("dada2", version = "3.16", ask = FALSE)'
 RUN Rscript -e 'BiocManager::install("muscle", version = "3.16", ask = FALSE)'
 RUN Rscript -e 'BiocManager::install("BSgenome", version = "3.16", ask = FALSE)'
 
+RUN Rscript -e "update.packages(ask=F)"
+
