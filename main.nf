@@ -41,7 +41,7 @@ workflow {
   // All workflows will produce a QC report (cutadapt needed by QC for length statistics)
   CUTADAPT(read_pairs_ch, params.amplicon_info, params.cutadapt_minlen, qualfilter)
 
-  // QUALITY_CHECK(read_pairs_ch, CUTADAPT.out[1].collect(), params.amplicon_info)
+  QUALITY_CHECK(read_pairs_ch, CUTADAPT.out[1].collect(), params.amplicon_info)
 
   if (params.QC_only == false) {
     

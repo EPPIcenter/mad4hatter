@@ -22,6 +22,7 @@ library(muscle)
 library(BSgenome)
 library(tidyr)
 library(doMC)
+library(tibble)
 
 
 ## Postprocessing QC
@@ -342,21 +343,32 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   seqtab.nochim.df$original <- base::rownames(seqtab.nochim.df)
   df_seqs <- inner_join(df_seqs, seqtab.nochim.df, by = "original")
 
-  seqtab.nochim.df <- df_seqs %>%
-    select(-c(original, hapseq, refseq, refid, score, indels)) %>%
-    distinct() %>%
-    pivot_longer(
-      cols = -c(asv_prime),
-      names_to = "sample",
-      values_to = "counts"
-    ) %>%
-    group_by(sample, asv_prime) %>%
-    summarise(counts = sum(counts)) %>%
-    pivot_wider(names_from = asv_prime, values_from = counts) %>%
-    # filter(counts != 0) %>%
-    ungroup()    
+  # seqtab.nochim.df <- df_seqs %>%
+  #   select(-c(original, hapseq, refseq, refid, score, indels)) %>%
+  #   distinct() %>%
+  #   pivot_longer(
+  #     cols = -c(asv_prime),
+  #     names_to = "sample",
+  #     values_to = "counts"
+  #   ) %>%
+  #   group_by(sample, asv_prime) %>%
+  #   summarise(counts = sum(counts)) %>%
+  #   pivot_wider(names_from = asv_prime, values_from = counts) %>%
+  #   # filter(counts != 0) %>%
+  #   ungroup()
 
+
+  seqtab.nochim.df <- df_seqs %>%
+    group_by(refid, asv_prime) %>%
+    summarise(across(-c(original, hapseq, refseq, score, indels), sum)) %>%
+    ungroup() %>%
+    select(-c(refid))
+
+  seqtab.nochim.df <- column_to_rownames(seqtab.nochim.df, var = "asv_prime")
+  seqtab.nochim.df <- as.data.frame(t(seqtab.nochim.df))
+  seqtab.nochim.df$sample = rownames(seqtab.nochim.df)
   seqtab.nochim.df[seqtab.nochim.df==0]=NA
+
 
 } else {
   seqtab.nochim.df = as.data.frame(seqtab.nochim)
