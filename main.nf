@@ -41,11 +41,12 @@ workflow {
   // All workflows will produce a QC report (cutadapt needed by QC for length statistics)
   CUTADAPT(read_pairs_ch, params.amplicon_info, params.cutadapt_minlen, qualfilter)
 
-  QUALITY_CHECK(read_pairs_ch, CUTADAPT.out[1].collect(), params.amplicon_info)
+  // QUALITY_CHECK(read_pairs_ch, CUTADAPT.out[1].collect(), params.amplicon_info)
 
   if (params.QC_only == false) {
     
     DADA2_ANALYSIS(CUTADAPT.out[0].collect(), params.amplicon_info)
+
 
     // Create reference sequences from genome
     if (params.refseq_fasta == null) {
@@ -58,7 +59,7 @@ workflow {
         MASK_SEQUENCES(CREATE_REFERENCE_SEQUENCES.out[0], 0, 0)
       }
 
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REFERENCE_SEQUENCES.out[0], MASK_SEQUENCES.out[0], params.parallel, QUALITY_CHECK.out[0].collect())
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REFERENCE_SEQUENCES.out[0], MASK_SEQUENCES.out[0], params.parallel)
     
       RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], CREATE_REFERENCE_SEQUENCES.out[0], params.codontable, params.resmarkers_amplicon)
 
@@ -70,13 +71,13 @@ workflow {
         MASK_SEQUENCES(params.refseq_fasta, 0, 0)
       }
 
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, MASK_SEQUENCES.out[0], params.parallel, QUALITY_CHECK.out[0].collect())
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, MASK_SEQUENCES.out[0], params.parallel)
 
       RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon)
 
     } else {
 
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta, params.parallel, QUALITY_CHECK.out[0].collect())
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta, params.parallel)
 
       RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon)
 
@@ -306,7 +307,6 @@ process DADA2_POSTPROC {
         path refseq_fasta
         path masked_fasta
         val parallel
-        path coverage_files
 
         output:
         path '*.{RDS,txt,csv}'
@@ -315,7 +315,8 @@ process DADA2_POSTPROC {
 
         if (parallel == true)
           """
-          sample_coverage="\$(echo $coverage_files | tr ' ' '\n' | grep sample_coverage.txt)"
+          echo $parallel triggered true
+
           seqtab_nochim_rds="\$(echo $rdatafile | tr ' ' '\n' | grep *.RDS)"
 
           Rscript ${params.scriptDIR}/postdada_rearrange.R \
@@ -324,12 +325,11 @@ process DADA2_POSTPROC {
             --refseq-fasta ${refseq_fasta} \
             --masked-fasta ${masked_fasta} \
             --n-cores ${params.n_cores} \
-            --sample-coverage \${sample_coverage} \
             --parallel
           """
         else
           """
-          sample_coverage="\$(echo $coverage_files | tr ' ' '\n' | grep sample_coverage.txt)"
+          echo $parallel triggered false
           seqtab_nochim_rds="\$(echo $rdatafile | tr ' ' '\n' | grep *.RDS)"
 
           Rscript ${params.scriptDIR}/postdada_rearrange.R \
@@ -337,8 +337,7 @@ process DADA2_POSTPROC {
             --homopolymer-threshold ${homopolymer_threshold} \
             --refseq-fasta ${refseq_fasta} \
             --masked-fasta ${masked_fasta} \
-            --n-cores ${params.n_cores} \
-            --sample-coverage \${sample_coverage}
+            --n-cores ${params.n_cores}
           """
 }
 

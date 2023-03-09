@@ -8,8 +8,7 @@ parser$add_argument('--masked-fasta', type="character")
 parser$add_argument('--dada2-output', type="character", required = TRUE)
 parser$add_argument('--alignment-threshold', type="integer", default = 60)
 parser$add_argument('--parallel', action='store_true')
-parser$add_argument('--n-cores', type = 'integer', default = -1, help = "Number of cores to use. Ignored if running parallel flag is unset.")
-parser$add_argument('--sample-coverage', type="character", help = "Sample coverage file from QC to append sample coverage statistics that are P. falciparum specific.")
+parser$add_argument('--n-cores', type = 'integer', default = -1)
 
 args <- parser$parse_args()
 print(args)
@@ -23,21 +22,19 @@ library(muscle)
 library(BSgenome)
 library(tidyr)
 library(doMC)
-library(tibble)
+
 
 ## Postprocessing QC
-
-### Print allele table before masking (for debugging)
 
 seqtab.nochim <- readRDS(args$dada2_output)
 seqtab.nochim.df = as.data.frame(seqtab.nochim)
 seqtab.nochim.df$sample = rownames(seqtab.nochim)
 seqtab.nochim.df[seqtab.nochim.df==0]=NA
 pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
-seqtab.nochim.df = seqtab.nochim.df %>%
-  pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>%
-  mutate(locus = paste0(sapply(strsplit(sample,"_"),"[",1),"_",sapply(strsplit(sample,"_"),"[",2),"_",sapply(strsplit(sample,"_"),"[",3)))%>%
-  mutate(sampleID = sapply(strsplit(sapply(strsplit(sample,pat),"[",2),"_trimmed"),"[",1)) %>%
+seqtab.nochim.df = seqtab.nochim.df %>% 
+  pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>% 
+  mutate(locus = paste0(sapply(strsplit(sample,"_"),"[",1),"_",sapply(strsplit(sample,"_"),"[",2),"_",sapply(strsplit(sample,"_"),"[",3)))%>% 
+  mutate(sampleID = sapply(strsplit(sapply(strsplit(sample,pat),"[",2),"_trimmed"),"[",1)) %>% 
   select(sampleID,locus,asv,reads)
 
 temp = seqtab.nochim.df %>% select(locus,asv) %>% distinct()
@@ -45,7 +42,7 @@ loci =unique(temp$locus)
 k=1
 allele.sequences = data.frame(locus = seq(1,nrow(temp)),allele = seq(1,nrow(temp)),sequence = seq(1,nrow(temp)))
 for(i in seq(1,length(loci))){
-  temp2 = temp %>% filter(locus==loci[i])
+  temp2 = temp %>% filter(locus==loci[i]) 
   for(j in seq(1,nrow(temp2))){
     allele.sequences$locus[k+j-1] = loci[i]
     allele.sequences$allele[k+j-1] = paste0(loci[i],".",j)
@@ -54,12 +51,12 @@ for(i in seq(1,length(loci))){
   k=k+nrow(temp2)
 }
 
-allele.data = seqtab.nochim.df %>%
-  left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
+allele.data = seqtab.nochim.df %>% 
+  left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>% 
   group_by(sampleID,locus,allele) %>%
-  mutate(norm.reads.allele = reads/sum(reads))%>%
+  mutate(norm.reads.allele = reads/sum(reads))%>% 
   group_by(sampleID,locus) %>%
-  mutate(norm.reads.locus = reads/sum(reads))%>%
+  mutate(norm.reads.locus = reads/sum(reads))%>% 
   mutate(n.alleles = n())
 
 saveRDS(allele.data,file="pre_processed_allele_table.RDS")
@@ -173,6 +170,12 @@ if (length(non_overlaps_idx) > 0) {
     combined <- c(combined, paste(c(df_non_overlap[idx, ]$processed_left_sequences, df_non_overlap[idx, ]$processed_right_sequences), collapse = ""))
   }
   df_non_overlap$combined <- combined
+    # df_non_overlap,
+    # combined,
+    # c(
+    #   processed_left_sequences,
+    #   processed_right_sequences
+    # ), sep="+")
 
   saveRDS(df_non_overlap,file="non_overlapping_seqs.RDS")
   write.table(df_non_overlap,file="non_overlapping_seqs.txt",quote=F,sep="\t",col.names=T,row.names=F)
@@ -339,32 +342,21 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   seqtab.nochim.df$original <- base::rownames(seqtab.nochim.df)
   df_seqs <- inner_join(df_seqs, seqtab.nochim.df, by = "original")
 
-  # seqtab.nochim.df <- df_seqs %>%
-  #   select(-c(original, hapseq, refseq, refid, score, indels)) %>%
-  #   distinct() %>%
-  #   pivot_longer(
-  #     cols = -c(asv_prime),
-  #     names_to = "sample",
-  #     values_to = "counts"
-  #   ) %>%
-  #   group_by(sample, asv_prime) %>%
-  #   summarise(counts = sum(counts)) %>%
-  #   pivot_wider(names_from = asv_prime, values_from = counts) %>%
-  #   # filter(counts != 0) %>%
-  #   ungroup()
-
-
   seqtab.nochim.df <- df_seqs %>%
-    group_by(refid, asv_prime) %>%
-    summarise(across(-c(original, hapseq, refseq, score, indels), sum)) %>%
-    ungroup() %>%
-    select(-c(refid))
+    select(-c(original, hapseq, refseq, refid, score, indels)) %>%
+    distinct() %>%
+    pivot_longer(
+      cols = -c(asv_prime),
+      names_to = "sample",
+      values_to = "counts"
+    ) %>%
+    group_by(sample, asv_prime) %>%
+    summarise(counts = sum(counts)) %>%
+    pivot_wider(names_from = asv_prime, values_from = counts) %>%
+    # filter(counts != 0) %>%
+    ungroup()    
 
-  seqtab.nochim.df <- column_to_rownames(seqtab.nochim.df, var = "asv_prime")
-  seqtab.nochim.df <- as.data.frame(t(seqtab.nochim.df))
-  seqtab.nochim.df$sample = rownames(seqtab.nochim.df)
   seqtab.nochim.df[seqtab.nochim.df==0]=NA
-
 
 } else {
   seqtab.nochim.df = as.data.frame(seqtab.nochim)
@@ -406,30 +398,11 @@ allele.data = seqtab.nochim.df %>%
 saveRDS(allele.data,file="allele_data.RDS")
 write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
-## QC Postprocessing
-
-if (!is.null(args$sample_coverage) && !file.exists(args$sample_coverage)) {
-  sample.coverage <- read.table(args$sample_coverage, header = FALSE, sep = "\t") %>%
-    pivot_wider(names_from = V2, values_from = V3)
-
-  qc.postproc <- allele.data %>%
-    left_join(sample.coverage, by = c("sampleID" = "V1")) %>%
-    group_by(sampleID) %>%
-    select(sampleID, Input, `No Dimers`, Amplicons, reads) %>%
-    group_by(sampleID) %>%
-    mutate(Amplicons.Pf = sum(reads)) %>%
-    select(-c(reads)) %>%
-    distinct() %>%
-    pivot_longer(cols = c(Input, `No Dimers`, Amplicons, Amplicons.Pf))
-
-  write.table(qc.postproc, quote=F,sep='\t',col.names = F, row.names = F, file = args$sample_coverage)
-}
-
 # get memory footprint of environment
-out <- as.data.frame(sort( sapply(ls(),function(x){object.size(get(x))})))
-colnames(out) <- "bytes"
-out <- out %>% dplyr::mutate(MB = bytes / 1e6, GB = bytes / 1e9)
-write.csv(out, "postproc_memory_profile.csv")
+# out <- as.data.frame(sort( sapply(ls(),function(x){object.size(get(x))})))
+# colnames(out) <- "bytes"
+# out <- out %>% dplyr::mutate(MB = bytes / 1e6, GB = bytes / 1e9)
+# write.csv(out, "postproc_memory_profile.csv")
 
 # saveRDS(df_seqs, file = "df_seqs.RDS")
 # saveRDS(df_final, file = "df_final.RDS")
