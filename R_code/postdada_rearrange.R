@@ -25,17 +25,27 @@ library(doMC)
 library(tibble)
 
 
+setwd("/home/bpalmer/Documents/work/db/5a2494d6548a076b89145863cb964a")
+
+args <- list()
+args$homopolymer_threshold <- 5
+args$refseq_fasta <- "v4_refseq.fasta"
+args$masked_fasta <- "v4_refseq.fasta.2.7.7.80.10.25.3.mask"
+args$dada2_output <- "seqtab.nochim.RDS"
+args$parallel <- FALSE
+args$alignment_threshold <- 60
+
 ## Postprocessing QC
 
-seqtab.nochim <- readRDS(args$dada2_output)
+seqtab.nochim <- readRDS("seqtab.nochim.RDS")
 seqtab.nochim.df = as.data.frame(seqtab.nochim)
 seqtab.nochim.df$sample = rownames(seqtab.nochim)
 seqtab.nochim.df[seqtab.nochim.df==0]=NA
 pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
-seqtab.nochim.df = seqtab.nochim.df %>% 
-  pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>% 
-  mutate(locus = paste0(sapply(strsplit(sample,"_"),"[",1),"_",sapply(strsplit(sample,"_"),"[",2),"_",sapply(strsplit(sample,"_"),"[",3)))%>% 
-  mutate(sampleID = sapply(strsplit(sapply(strsplit(sample,pat),"[",2),"_trimmed"),"[",1)) %>% 
+seqtab.nochim.df = seqtab.nochim.df %>%
+  pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>%
+  mutate(locus = paste0(sapply(strsplit(sample,"_"),"[",1),"_",sapply(strsplit(sample,"_"),"[",2),"_",sapply(strsplit(sample,"_"),"[",3)))%>%
+  mutate(sampleID = sapply(strsplit(sapply(strsplit(sample,pat),"[",2),"_trimmed"),"[",1)) %>%
   select(sampleID,locus,asv,reads)
 
 temp = seqtab.nochim.df %>% select(locus,asv) %>% distinct()
@@ -43,7 +53,7 @@ loci =unique(temp$locus)
 k=1
 allele.sequences = data.frame(locus = seq(1,nrow(temp)),allele = seq(1,nrow(temp)),sequence = seq(1,nrow(temp)))
 for(i in seq(1,length(loci))){
-  temp2 = temp %>% filter(locus==loci[i]) 
+  temp2 = temp %>% filter(locus==loci[i])
   for(j in seq(1,nrow(temp2))){
     allele.sequences$locus[k+j-1] = loci[i]
     allele.sequences$allele[k+j-1] = paste0(loci[i],".",j)
@@ -52,12 +62,12 @@ for(i in seq(1,length(loci))){
   k=k+nrow(temp2)
 }
 
-allele.data = seqtab.nochim.df %>% 
-  left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>% 
+allele.data = seqtab.nochim.df %>%
+  left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
   group_by(sampleID,locus,allele) %>%
-  mutate(norm.reads.allele = reads/sum(reads))%>% 
+  mutate(norm.reads.allele = reads/sum(reads))%>%
   group_by(sampleID,locus) %>%
-  mutate(norm.reads.locus = reads/sum(reads))%>% 
+  mutate(norm.reads.locus = reads/sum(reads))%>%
   mutate(n.alleles = n())
 
 saveRDS(allele.data,file="pre_processed_allele_table.RDS")
@@ -223,8 +233,8 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     )
   }
 
-  saveRDS(df_aln,file="alignments.RDS")
-  write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
+  # saveRDS(df_aln,file="alignments.RDS")
+  # write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
   df_aln <- df_aln %>% filter(score > args$alignment_threshold)
 
@@ -337,7 +347,17 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     )
   }
 
-  df_seqs <- inner_join(df_aln, df_masked, by = c("original", "refid", "refseq", "hapseq"))
+  # df_seqs <- inner_join(df_aln, df_masked, by = c("original", "refid", "refseq", "hapseq"))
+
+  df_seqs <- df_aln %>%
+    ungroup() %>%
+    select(original, refid) %>%
+    distinct() %>%
+    inner_join(
+      df_masked %>%
+        select(original, refid, asv_prime) %>%
+        distinct()
+      , by = c("original", "refid"))
 
   seqtab.nochim.df <- as.data.frame(t(seqtab.nochim))
   seqtab.nochim.df$original <- base::rownames(seqtab.nochim.df)
@@ -360,14 +380,17 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
   seqtab.nochim.df <- df_seqs %>%
     group_by(refid, asv_prime) %>%
-    summarise(across(-c(original, hapseq, refseq, score, indels), sum)) %>%
+    summarise(across(-c(original), sum)) %>%
     ungroup() %>%
     select(-c(refid))
 
   seqtab.nochim.df <- column_to_rownames(seqtab.nochim.df, var = "asv_prime")
   seqtab.nochim.df <- as.data.frame(t(seqtab.nochim.df))
   seqtab.nochim.df$sample = rownames(seqtab.nochim.df)
+  seqtab.nochim.df <- seqtab.nochim.df %>% arrange(sample)
   seqtab.nochim.df[seqtab.nochim.df==0]=NA
+
+
 
 
 } else {
@@ -405,16 +428,14 @@ allele.data = seqtab.nochim.df %>%
   mutate(norm.reads.allele = reads/sum(reads))%>%
   group_by(sampleID,locus) %>%
   mutate(norm.reads.locus = reads/sum(reads))%>%
-  mutate(n.alleles = n())
+  mutate(n.alleles = n()) %>%
+  arrange(sampleID, locus, reads)
 
 saveRDS(allele.data,file="allele_data.RDS")
 write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
 # get memory footprint of environment
-# out <- as.data.frame(sort( sapply(ls(),function(x){object.size(get(x))})))
-# colnames(out) <- "bytes"
-# out <- out %>% dplyr::mutate(MB = bytes / 1e6, GB = bytes / 1e9)
-# write.csv(out, "postproc_memory_profile.csv")
-
-# saveRDS(df_seqs, file = "df_seqs.RDS")
-# saveRDS(df_final, file = "df_final.RDS")
+out <- as.data.frame(sort( sapply(ls(),function(x){object.size(get(x))})))
+colnames(out) <- "bytes"
+out <- out %>% dplyr::mutate(MB = bytes / 1e6, GB = bytes / 1e9)
+write.csv(out, "postproc_memory_profile.csv")
