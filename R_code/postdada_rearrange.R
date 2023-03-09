@@ -25,19 +25,18 @@ library(doMC)
 library(tibble)
 
 
-setwd("/home/bpalmer/Documents/work/db/5a2494d6548a076b89145863cb964a")
-
-args <- list()
-args$homopolymer_threshold <- 5
-args$refseq_fasta <- "v4_refseq.fasta"
-args$masked_fasta <- "v4_refseq.fasta.2.7.7.80.10.25.3.mask"
-args$dada2_output <- "seqtab.nochim.RDS"
-args$parallel <- FALSE
-args$alignment_threshold <- 60
+# FOR DEBUGGING
+# args <- list()
+# args$homopolymer_threshold <- 5
+# args$refseq_fasta <- "v4_refseq.fasta"
+# args$masked_fasta <- "v4_refseq.fasta.2.7.7.80.10.25.3.mask"
+# args$dada2_output <- "seqtab.nochim.RDS"
+# args$parallel <- FALSE
+# args$alignment_threshold <- 60
 
 ## Postprocessing QC
 
-seqtab.nochim <- readRDS("seqtab.nochim.RDS")
+seqtab.nochim <- readRDS(args$dada2_output)
 seqtab.nochim.df = as.data.frame(seqtab.nochim)
 seqtab.nochim.df$sample = rownames(seqtab.nochim)
 seqtab.nochim.df[seqtab.nochim.df==0]=NA
@@ -85,14 +84,6 @@ non_overlaps_idx <- which(str_detect(sequences, paste(rep("N", 10), collapse = "
 # counts
 
 if (length(non_overlaps_idx) > 0) {
-
-  # Calculate the difference in length between
-  # real sequences, and see if the delta sequence
-  # has no conflicting bases at each position. If
-  # they do, overwrite with N's and collapse the
-  # resolved sequences. Else if each position is unique,
-  # assume that the sequences are part of the resolved
-  # sequence.
 
   non_overlaps <- sequences[non_overlaps_idx]
   non_overlaps_split = strsplit(non_overlaps, paste(rep("N", 10), collapse = ""))
@@ -181,12 +172,6 @@ if (length(non_overlaps_idx) > 0) {
     combined <- c(combined, paste(c(df_non_overlap[idx, ]$processed_left_sequences, df_non_overlap[idx, ]$processed_right_sequences), collapse = ""))
   }
   df_non_overlap$combined <- combined
-    # df_non_overlap,
-    # combined,
-    # c(
-    #   processed_left_sequences,
-    #   processed_right_sequences
-    # ), sep="+")
 
   saveRDS(df_non_overlap,file="non_overlapping_seqs.RDS")
   write.table(df_non_overlap,file="non_overlapping_seqs.txt",quote=F,sep="\t",col.names=T,row.names=F)
@@ -195,6 +180,11 @@ if (length(non_overlaps_idx) > 0) {
   sequences[df_non_overlap$column_indexes] <- df_non_overlap$combined
 }
 
+## Reference table for sequences - this is to reduce memory usage in intermediate files
+df.sequences <- data.frame(
+  sid = sprintf("S%d", 1:length(sequences)),
+  sequences = sequences
+)
 
 ## Setup parallel backend if asked
 
@@ -218,13 +208,12 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   # This object contains the aligned ASV sequences
   df_aln <- NULL
   df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
-    seq_1 <- sequences[seq1]
-    aln <- pairwiseAlignment(ref_sequences, seq_1, substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
+    aln <- pairwiseAlignment(ref_sequences, sequences[seq1], substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
     num <- which.max(score(aln))
     patt <- c(alignedPattern(aln[num]), alignedSubject(aln[num]))
     ind <- sum(str_count(as.character(patt),"-"))
     data.frame(
-      original = seq_1,
+      sid = df.sequences[seq1,]$sid,
       hapseq = as.character(patt)[2],
       refseq = as.character(patt)[1],
       refid = names(patt)[1],
@@ -339,58 +328,44 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     }
 
     data.frame(
-      original = df_aln[seq1, ]$original,
+      sid = df_aln[seq1, ]$sid,
       refid = df_aln[seq1, ]$refid,
-      refseq = df_aln[seq1, ]$refseq,
-      hapseq = df_aln[seq1, ]$hapseq,
       asv_prime = as.character(asv_prime)
     )
   }
 
   # df_seqs <- inner_join(df_aln, df_masked, by = c("original", "refid", "refseq", "hapseq"))
 
+  seqtab.nochim.df <- tibble::rownames_to_column(as.data.frame(t(seqtab.nochim)), "sequences") %>%
+    inner_join(df.sequences, by = c("sequences")) %>%
+    select(-c(sequences))
+
   df_seqs <- df_aln %>%
     ungroup() %>%
-    select(original, refid) %>%
+    select(sid, refid) %>%
     distinct() %>%
     inner_join(
       df_masked %>%
-        select(original, refid, asv_prime) %>%
+        select(sid, refid, asv_prime) %>%
         distinct()
-      , by = c("original", "refid"))
-
-  seqtab.nochim.df <- as.data.frame(t(seqtab.nochim))
-  seqtab.nochim.df$original <- base::rownames(seqtab.nochim.df)
-  df_seqs <- inner_join(df_seqs, seqtab.nochim.df, by = "original")
-
-  # seqtab.nochim.df <- df_seqs %>%
-  #   select(-c(original, hapseq, refseq, refid, score, indels)) %>%
-  #   distinct() %>%
-  #   pivot_longer(
-  #     cols = -c(asv_prime),
-  #     names_to = "sample",
-  #     values_to = "counts"
-  #   ) %>%
-  #   group_by(sample, asv_prime) %>%
-  #   summarise(counts = sum(counts)) %>%
-  #   pivot_wider(names_from = asv_prime, values_from = counts) %>%
-  #   # filter(counts != 0) %>%
-  #   ungroup()
-
+      , by = c("sid", "refid"))
 
   seqtab.nochim.df <- df_seqs %>%
+    inner_join(seqtab.nochim.df, by = c("sid")) %>%
     group_by(refid, asv_prime) %>%
-    summarise(across(-c(original), sum)) %>%
+    summarise(across(-c(sid), sum)) %>%
     ungroup() %>%
     select(-c(refid))
 
-  seqtab.nochim.df <- column_to_rownames(seqtab.nochim.df, var = "asv_prime")
+  seqtab.nochim.df <- as.data.frame(seqtab.nochim.df)
+  rownames(seqtab.nochim.df) <- seqtab.nochim.df$asv_prime
+  seqtab.nochim.df <- seqtab.nochim.df %>% select(-c(asv_prime))
+
   seqtab.nochim.df <- as.data.frame(t(seqtab.nochim.df))
-  seqtab.nochim.df$sample = rownames(seqtab.nochim.df)
+
+  seqtab.nochim.df <- tibble::rownames_to_column(seqtab.nochim.df, "sample")
   seqtab.nochim.df <- seqtab.nochim.df %>% arrange(sample)
   seqtab.nochim.df[seqtab.nochim.df==0]=NA
-
-
 
 
 } else {
@@ -399,6 +374,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   seqtab.nochim.df[seqtab.nochim.df==0]=NA
 }
 
+print("Done masking sequences...")
 
 pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
 seqtab.nochim.df = seqtab.nochim.df %>%
@@ -430,6 +406,8 @@ allele.data = seqtab.nochim.df %>%
   mutate(norm.reads.locus = reads/sum(reads))%>%
   mutate(n.alleles = n()) %>%
   arrange(sampleID, locus, reads)
+
+head(allele.data)
 
 saveRDS(allele.data,file="allele_data.RDS")
 write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
