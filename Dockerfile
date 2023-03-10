@@ -1,5 +1,5 @@
 FROM rocker/r-ubuntu:22.04
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-pip libssl-dev libbz2-dev libsdl1.2-dev liblzma-dev libcurl4-openssl-dev zlib1g-dev libxml2-dev r-cran-tidyverse trf bwa bcftools samtools default-jre && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-pip libssl-dev libbz2-dev libsdl1.2-dev liblzma-dev libcurl4-openssl-dev zlib1g-dev libxml2-dev trf bwa bcftools samtools default-jre pandoc && rm -rf /var/lib/apt/lists/*
 RUN pip install cutadapt==4.1
 
 RUN mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/
@@ -8,6 +8,7 @@ RUN R -e 'install.packages("remotes")'
 
 # Update apt-get
 RUN Rscript -e 'install.packages("remotes", version = "2.4.2")'
+RUN Rscript -e 'remotes::install_cran("tidyverse", version = "2.0.0")'
 RUN Rscript -e 'remotes::install_cran("ggbeeswarm", upgrade="never", version="0.6.1")'
 RUN Rscript -e 'remotes::install_cran("gridExtra",upgrade="never", version = "2.3")'
 RUN Rscript -e 'remotes::install_cran("rmarkdown",upgrade="never", version = "2.17")'

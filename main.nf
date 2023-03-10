@@ -23,13 +23,6 @@ params.scriptDIR       = "$projectDir/R_code"
 // codontable             = "$projectDir/resources/${params.target}/codontable.txt"
 params.resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_${params.target}.txt"
 params.codontable      = "$projectDir/templates/codontable.txt"
-params.pool            = "false"
-params.band_size       = 16 // default
-params.omega_a         = 1e-120
-params.use_quals       = "false"
-params.homop_gap_penalty = 5
-params.maxEE = 2
-params.n_cores = 4
 
 // Files
 
@@ -294,7 +287,6 @@ process DADA2_ANALYSIS {
           --band-size ${params.band_size} \
           --omega-a ${params.omega_a} \
           --use-quals ${params.use_quals} \
-          --homop-gap-penalty ${params.homop_gap_penalty} \
           --maxEE ${params.maxEE} \
           --concat-non-overlaps
         """
@@ -320,7 +312,11 @@ process DADA2_POSTPROC {
         path '*.{RDS,txt,csv}'
         
         script:
+
+        if (parallel == true)
           """
+          echo $parallel triggered true
+
           seqtab_nochim_rds="\$(echo $rdatafile | tr ' ' '\n' | grep *.RDS)"
 
           Rscript ${params.scriptDIR}/postdada_rearrange.R \
@@ -330,6 +326,18 @@ process DADA2_POSTPROC {
             --masked-fasta ${masked_fasta} \
             --n-cores ${params.n_cores} \
             --parallel
+          """
+        else
+          """
+          echo $parallel triggered false
+          seqtab_nochim_rds="\$(echo $rdatafile | tr ' ' '\n' | grep *.RDS)"
+
+          Rscript ${params.scriptDIR}/postdada_rearrange.R \
+            --dada2-output \${seqtab_nochim_rds} \
+            --homopolymer-threshold ${homopolymer_threshold} \
+            --refseq-fasta ${refseq_fasta} \
+            --masked-fasta ${masked_fasta} \
+            --n-cores ${params.n_cores}
           """
 }
 
