@@ -352,10 +352,10 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
   seqtab.nochim.df <- df_seqs %>%
     inner_join(seqtab.nochim.df, by = c("sid")) %>%
-    group_by(refid, asv_prime) %>%
-    summarise(across(-c(sid), sum)) %>%
+    group_by(sid, refid, asv_prime) %>%
+    summarise(across(everything(), sum)) %>%
     ungroup() %>%
-    select(-c(refid))
+    select(-c(sid,refid))
 
   seqtab.nochim.df <- as.data.frame(seqtab.nochim.df)
   rownames(seqtab.nochim.df) <- seqtab.nochim.df$asv_prime
