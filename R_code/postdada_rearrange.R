@@ -404,10 +404,7 @@ allele.data = seqtab.nochim.df %>%
   mutate(norm.reads.allele = reads/sum(reads))%>%
   group_by(sampleID,locus) %>%
   mutate(norm.reads.locus = reads/sum(reads))%>%
-  mutate(n.alleles = n()) %>%
-  arrange(sampleID, locus, reads)
-
-head(allele.data)
+  mutate(n.alleles = n())
 
 saveRDS(allele.data,file="allele_data.RDS")
 write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
