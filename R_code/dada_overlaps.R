@@ -66,8 +66,6 @@ pool=switch(
 #   "false" = FALSE
 # )
 
-homop_gap_penalty <- ifelse(args$homop_gap_penalty <= 0, NULL, args$homop_gap_penalty)
-
 dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
 dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
 
