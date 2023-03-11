@@ -182,7 +182,7 @@ if (length(non_overlaps_idx) > 0) {
 
 ## Reference table for sequences - this is to reduce memory usage in intermediate files
 df.sequences <- data.frame(
-  sid = sprintf("S%d", 1:length(sequences)),
+  seqid = sprintf("S%d", 1:length(sequences)),
   sequences = sequences
 )
 
@@ -213,7 +213,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     patt <- c(alignedPattern(aln[num]), alignedSubject(aln[num]))
     ind <- sum(str_count(as.character(patt),"-"))
     data.frame(
-      sid = df.sequences[seq1,]$sid,
+      seqid = df.sequences[seq1,]$seqid,
       hapseq = as.character(patt)[2],
       refseq = as.character(patt)[1],
       refid = names(patt)[1],
@@ -328,13 +328,11 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     }
 
     data.frame(
-      sid = df_aln[seq1, ]$sid,
+      seqid = df_aln[seq1, ]$seqid,
       refid = df_aln[seq1, ]$refid,
       asv_prime = as.character(asv_prime)
     )
   }
-
-  # df_seqs <- inner_join(df_aln, df_masked, by = c("original", "refid", "refseq", "hapseq"))
 
   seqtab.nochim.df <- tibble::rownames_to_column(as.data.frame(t(seqtab.nochim)), "sequences") %>%
     inner_join(df.sequences, by = c("sequences")) %>%
@@ -342,31 +340,32 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
   df_seqs <- df_aln %>%
     ungroup() %>%
-    select(sid, refid) %>%
+    select(seqid, refid) %>%
     distinct() %>%
     inner_join(
       df_masked %>%
-        select(sid, refid, asv_prime) %>%
+        select(seqid, refid, asv_prime) %>%
         distinct()
-      , by = c("sid", "refid"))
+      , by = c("seqid", "refid")) %>%
+    select(-c(refid)) %>%
+    distinct()
 
   seqtab.nochim.df <- df_seqs %>%
-    inner_join(seqtab.nochim.df, by = c("sid")) %>%
-    group_by(sid, refid, asv_prime) %>%
+    inner_join(seqtab.nochim.df, by = c("seqid")) %>%
+    select(-c(seqid)) %>%
+    group_by(asv_prime) %>%
     summarise(across(everything(), sum)) %>%
-    ungroup() %>%
-    select(-c(sid,refid))
+    ungroup()
 
   seqtab.nochim.df <- as.data.frame(seqtab.nochim.df)
   rownames(seqtab.nochim.df) <- seqtab.nochim.df$asv_prime
-  seqtab.nochim.df <- seqtab.nochim.df %>% select(-c(asv_prime))
+  seqtab.nochim.df$asv_prime <- NULL
 
   seqtab.nochim.df <- as.data.frame(t(seqtab.nochim.df))
 
   seqtab.nochim.df <- tibble::rownames_to_column(seqtab.nochim.df, "sample")
   seqtab.nochim.df <- seqtab.nochim.df %>% arrange(sample)
   seqtab.nochim.df[seqtab.nochim.df==0]=NA
-
 
 } else {
   seqtab.nochim.df = as.data.frame(seqtab.nochim)
