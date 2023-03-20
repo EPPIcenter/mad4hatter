@@ -248,7 +248,9 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
       vb <- NULL
       for (i in 1:length(dna_ranges)) {
-        vb <- c(vb, sum(as.vector(seq_1[dna_ranges[i]]) %in% dna_base) > args$homopolymer_threshold)
+        ss <- seq_1[dna_ranges[i]]
+        kss <- as.character(ss)
+        vb <- c(vb, str_count(kss, dna_base) > args$homopolymer_threshold)
       }
 
       mask_ranges <- append(mask_ranges, dna_ranges[vb])
