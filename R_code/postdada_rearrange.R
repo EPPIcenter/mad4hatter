@@ -24,7 +24,7 @@ library(tidyr)
 library(doMC)
 library(tibble)
 
-# setwd("/home/bpalmer/Documents/work/40/89430c6f5af365c6621c792090c937")
+# setwd("/home/bpalmer/Documents/work/3b/2f45cdef9ecf04a25a2d14114cfb8c")
 # # FOR DEBUGGING
 # args <- list()
 # args$homopolymer_threshold <- 5
@@ -339,7 +339,8 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   ## this is a workaround due the large memory usage of the seqtab.nochim object
   df_collapsed <- df_masked %>%
     group_by(asv_prime) %>%
-    mutate(seqid = paste(c(seqid), collapse = ";"))
+    mutate(seqid = paste(c(seqid), collapse = ";")) %>%
+    distinct()
 
   seqtab.nochim.df <- foreach (idx = 1:nrow(df_collapsed), .combine = "cbind") %dopar% {
     aln <- df_collapsed[idx,]
