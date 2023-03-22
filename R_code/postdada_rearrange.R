@@ -342,15 +342,20 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     mutate(seqid = paste(c(seqid), collapse = ";")) %>%
     distinct()
 
-  seqtab.nochim.df <- foreach (idx = 1:nrow(df_collapsed), .combine = "cbind") %dopar% {
+  ## replace sequences in seqtab.nochim matrix with seqids to use less memory
+  colnames(seqtab.nochim) <- df.sequences$seqid
+
+  seqtab.nochim.df <- foreach (idx = 1:nrow(df_collapsed), .combine = "cbind") %do% {
+    
     aln <- df_collapsed[idx,]
     seqids <- unlist(strsplit(aln$seqid, ";"))
-    seqs <- filter(df.sequences, seqid %in% seqids)
-    df <- as.data.frame(seqtab.nochim[, seqs$sequences])
+    seqs <- df.sequences[df.sequences$seqid %in% seqids,]
+    df <- as.data.frame(seqtab.nochim[, seqs$seqid])
     counts <- as.data.frame(rowSums(df))
     colnames(counts) <- aln$asv_prime
     return(counts)
   }
+
   seqtab.nochim.df$sample <- rownames(seqtab.nochim.df)
   rownames(seqtab.nochim.df) <- NULL
   seqtab.nochim.df <- seqtab.nochim.df %>% arrange(sample)
