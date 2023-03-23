@@ -24,8 +24,8 @@ library(tidyr)
 library(doMC)
 library(tibble)
 
-
-# FOR DEBUGGING
+# setwd("/home/bpalmer/Documents/work/3b/2f45cdef9ecf04a25a2d14114cfb8c")
+# # FOR DEBUGGING
 # args <- list()
 # args$homopolymer_threshold <- 5
 # args$refseq_fasta <- "v4_refseq.fasta"
@@ -248,7 +248,9 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
       vb <- NULL
       for (i in 1:length(dna_ranges)) {
-        vb <- c(vb, sum(as.vector(seq_1[dna_ranges[i]]) %in% dna_base) > args$homopolymer_threshold)
+        ss <- seq_1[dna_ranges[i]]
+        kss <- as.character(ss)
+        vb <- c(vb, str_count(kss, dna_base) > args$homopolymer_threshold)
       }
 
       mask_ranges <- append(mask_ranges, dna_ranges[vb])
@@ -334,36 +336,28 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     )
   }
 
-  seqtab.nochim.df <- tibble::rownames_to_column(as.data.frame(t(seqtab.nochim)), "sequences") %>%
-    inner_join(df.sequences, by = c("sequences")) %>%
-    select(-c(sequences))
-
-  df_seqs <- df_aln %>%
-    ungroup() %>%
-    select(seqid, refid) %>%
-    distinct() %>%
-    inner_join(
-      df_masked %>%
-        select(seqid, refid, asv_prime) %>%
-        distinct()
-      , by = c("seqid", "refid")) %>%
-    select(-c(refid)) %>%
+  ## this is a workaround due the large memory usage of the seqtab.nochim object
+  df_collapsed <- df_masked %>%
+    group_by(asv_prime) %>%
+    mutate(seqid = paste(c(seqid), collapse = ";")) %>%
     distinct()
 
-  seqtab.nochim.df <- df_seqs %>%
-    inner_join(seqtab.nochim.df, by = c("seqid")) %>%
-    select(-c(seqid)) %>%
-    group_by(asv_prime) %>%
-    summarise(across(everything(), sum)) %>%
-    ungroup()
+  ## replace sequences in seqtab.nochim matrix with seqids to use less memory
+  colnames(seqtab.nochim) <- df.sequences$seqid
 
-  seqtab.nochim.df <- as.data.frame(seqtab.nochim.df)
-  rownames(seqtab.nochim.df) <- seqtab.nochim.df$asv_prime
-  seqtab.nochim.df$asv_prime <- NULL
+  seqtab.nochim.df <- foreach (idx = 1:nrow(df_collapsed), .combine = "cbind") %do% {
+    
+    aln <- df_collapsed[idx,]
+    seqids <- unlist(strsplit(aln$seqid, ";"))
+    seqs <- df.sequences[df.sequences$seqid %in% seqids,]
+    df <- as.data.frame(seqtab.nochim[, seqs$seqid])
+    counts <- as.data.frame(rowSums(df))
+    colnames(counts) <- aln$asv_prime
+    return(counts)
+  }
 
-  seqtab.nochim.df <- as.data.frame(t(seqtab.nochim.df))
-
-  seqtab.nochim.df <- tibble::rownames_to_column(seqtab.nochim.df, "sample")
+  seqtab.nochim.df$sample <- rownames(seqtab.nochim.df)
+  rownames(seqtab.nochim.df) <- NULL
   seqtab.nochim.df <- seqtab.nochim.df %>% arrange(sample)
   seqtab.nochim.df[seqtab.nochim.df==0]=NA
 
