@@ -286,7 +286,6 @@ process DADA2_ANALYSIS {
           --pool ${params.pool} \
           --band-size ${params.band_size} \
           --omega-a ${params.omega_a} \
-          --use-quals ${params.use_quals} \
           --maxEE ${params.maxEE} \
           --concat-non-overlaps
         """

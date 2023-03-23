@@ -60,12 +60,6 @@ pool=switch(
   "pseudo" = "pseudo"
 )
 
-# use_quals=switch(
-#   args$use_quals,
-#   "true" = TRUE,
-#   "false" = FALSE
-# )
-
 dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
 dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
 
