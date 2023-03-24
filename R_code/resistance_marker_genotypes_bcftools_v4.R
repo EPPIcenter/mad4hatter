@@ -1,6 +1,5 @@
 library(tidyverse)
 
-
 args = commandArgs(trailingOnly=T)
 
 alleledata_FILE=args[1]
@@ -66,7 +65,7 @@ refdna_triplet=paste(dna_triplet$V3,collapse="")
 if( gene_strand == "-" )  {refdna_triplet=intToUtf8(rev(utf8ToInt(chartr("ATGC", "TACG", refdna_triplet ))))}   ##Reverse complement the sequence if the gene is in the negative strand##
 if(refdna_triplet!="")   ##Amplicon doesn't span the resistance marker##
 {
-refdna_codon=codontable[which(codontable[,1]==refdna_triplet),3]
+refdna_codon=codontable[which(codontable[,1]==refdna_triplet),2]
 mat_refcodon[allele_name,resmarker]=refdna_codon
 }
 
@@ -74,7 +73,7 @@ altdna_triplet=paste(dna_triplet$V5,collapse="")
 if( gene_strand == "-" )  {altdna_triplet=intToUtf8(rev(utf8ToInt(chartr("ATGC", "TACG", altdna_triplet ))))}   ##Reverse complement the sequence if the gene is in the negative strand##
 if(altdna_triplet!="")   ##Amplicon doesn't span the resistance marker##
 {
-altdna_codon=codontable[which(codontable[,1]==altdna_triplet),3]
+altdna_codon=codontable[which(codontable[,1]==altdna_triplet),2]
 mat_altcodon[allele_name,resmarker]=altdna_codon
 }
 
@@ -137,7 +136,7 @@ samplealleles=alleledata %>% filter(sampleID %in% sampleslist[dd1]) %>% select(a
 indmatch=which(rownames(mat_altcodon_haps) %in% samplealleles$allele)
 if(length(indmatch) > 0)
 {
-sample_altcodon_haps[dd1,]=mat_altcodon_haps[indmatch,] %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=""]),collapse=","))) 
+sample_altcodon_haps[dd1,]=mat_altcodon_haps[indmatch,] %>%  dplyr::summarise(across(everything(), ~ paste((.x[.x!=""]),collapse="_"))) 
 
 temp2_alt_haps_reads=samplealleles[rep(2, each = ncol(mat_altcodon_haps))]
 colnames(temp2_alt_haps_reads)=colnames(mat_altcodon_haps)
@@ -145,13 +144,38 @@ rownames(temp2_alt_haps_reads)=samplealleles$allele
 temp2_alt_haps_reads=temp2_alt_haps_reads %>% dplyr::filter(rownames(temp2_alt_haps_reads) %in% rownames(mat_altcodon_haps))
 gg1=mat_altcodon_haps %>% dplyr::filter(rownames(mat_altcodon_haps) %in% samplealleles$allele) %>% mutate_all(~ case_when(. != "" ~ 1, TRUE ~ 0)) %>% data.frame()
 temp2_alt_haps_reads2=temp2_alt_haps_reads*as.numeric(unlist(gg1)) 
-temp2_alt_haps_reads2=temp2_alt_haps_reads2 %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=0]),collapse=","))) 
+temp2_alt_haps_reads2=temp2_alt_haps_reads2 %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=0]),collapse="_"))) 
 rownames(temp2_alt_haps_reads2)=sampleslist[dd1]
 sample_altcodon_haps_reads[dd1,]=temp2_alt_haps_reads2
 
 }
 }
 
+##########################################within column operations
+ rownames(sample_altcodon_haps)=sampleslist
+ sample_altcodon_haps <- rownames_to_column(sample_altcodon_haps, "SampleName")
+ 
+ rownames(sample_altcodon_haps_reads)=sampleslist
+ sample_altcodon_haps_reads <- rownames_to_column(sample_altcodon_haps_reads, "SampleName")
+ 
+ df_new<-pivot_longer(sample_altcodon_haps, X1:rev(names(sample_altcodon_haps))[1], values_to = 'string') %>%
+   left_join(pivot_longer(sample_altcodon_haps_reads, X1:rev(names(sample_altcodon_haps_reads))[1])) %>%
+   separate_rows(c(string, value), sep = '_', convert = TRUE) %>% 
+   summarise(value = sum(value), .by = c(SampleName, name, string)) %>% 
+   pivot_wider(id_cols = SampleName, values_from = c(string, value), 
+               values_fn = ~ str_c(.x, collapse = '_')) %>%
+   select(SampleName, everything())
+ 
+ haps1<-df_new[2:which( colnames(df_new)== paste("string", rev(names(sample_altcodon_haps))[1], sep="_"))]
+ colnames(haps1)<-colnames(sample_altcodon_haps[,-1])
+ sample_altcodon_haps<-as.data.frame(haps1)
+ 
+ hapsreads1<-df_new[ (which( colnames(df_new)== paste("string", rev(names(sample_altcodon_haps))[1], sep="_"))+1):length(colnames(df_new))]
+ colnames(hapsreads1)<-colnames(sample_altcodon_haps_reads[,-1])
+ sample_altcodon_haps_reads<-as.data.frame(hapsreads1)
+ #####################################
+ 
+ 
 rownames(sample_altcodon_haps)=sampleslist
 colnames(sample_altcodon_haps)=colnames(mat_altcodon_haps)
 sample_altcodon_haps <- rownames_to_column(sample_altcodon_haps, "SampleName")
@@ -161,8 +185,15 @@ colnames(sample_altcodon_haps_reads)=colnames(mat_altcodon_haps)
 sample_altcodon_haps_reads <- rownames_to_column(sample_altcodon_haps_reads, "SampleName")
 
 sample_altcodon_haps_FINAL=sample_altcodon_haps
-sample_altcodon_haps_FINAL[-1] <- sprintf('%s (%s)', as.matrix(sample_altcodon_haps[-1]), as.matrix(sample_altcodon_haps_reads[-1]))
-sample_altcodon_haps_FINAL=sample_altcodon_haps_FINAL %>%  mutate_all(funs(str_replace_all(., "\\(\\)", "")))
+sample_altcodon_haps_FINAL[-1] <- sprintf('%s [%s]', as.matrix(sample_altcodon_haps[-1]), as.matrix(sample_altcodon_haps_reads[-1]))
+sample_altcodon_haps_FINAL=sample_altcodon_haps_FINAL %>%  mutate_all(funs(str_replace_all(., "\\[\\]", "")))
+
+################################ final formatting
+colnames(sample_altcodon_haps_FINAL) <- gsub("\\.", "_", colnames(sample_altcodon_haps_FINAL)) #remove ref name in colnames
+colnames(sample_altcodon_haps_FINAL) <- gsub("_ts_", "_", gsub("", "", colnames(sample_altcodon_haps_FINAL))) #remove ts from dhfrts in colnames 
+#sample_altcodon_haps_FINAL <- sample_altcodon_haps_FINAL[,c(-3,-4,-8,-9,-10,-11)] #filter out non-useful haplotypes. COMMENT THIS LINE IF YOU DON'T WANNA REMOVE ANYTHING
+sample_altcodon_haps_FINAL[] <- lapply(sample_altcodon_haps_FINAL, function(x) gsub("\\[NA\\]", "", x))
+################################
 
 write.table(sample_altcodon_haps_FINAL,file="resmarkers_haplotype_summary.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
@@ -175,10 +206,7 @@ sampleslist=unique(alleledata$sampleID)
 
 sample_refcodon=""
 sample_altcodon=""
-
 sample_altcodon_reads=""
-
-
 
 ##Loop over each sample##
 
@@ -187,12 +215,12 @@ for(kk in 1:length(sampleslist))
 samplealleles=alleledata %>% filter(sampleID %in% sampleslist[kk]) %>% select(allele,reads) %>% data.frame()  ##Alleles for the sample##
 
 ##Ref Allele##
-temp2_ref=mat_refcodon %>% dplyr::filter(rownames(mat_refcodon) %in% samplealleles$allele) %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=""]),collapse=","))) 
+temp2_ref=mat_refcodon %>% dplyr::filter(rownames(mat_refcodon) %in% samplealleles$allele) %>%  dplyr::summarise(across(everything(), ~ paste((.x[.x!=""]),collapse="_"))) 
 rownames(temp2_ref)=sampleslist[kk]
 sample_refcodon=rbind(sample_refcodon,temp2_ref)
 
 ##Observed Allele##
-temp2_alt=mat_altcodon %>% dplyr::filter(rownames(mat_altcodon) %in% samplealleles$allele) %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=""]),collapse=","))) 
+temp2_alt=mat_altcodon %>% dplyr::filter(rownames(mat_altcodon) %in% samplealleles$allele) %>%  dplyr::summarise(across(everything(), ~ paste((.x[.x!=""]),collapse="_"))) 
 rownames(temp2_alt)=sampleslist[kk]
 sample_altcodon=rbind(sample_altcodon,temp2_alt)
 
@@ -201,10 +229,34 @@ colnames(temp2_alt_reads)=colnames(mat_altcodon)
 rownames(temp2_alt_reads)=samplealleles$allele
 gg2=mat_altcodon %>% dplyr::filter(rownames(mat_altcodon) %in% samplealleles$allele) %>% mutate_all(~ case_when(. != "" ~ 1, TRUE ~ 0)) %>% data.frame()
 temp2_alt_reads2=temp2_alt_reads*as.numeric(unlist(gg2)) 
-temp2_alt_reads2=temp2_alt_reads2 %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=0]),collapse=","))) 
+temp2_alt_reads2=temp2_alt_reads2 %>%  dplyr::summarise(across(everything(), ~ paste((.x[.x!=0]),collapse="_"))) 
 rownames(temp2_alt_reads2)=sampleslist[kk]
 sample_altcodon_reads=rbind(sample_altcodon_reads,temp2_alt_reads2)
 }
+
+
+##########################################within column operations
+colnames_to_use<- colnames(sample_altcodon)
+
+sample_altcodon$SampleName<-rownames(sample_altcodon)
+sample_altcodon_reads$SampleName<-rownames(sample_altcodon_reads)
+
+df_new<-pivot_longer(sample_altcodon, colnames_to_use, values_to = 'string') %>%
+  left_join(pivot_longer(sample_altcodon_reads, colnames_to_use)) %>%
+  separate_rows(c(string, value), sep = '_', convert = TRUE) %>% 
+  summarise(value = sum(value), .by = c(SampleName, name, string)) %>% 
+  pivot_wider(id_cols = SampleName, values_from = c(string, value), 
+              values_fn = ~ str_c(.x, collapse = '_')) %>%
+  select(SampleName, everything())
+
+alt1<-df_new[2:70]
+colnames(alt1)<-colnames(sample_altcodon[,-1])
+sample_altcodon<-as.data.frame(alt1)
+
+altreads1<-df_new[71:length(colnames(df_new))]
+colnames(altreads1)<-colnames(sample_altcodon_reads[,-1])
+sample_altcodon_reads<-as.data.frame(altreads1)
+#####################################
 
 sample_refcodon=sample_refcodon[-1,]
 colnames(sample_refcodon)=res_markers_info$V5
@@ -219,14 +271,14 @@ colnames(sample_altcodon_reads)=res_markers_info$V5
 sample_altcodon_reads <- rownames_to_column(sample_altcodon_reads, "SampleName") %>% data.frame()
 
 sample_altcodon_FINAL=sample_altcodon
-sample_altcodon_FINAL[-1] <- sprintf('%s (%s)', as.matrix(sample_altcodon[-1]), as.matrix(sample_altcodon_reads[-1]))
-sample_altcodon_FINAL=sample_altcodon_FINAL %>%  mutate_all(funs(str_replace_all(., "\\(\\)", "")))
+sample_altcodon_FINAL[-1] <- sprintf('%s [%s]', as.matrix(sample_altcodon[-1]), as.matrix(sample_altcodon_reads[-1]))
+sample_altcodon_FINAL=sample_altcodon_FINAL %>%  mutate_all(funs(str_replace_all(., "\\[\\]", "")))
+
+################################ final formatting
+colnames(sample_altcodon_FINAL) <- gsub("\\.", "_", gsub("^[^.]*\\.", "", colnames(sample_altcodon_FINAL))) #remove ref name in colnames
+colnames(sample_altcodon_FINAL) <- gsub("_ts_", "_", gsub("", "", colnames(sample_altcodon_FINAL))) #remove ts from dhfrts in colnames 
+sample_altcodon_FINAL[] <- lapply(sample_altcodon_FINAL, function(x) gsub("\\[NA\\]", "", x))
+sample_altcodon_FINAL$SampleName=sampleslist
+################################
 
 write.table(sample_altcodon_FINAL,file="resmarkers_summary.txt",quote=F,sep="\t",col.names=T,row.names=F)
-
-
-
-
-
-
-

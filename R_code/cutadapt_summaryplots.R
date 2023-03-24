@@ -56,12 +56,17 @@ p1=ggplot(data=df, aes(x=NumReads+0.1)) +
   ylab("Frequency") + 
   ggtitle("\nNumber of Reads/Amplicon") + 
   theme_bw() + 
-  theme(axis.text.x = element_text(size = 6)) + 
   theme(plot.title = element_text(hjust = 0.5)) + 
   facet_wrap(~SampleName,ncol=6) + 
-  theme(strip.text.x = element_text(size = 7)) +
+  theme(plot.title = element_text(hjust = 0.5, size=25)) + 
+  theme(strip.text.x = element_text(size = 25)) +
+  theme(axis.text.x = element_text(size = 25)) + 
+  theme(axis.text.y = element_text(size = 25)) + 
+  theme(axis.title.x = element_text(size = 25))+
+  theme(axis.title.y = element_text(size = 25))+
   scale_y_log10()
 
+ggsave(file="quality_report/reads_histograms.pdf", width=40, height=60, dpi=300, limitsize = FALSE)
 
 
 #Boxplot#
@@ -89,29 +94,42 @@ p2b=ggplot( data=df %>% dplyr::filter(SampleName %in% samples_group2),aes(x=Samp
 df2=df
 df2$NumReads[which(df$NumReads == 0)]=0.1  
 p3=ggplot(df2) +   
-  ggbeeswarm::geom_quasirandom(aes(x=1,y=NumReads,color = Pool),dodge.width = 0.5,size=0.5)+
+  ggbeeswarm::geom_quasirandom(aes(x=1,y=NumReads,color = Pool),dodge.width = 0.5,size=3)+
   scale_y_log10()+
   facet_wrap(~SampleName,ncol=6)+
   theme_bw() +
   xlab("")+
   theme(axis.text.x = element_blank(),axis.ticks = element_blank())+
   geom_hline(yintercept = 100,linetype="dashed",color = "grey")+
-  theme(strip.text.x = element_text(size = 7))+
-  theme(legend.position = "bottom")
+  theme(strip.text.x = element_text(size = 25))+
+  theme(axis.text.y = element_text(size = 25)) + 
+  theme(axis.title.y = element_text(size = 25))+
+  theme(plot.title = element_text(hjust = 0.5, size=30)) + 
+  theme(legend.text = element_text(size = 25), 
+        legend.title = element_text(size = 25), 
+        legend.position="bottom")
 
+ggsave(file="quality_report/swarm_plots.pdf", width=60, height=160, dpi=300, limitsize=FALSE)
 
 #Length vs. NumReads#
 df1=df %>% left_join(ampdata,by = c("Amplicon" = "amplicon")) %>% select(SampleName,Amplicon,NumReads,ampInsert_length,Pool) %>% data.frame()
 p4=ggplot(df1,aes(x=ampInsert_length,y=NumReads+0.1,color = Pool)) + ggtitle("Amplicon Length vs. NumReads") + 
-  geom_point(alpha=0.9,size=0.5) + 
+  geom_point(alpha=0.9,size=2.5) + 
   scale_y_log10()+
   xlab("Amplicon Insert Length") + 
   theme_bw() + 
-  theme(axis.text.y  = element_text(size = 7)) + 
-  theme(plot.title = element_text(hjust = 0.5)) + 
   facet_wrap(~SampleName,ncol=6) + 
-  theme(strip.text.x = element_text(size = 7))+
-  theme(legend.position = "bottom")
+  theme(strip.text.x = element_text(size = 25))+
+  theme(axis.text.x = element_text(size = 25)) + 
+  theme(axis.text.y = element_text(size = 25)) + 
+  theme(axis.title.x = element_text(size = 25))+
+  theme(axis.title.y = element_text(size = 20))+
+  theme(plot.title = element_text(hjust = 0.5, size=30)) + 
+  theme(legend.text = element_text(size = 25), 
+        legend.title = element_text(size = 25), 
+        legend.position="bottom") 
+
+ggsave(file="quality_report/length_vs_reads.pdf", width=60, height=200, dpi=300, limitsize=FALSE)
 
 #pdf(paste(outDIR,"/QCplots.pdf",sep=""), onefile = TRUE)
 #grid.arrange(p1,p2a,p2b,p3,p4)
