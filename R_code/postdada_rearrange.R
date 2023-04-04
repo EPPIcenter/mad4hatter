@@ -67,7 +67,6 @@ for(i in seq(1,length(loci))){
 allele.data = seqtab.nochim.df %>%
   left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
   group_by(sampleID,locus,allele) %>%
-  mutate(norm.reads.allele = reads/sum(reads))%>%
   group_by(sampleID,locus) %>%
   mutate(norm.reads.locus = reads/sum(reads))%>%
   mutate(n.alleles = n())
@@ -397,7 +396,6 @@ for(i in seq(1,length(loci))){
 allele.data = seqtab.nochim.df %>%
   left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
   group_by(sampleID,locus,allele) %>%
-  mutate(norm.reads.allele = reads/sum(reads))%>%
   group_by(sampleID,locus) %>%
   mutate(norm.reads.locus = reads/sum(reads))%>%
   mutate(n.alleles = n())
