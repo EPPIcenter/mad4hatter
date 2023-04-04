@@ -12,8 +12,8 @@ ampliconFILE=args[3]
 outDIR=args[4]
 
 
-df=read.table(summaryFILE,header=F)
-colnames(df)=c("SampleName","Amplicon","NumReads")
+
+df=read.table(summaryFILE,header=T)
 df$SampleName=as.factor(df$SampleName)
 df$Amplicon=as.factor(df$Amplicon)
 df = df %>% 
@@ -31,10 +31,10 @@ df$SampleName=factor(df$SampleName,levels=unique(samples$SampleName))
 amplicon_stats=df %>% select(-Pool) %>% pivot_wider(names_from = Amplicon, values_from = NumReads) %>% data.frame()
 write.table(amplicon_stats, file=paste(outDIR,"/amplicon_stats.txt",sep=""), quote=F, sep ="\t", col.names=T, row.names=F)
 
-df1=read.delim(samplestatFILE,header=F)
+df1=read.delim(samplestatFILE,header=T)
 sample_stats=df1 %>% 
-  pivot_wider(names_from = V2, values_from = V3) %>% 
-  dplyr::rename(SampleName = V1) %>% data.frame() %>% 
+  pivot_wider(names_from = X, values_from = NumReads) %>%
+  data.frame() %>%
   mutate(SampleNumber=sapply(str_split(SampleName,'_S'),tail,1)) %>%
   mutate(SampleName=sapply(str_split(SampleName,'_S(\\d+)'),head,1))
 sample_stats$SampleName=factor(sample_stats$SampleName,

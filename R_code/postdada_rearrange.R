@@ -406,11 +406,11 @@ write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.
 ## QC Postprocessing
 
 if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
-  sample.coverage <- read.table(args$sample_coverage, header = FALSE, sep = "\t") %>%
-    pivot_wider(names_from = V2, values_from = V3)
+  sample.coverage <- read.table(args$sample_coverage, header = TRUE, sep = "\t") %>%
+    pivot_wider(names_from = "X", values_from = "NumReads")
 
   qc.postproc <- allele.data %>%
-    left_join(sample.coverage, by = c("sampleID" = "V1")) %>%
+    left_join(sample.coverage, by = c("sampleID" = "SampleName")) %>%
     group_by(sampleID) %>%
     select(sampleID, Input, `No Dimers`, Amplicons, reads) %>%
     group_by(sampleID) %>%
@@ -419,21 +419,23 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
     distinct() %>%
     pivot_longer(cols = c(Input, `No Dimers`, Amplicons, Amplicons.Pf))
 
-  write.table(qc.postproc, quote=F,sep='\t',col.names = F, row.names = F, file = args$sample_coverage)
+  colnames(qc.postproc) <- c("SampleName","","NumReads")
+  write.table(qc.postproc, quote=F,sep='\t',col.names = TRUE, row.names = F, file = args$sample_coverage)
 }
 
 if (!is.null(args$amplicon_coverage) && file.exists(args$amplicon_coverage)) {
-  amplicon.coverage <- read.table(args$amplicon_coverage, header = FALSE, sep = "\t")
+  amplicon.coverage <- read.table(args$amplicon_coverage, header = TRUE, sep = "\t")
 
   qc.postproc <- allele.data %>%
     group_by(sampleID, locus) %>%
     summarise(
       Amplicons.Pf = sum(reads)
     ) %>%
-    inner_join(amplicon.coverage, by = c("sampleID" = "V1", "locus" = "V2")) %>%
-    select(sampleID, locus, V3, Amplicons.Pf)
+    inner_join(amplicon.coverage, by = c("sampleID" = "SampleName", "locus" = "Amplicon")) %>%
+    select(sampleID, locus, NumReads, Amplicons.Pf) %>%
+    dplyr::rename(SampleName = sampleID, Amplicon = locus, NumReads.Pf = Amplicons.Pf)
 
-  write.table(qc.postproc, quote=F,sep='\t',col.names = F, row.names = F, file = args$amplicon_coverage)
+  write.table(qc.postproc, quote=F,sep='\t',col.names = TRUE, row.names = F, file = args$amplicon_coverage)
 }
 
 ## get memory footprint of environment
