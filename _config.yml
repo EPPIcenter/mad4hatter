@@ -13,7 +13,7 @@
 # you will see them accessed via {{ site.title }}, {{ site.email }}, and so on.
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
-title: MAD4HATTER
+title: mad4hatter
 email: your-email@example.com
 description: >- # this means to ignore newlines until "baseurl:"
   Write an awesome description for your new site here. You can edit this
@@ -26,10 +26,13 @@ github_username:  jekyll
 
 # Build settings
 markdown: GFM
-remote_theme: "pmarsceill/just-the-docs"
+remote_theme: "just-the-docs/just-the-docs@v0.4.2"
 plugins:
   - jekyll-default-layout
   - jekyll-seo-tag
+
+logo: "logo.svg"
+permalink: pretty
 
 # Exclude from processing.
 # The following items will not be processed, by default. Create a custom list

@@ -10,9 +10,8 @@ source "https://rubygems.org"
 # Happy Jekylling!
 
 # This is the default theme for new Jekyll sites. You may change this to anything you like.
-gem "jekyll-default-layout", group: :jekyll_plugins
-gem "jekyll-seo-tag", group: :jekyll_plugins
-gem "just-the-docs", group: :jekyll_plugins
+gem "jekyll-default-layout"
+gem "jekyll-seo-tag"
 
 # If you want to use GitHub Pages, remove the "gem "jekyll"" above and
 # uncomment the line below. To upgrade, run `bundle update github-pages`.
