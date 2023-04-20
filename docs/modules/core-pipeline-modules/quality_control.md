@@ -1,8 +1,9 @@
 ---
 layout: page
 title: Quality Control
-permalink: /mad4hatter/quality-control/
-nav_order: 2
+permalink: /mad4hatter/modules/core-pipeline/quality-control/
+nav_order: 1
+parent: Core Pipeline Modules
 ---
 
 # Quality Control

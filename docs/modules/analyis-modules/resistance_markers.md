@@ -1,8 +1,9 @@
 ---
 layout: page
 title: Resistance Markers
-permalink: /mad4hatter/resistance-markers/
-nav_order: 5
+permalink: /mad4hatter/modules/analysis/resistance-markers/
+nav_order: 1
+parent: Analysis Modules
 ---
 
 # Resistance markers
@@ -15,7 +16,7 @@ A table with resistance markers as well as a table with natural haplotypes (resi
 
 Whenever multiple variants for a given resistance marker are found in the same sample, they are separated by `_` and the reference variant is presented first followed by the alternate variants. This also applies to the read counts. Cells remain blank if no resistance marker was found.
 
-Nomenclature of resistance markers can be broken down into name of the gene gene and amino acid position of the marker. For instance, for `dhfr_16`, `dhfr` is the gene and `16` is the amino acid position.
+Nomenclature of resistance markers can be broken down into name of the gene and amino acid position of the marker. For instance, for `dhfr_16`, `dhfr` is the gene and `16` is the amino acid position.
 
 ### resmarkers_summary.txt
 

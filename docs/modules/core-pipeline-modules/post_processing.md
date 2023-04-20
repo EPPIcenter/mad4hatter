@@ -1,13 +1,20 @@
 ---
 layout: page
 title: Post-Processing
-permalink: /mad4hatter/post-processing/
-nav_order: 4
+permalink: /mad4hatter/modules/core-pipeline/post-processing/
+nav_order: 3
+parent: Core Pipeline Modules
 ---
 
 # Post-Processing
 
-This module will calculate sample and amplicon coverage from your demultiplexed reads. 
+This module rearranges the counts matrix produced from [sequence inference](https://eppicenter.github.io/mad4hatter/modules/core-pipeline/seq-inference) and filters out sequences that do not map to *Plasmodium falciparum*. Users have the option to additionally mask regions of low complexity that are known to cause sequencing error, and can cause spurious output reducing precision. 
+
+## Parameters
+
+Below are a table of parameters that the user can use to control the filtration threshold of off target sequences in the data, and to control how much masking of low complexity regions should occur.
+
+|Parameter|Description|
 
 ## File Outputs
 

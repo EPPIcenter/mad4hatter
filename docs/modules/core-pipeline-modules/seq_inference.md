@@ -1,8 +1,9 @@
 ---
 layout: page
 title: Sequence Inference
-permalink: /mad4hatter/seq-inference/
-nav_order: 3
+permalink: /mad4hatter/modules/core-pipeline/seq-inference/
+nav_order: 2
+parent: Core Pipeline Modules
 ---
 
 # Sequence Inference
