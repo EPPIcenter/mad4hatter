@@ -31,6 +31,9 @@ df$SampleName=factor(df$SampleName,levels=unique(samples$SampleName))
 amplicon_stats=df %>% select(-Pool) %>% pivot_wider(names_from = Amplicon, values_from = NumReads) %>% data.frame()
 write.table(amplicon_stats, file=paste(outDIR,"/amplicon_stats.txt",sep=""), quote=F, sep ="\t", col.names=T, row.names=F)
 
+sample_amplicon_stats=df %>% group_by(SampleName,Pool) %>% dplyr::summarise(medianReads=median(NumReads)) %>% pivot_wider(names_from = Pool, values_from = medianReads) %>% data.frame()
+colnames(sample_amplicon_stats)=c("SampleName","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
+
 df1=read.delim(samplestatFILE,header=T)
 sample_stats=df1 %>% 
   pivot_wider(names_from = X, values_from = NumReads) %>%
@@ -147,7 +150,7 @@ currentDate <- Sys.Date()
 #rmd_file=paste(outDIR,"/QCplots.Rmd",sep="")
 rmd_file=paste(outDIR,"QCplots.Rmd",sep='/')
 file.create(rmd_file)
-p=list(sample_stats,p1,p3,p4)
+p=list(sample_stats,sample_amplicon_stats,p1,p3,p4)
 
 file <- tempfile()
 saveRDS(p, file)
@@ -158,6 +161,7 @@ currentDate,
 "\noutput: html_document\n---\n")) %>% write_lines(rmd_file)
 #c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nlapply(plot_list,print)\n```") %>% write_lines(rmd_file,append=T)
 c("```{r echo=FALSE, results=\'asis\', message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nknitr::kable(plot_list[1], caption=\"Cutadapt Sample Statistics\")\n```") %>% write_lines(rmd_file,append=T)
-c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list[c(2:4)]\n```") %>% write_lines(rmd_file,append=T)
+c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nknitr::kable(plot_list[2], caption=\"Sample Median Reads per Pool\")\n```") %>% write_lines(rmd_file,append=T)
+c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list[-c(1,2)]\n```") %>% write_lines(rmd_file,append=T)
 
     rmarkdown::render(rmd_file, params = list(file=file, output_file = html_document()))
