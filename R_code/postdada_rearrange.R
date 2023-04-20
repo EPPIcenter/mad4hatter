@@ -8,7 +8,10 @@ parser$add_argument('--masked-fasta', type="character")
 parser$add_argument('--dada2-output', type="character", required = TRUE)
 parser$add_argument('--alignment-threshold', type="integer", default = 60)
 parser$add_argument('--parallel', action='store_true')
-parser$add_argument('--n-cores', type = 'integer', default = -1)
+parser$add_argument('--n-cores', type = 'integer', default = -1, help = "Number of cores to use. Ignored if running parallel flag is unset.")
+parser$add_argument('--sample-coverage', type="character", help = "Sample coverage file from QC to append sample coverage statistics that are P. falciparum specific.")
+parser$add_argument('--amplicon-coverage', type="character", help = "Amplicon coverage file from QC to append amplicon coverage statistics that are P. falciparum specific.")
+
 
 args <- parser$parse_args()
 print(args)
@@ -64,7 +67,6 @@ for(i in seq(1,length(loci))){
 allele.data = seqtab.nochim.df %>%
   left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
   group_by(sampleID,locus,allele) %>%
-  mutate(norm.reads.allele = reads/sum(reads))%>%
   group_by(sampleID,locus) %>%
   mutate(norm.reads.locus = reads/sum(reads))%>%
   mutate(n.alleles = n())
@@ -394,7 +396,6 @@ for(i in seq(1,length(loci))){
 allele.data = seqtab.nochim.df %>%
   left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
   group_by(sampleID,locus,allele) %>%
-  mutate(norm.reads.allele = reads/sum(reads))%>%
   group_by(sampleID,locus) %>%
   mutate(norm.reads.locus = reads/sum(reads))%>%
   mutate(n.alleles = n())
@@ -402,7 +403,43 @@ allele.data = seqtab.nochim.df %>%
 saveRDS(allele.data,file="allele_data.RDS")
 write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
-# get memory footprint of environment
+## QC Postprocessing
+
+if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
+  sample.coverage <- read.table(args$sample_coverage, header = TRUE, sep = "\t") %>%
+    pivot_wider(names_from = "X", values_from = "NumReads")
+
+  qc.postproc <- allele.data %>%
+    left_join(sample.coverage, by = c("sampleID" = "SampleName")) %>%
+    group_by(sampleID) %>%
+    select(sampleID, Input, `No Dimers`, Amplicons, reads) %>%
+    group_by(sampleID) %>%
+    mutate(Amplicons.Pf = sum(reads)) %>%
+    select(-c(reads)) %>%
+    distinct() %>%
+    pivot_longer(cols = c(Input, `No Dimers`, Amplicons, Amplicons.Pf))
+
+  colnames(qc.postproc) <- c("SampleName","","NumReads")
+  write.table(qc.postproc, quote=F,sep='\t',col.names = TRUE, row.names = F, file = args$sample_coverage)
+}
+
+if (!is.null(args$amplicon_coverage) && file.exists(args$amplicon_coverage)) {
+  amplicon.coverage <- read.table(args$amplicon_coverage, header = TRUE, sep = "\t")
+
+  qc.postproc <- allele.data %>%
+    group_by(sampleID, locus) %>%
+    summarise(
+      Amplicons.Pf = sum(reads)
+    ) %>%
+    inner_join(amplicon.coverage, by = c("sampleID" = "SampleName", "locus" = "Amplicon")) %>%
+    select(sampleID, locus, NumReads, Amplicons.Pf) %>%
+    dplyr::rename(SampleName = sampleID, Amplicon = locus, NumReads.Pf = Amplicons.Pf)
+
+  write.table(qc.postproc, quote=F,sep='\t',col.names = TRUE, row.names = F, file = args$amplicon_coverage)
+}
+
+## get memory footprint of environment
+
 out <- as.data.frame(sort( sapply(ls(),function(x){object.size(get(x))})))
 colnames(out) <- "bytes"
 out <- out %>% dplyr::mutate(MB = bytes / 1e6, GB = bytes / 1e9)
