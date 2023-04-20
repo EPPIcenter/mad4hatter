@@ -1,16 +1,15 @@
 ---
 layout: default
 title: Core Pipeline Modules
-nav_order: 2
+nav_order: 5
 has_children: true
-permalink: /mad4hatter/modules/core-pipeline/
 ---
 
 # Core Pipeline Modules
 
 The mad4hatter amplicon sequencing pipeline is composed of multiple core modules to filter and correct demultiplexed reads to accurately and precisely identify variants in sequencing data.
 
-The following provides a brief synopsis of each module. Each module also has a dedicated page that can be accessed by the table of contents or in the side panel.
+The following provides a brief synopsis of each module. More information can be found by visiting each modules respective pages.
 
 ## Adapter Removal
 

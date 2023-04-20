@@ -25,7 +25,7 @@ twitter_username: jekyllrb
 github_username:  jekyll
 
 # Build settings
-markdown: GFM
+markdown: kramdown
 remote_theme: "just-the-docs/just-the-docs@v0.4.2"
 plugins:
   - jekyll-default-layout
@@ -33,6 +33,14 @@ plugins:
 
 logo: "logo.svg"
 permalink: pretty
+callouts:
+  warning:
+    title: Warning
+    color: red
+  note:
+    title: Note
+    color: purple
+
 
 # Exclude from processing.
 # The following items will not be processed, by default. Create a custom list

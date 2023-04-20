@@ -1,9 +1,8 @@
 ---
 layout: default
 title: Analysis Modules
-nav_order: 3
+nav_order: 6
 has_children: true
-permalink: /mad4hatter/modules/analysis/
 ---
 
 # Analysis Modules

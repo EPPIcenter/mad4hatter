@@ -1,7 +1,6 @@
 ---
 layout: page
 title: Resistance Markers
-permalink: /mad4hatter/modules/analysis/resistance-markers/
 nav_order: 1
 parent: Analysis Modules
 ---
