@@ -32,6 +32,9 @@ amplicon_stats=df %>% select(-Pool) %>% pivot_wider(names_from = Amplicon, value
 write.table(amplicon_stats, file=paste(outDIR,"/amplicon_stats.txt",sep=""), quote=F, sep ="\t", col.names=T, row.names=F)
 
 sample_amplicon_stats=df %>% group_by(SampleName,Pool) %>% dplyr::summarise(medianReads=median(NumReads)) %>% pivot_wider(names_from = Pool, values_from = medianReads) %>% data.frame()
+
+loci_stats= df %>% group_by(SampleName) %>% dplyr::summarise(percent_loci_with_100_reads = (sum(NumReads >= 100) / n()) * 100) %>% data.frame()
+
 colnames(sample_amplicon_stats)=c("SampleName","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
 
 df1=read.delim(samplestatFILE,header=T)
@@ -144,13 +147,15 @@ ggsave(file="quality_report/length_vs_reads.pdf", width=60, height=200, dpi=300,
 #ggsave(filename = paste(outDIR,"/QCplots.pdf",sep=""), plot = ml, width = 15, height = 9)
 
 
+
+
 ##RMarkdown report##
 
 currentDate <- Sys.Date()
 #rmd_file=paste(outDIR,"/QCplots.Rmd",sep="")
 rmd_file=paste(outDIR,"QCplots.Rmd",sep='/')
 file.create(rmd_file)
-p=list(sample_stats,sample_amplicon_stats,p1,p3,p4)
+p=list(sample_stats,sample_amplicon_stats,loci_stats,p1,p3,p4)
 
 file <- tempfile()
 saveRDS(p, file)
@@ -162,6 +167,7 @@ currentDate,
 #c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nlapply(plot_list,print)\n```") %>% write_lines(rmd_file,append=T)
 c("```{r echo=FALSE, results=\'asis\', message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nknitr::kable(plot_list[1], caption=\"Cutadapt Sample Statistics\")\n```") %>% write_lines(rmd_file,append=T)
 c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nknitr::kable(plot_list[2], caption=\"Sample Median Reads per Pool\")\n```") %>% write_lines(rmd_file,append=T)
-c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list[-c(1,2)]\n```") %>% write_lines(rmd_file,append=T)
+c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nknitr::kable(plot_list[3], caption=\"Sample Percent of Loci with 100 Reads or More\")\n```") %>% write_lines(rmd_file,append=T)
+c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list[-c(1:3)]\n```") %>% write_lines(rmd_file,append=T)
 
     rmarkdown::render(rmd_file, params = list(file=file, output_file = html_document()))
