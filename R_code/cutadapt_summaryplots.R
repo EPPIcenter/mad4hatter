@@ -32,10 +32,11 @@ amplicon_stats=df %>% select(-Pool) %>% pivot_wider(names_from = Amplicon, value
 write.table(amplicon_stats, file=paste(outDIR,"/amplicon_stats.txt",sep=""), quote=F, sep ="\t", col.names=T, row.names=F)
 
 sample_amplicon_stats=df %>% group_by(SampleName,Pool) %>% dplyr::summarise(medianReads=median(NumReads)) %>% pivot_wider(names_from = Pool, values_from = medianReads) %>% data.frame()
-
-loci_stats= df %>% group_by(SampleName) %>% dplyr::summarise(percent_loci_with_100_reads = (sum(NumReads >= 100) / n()) * 100) %>% data.frame()
-
 colnames(sample_amplicon_stats)=c("SampleName","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
+
+loci_stats = df %>% group_by(SampleName) %>% group_by(SampleName,Pool) %>% dplyr::summarise(n_loci=sum(NumReads >= 100)) %>% pivot_wider(names_from = Pool, values_from = n_loci) %>% data.frame()
+colnames(loci_stats)=c("SampleName","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
+
 
 df1=read.delim(samplestatFILE,header=T)
 sample_stats=df1 %>% 
@@ -167,7 +168,7 @@ currentDate,
 #c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nlapply(plot_list,print)\n```") %>% write_lines(rmd_file,append=T)
 c("```{r echo=FALSE, results=\'asis\', message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nknitr::kable(plot_list[1], caption=\"Cutadapt Sample Statistics\")\n```") %>% write_lines(rmd_file,append=T)
 c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nknitr::kable(plot_list[2], caption=\"Sample Median Reads per Pool\")\n```") %>% write_lines(rmd_file,append=T)
-c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nknitr::kable(plot_list[3], caption=\"Sample Percent of Loci with 100 Reads or More\")\n```") %>% write_lines(rmd_file,append=T)
+c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list=readRDS(file)\nknitr::kable(plot_list[3], caption=\"Sample Number of Loci with 100 Reads or More per Pool\")\n```") %>% write_lines(rmd_file,append=T)
 c("```{r echo=FALSE, message=FALSE, warning=FALSE}\nplot_list[-c(1:3)]\n```") %>% write_lines(rmd_file,append=T)
 
     rmarkdown::render(rmd_file, params = list(file=file, output_file = html_document()))
