@@ -3,6 +3,7 @@ layout: default
 title: Analysis Modules
 nav_order: 6
 has_children: true
+toc: true
 ---
 
 # Analysis Modules

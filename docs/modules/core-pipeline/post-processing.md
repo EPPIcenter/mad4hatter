@@ -3,6 +3,7 @@ layout: page
 title: Post-Processing
 nav_order: 3
 parent: Core Pipeline Modules
+toc: true
 ---
 
 # Post-Processing

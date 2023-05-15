@@ -40,6 +40,9 @@ callouts:
   note:
     title: Note
     color: purple
+  info:
+    title: Info
+    color: yellow
 
 
 # Exclude from processing.
