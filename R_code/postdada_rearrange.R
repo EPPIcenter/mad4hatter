@@ -26,6 +26,7 @@ library(BSgenome)
 library(tidyr)
 library(doMC)
 library(tibble)
+library(ggplot2)
 
 # setwd("/home/bpalmer/Documents/work/3b/2f45cdef9ecf04a25a2d14114cfb8c")
 # # FOR DEBUGGING
@@ -224,8 +225,20 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     )
   }
 
-  # saveRDS(df_aln,file="alignments.RDS")
-  # write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
+  saveRDS(df_aln,file="alignments.RDS")
+  write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
+
+  ## add a histogram of the scores
+  ## add a vline where the filter threshold is
+  # pdf(filename="alignments.pdf") 
+  g = ggplot(df_aln) +
+    geom_histogram(aes(df_aln$score)) +
+    geom_vline(xintercept = args$alignment_threshold) +
+    ggtitle("Distribution of alignment scores and the alignment threshold") + 
+    xlab("Alignment Score") +
+    ylab("Frequency")
+
+  ggsave(filename="alignments.pdf", g, device="pdf")
 
   df_aln <- df_aln %>% filter(score > args$alignment_threshold)
 

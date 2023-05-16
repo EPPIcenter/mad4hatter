@@ -317,7 +317,7 @@ process DADA2_POSTPROC {
         path sample_coverage
 
         output:
-        path '*.{RDS,txt,csv}'
+        path '*.{RDS,txt,csv,pdf}'
         
         script:
 
