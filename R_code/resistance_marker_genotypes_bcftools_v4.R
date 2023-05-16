@@ -144,7 +144,7 @@ rownames(temp2_alt_haps_reads)=samplealleles$allele
 temp2_alt_haps_reads=temp2_alt_haps_reads %>% dplyr::filter(rownames(temp2_alt_haps_reads) %in% rownames(mat_altcodon_haps))
 gg1=mat_altcodon_haps %>% dplyr::filter(rownames(mat_altcodon_haps) %in% samplealleles$allele) %>% mutate_all(~ case_when(. != "" ~ 1, TRUE ~ 0)) %>% data.frame()
 temp2_alt_haps_reads2=temp2_alt_haps_reads*as.numeric(unlist(gg1)) 
-temp2_alt_haps_reads2=temp2_alt_haps_reads2 %>%  dplyr::summarise(across(everything(), ~ paste(unique(.x[.x!=0]),collapse="_"))) 
+temp2_alt_haps_reads2=temp2_alt_haps_reads2 %>%  dplyr::summarise(across(everything(), ~ paste((.x[.x!=0]),collapse="_"))) 
 rownames(temp2_alt_haps_reads2)=sampleslist[dd1]
 sample_altcodon_haps_reads[dd1,]=temp2_alt_haps_reads2
 
