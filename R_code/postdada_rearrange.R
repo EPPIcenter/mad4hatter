@@ -11,7 +11,7 @@ parser$add_argument('--parallel', action='store_true')
 parser$add_argument('--n-cores', type = 'integer', default = -1, help = "Number of cores to use. Ignored if running parallel flag is unset.")
 parser$add_argument('--sample-coverage', type="character", help = "Sample coverage file from QC to append sample coverage statistics that are P. falciparum specific.")
 parser$add_argument('--amplicon-coverage', type="character", help = "Amplicon coverage file from QC to append amplicon coverage statistics that are P. falciparum specific.")
-
+parser$add_argument('--amplicon-table', type="character", required=TRUE, help = "Amplicon table with primer pools. This is used to organize the sequence table by amplicon.")
 
 args <- parser$parse_args()
 print(args)
@@ -21,14 +21,13 @@ library(dplyr)
 library(dada2)
 library(foreach)
 library(parallel)
-library(muscle)
 library(BSgenome)
 library(tidyr)
 library(doMC)
 library(tibble)
 library(ggplot2)
 
-# setwd("/home/bpalmer/Documents/work/3b/2f45cdef9ecf04a25a2d14114cfb8c")
+# setwd("~/Documents/work/03/8853fb1c4c0fbbedf0b53bd6668727")
 # # FOR DEBUGGING
 # args <- list()
 # args$homopolymer_threshold <- 5
@@ -44,11 +43,19 @@ seqtab.nochim <- readRDS(args$dada2_output)
 seqtab.nochim.df = as.data.frame(seqtab.nochim)
 seqtab.nochim.df$sample = rownames(seqtab.nochim)
 seqtab.nochim.df[seqtab.nochim.df==0]=NA
-pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
+amplicon.table=read.table(args$amplicon_table, header = TRUE, sep = "\t")
+
+# find amplicons (use to select)
+pat=paste(amplicon.table$amplicon, collapse="|") # find amplicons specified in amplicon table
+
+# create regex to extract sampleID (to be used with remove)
+pat.sampleID=paste(sprintf("^%s_", amplicon.table$amplicon), collapse="|") # find amplicons specified in amplicon table (with _)
+pat.sampleID=paste(c(pat.sampleID, "_trimmed$"),collapse="|")  # remove _trimmed from end
+
 seqtab.nochim.df = seqtab.nochim.df %>%
   pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>%
-  mutate(locus = paste0(sapply(strsplit(sample,"_"),"[",1),"_",sapply(strsplit(sample,"_"),"[",2),"_",sapply(strsplit(sample,"_"),"[",3)))%>%
-  mutate(sampleID = sapply(strsplit(sapply(strsplit(sample,pat),"[",2),"_trimmed"),"[",1)) %>%
+  mutate(locus = str_extract(sample, pat)) %>%
+  mutate(sampleID = str_remove_all(sample, pat.sampleID)) %>%
   select(sampleID,locus,asv,reads)
 
 temp = seqtab.nochim.df %>% select(locus,asv) %>% distinct()
@@ -230,11 +237,11 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
   ## add a histogram of the scores
   ## add a vline where the filter threshold is
-  # pdf(filename="alignments.pdf") 
+  # pdf(filename="alignments.pdf")
   g = ggplot(df_aln) +
     geom_histogram(aes(df_aln$score)) +
     geom_vline(xintercept = args$alignment_threshold) +
-    ggtitle("Distribution of alignment scores and the alignment threshold") + 
+    ggtitle("Distribution of alignment scores and the alignment threshold") +
     xlab("Alignment Score") +
     ylab("Frequency")
 
@@ -361,7 +368,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
   colnames(seqtab.nochim) <- df.sequences$seqid
 
   seqtab.nochim.df <- foreach (idx = 1:nrow(df_collapsed), .combine = "cbind") %do% {
-    
+
     aln <- df_collapsed[idx,]
     seqids <- unlist(strsplit(aln$seqid, ";"))
     seqs <- df.sequences[df.sequences$seqid %in% seqids,]
@@ -384,11 +391,11 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
 print("Done masking sequences...")
 
-pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
+# pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
 seqtab.nochim.df = seqtab.nochim.df %>%
   pivot_longer(cols = -c(sample), names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>%
-  mutate(locus = paste0(sapply(strsplit(sample,"_"),"[",1),"_",sapply(strsplit(sample,"_"),"[",2),"_",sapply(strsplit(sample,"_"),"[",3)))%>%
-  mutate(sampleID = sapply(strsplit(sapply(strsplit(sample,pat),"[",2),"_trimmed"),"[",1)) %>%
+  mutate(locus = str_extract(sample, pat)) %>%
+  mutate(sampleID = str_remove_all(sample, pat.sampleID)) %>%
   select(sampleID,locus,asv,reads)
 
 
