@@ -62,7 +62,7 @@ workflow {
         MASK_SEQUENCES(CREATE_REFERENCE_SEQUENCES.out[0], 0, 0)
       }
 
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REFERENCE_SEQUENCES.out[0], MASK_SEQUENCES.out[0], params.parallel, amplicon_coverage, sample_coverage) // They're all the same. It would be good to output coverage for each sample and collapse into one file using collectFile(), but I could not get it to work.
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REFERENCE_SEQUENCES.out[0], MASK_SEQUENCES.out[0], params.parallel, amplicon_coverage, sample_coverage, params.amplicon_info) // They're all the same. It would be good to output coverage for each sample and collapse into one file using collectFile(), but I could not get it to work.
     
       RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], CREATE_REFERENCE_SEQUENCES.out[0], params.codontable, params.resmarkers_amplicon)
 
@@ -74,13 +74,13 @@ workflow {
         MASK_SEQUENCES(params.refseq_fasta, 0, 0)
       }
 
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, MASK_SEQUENCES.out[0], params.parallel, amplicon_coverage, sample_coverage)
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, MASK_SEQUENCES.out[0], params.parallel, amplicon_coverage, sample_coverage, params.amplicon_info)
 
       RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon)
 
     } else {
 
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta, params.parallel, amplicon_coverage, sample_coverage)
+      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta, params.parallel, amplicon_coverage, sample_coverage, params.amplicon_info)
 
       RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon)
 
@@ -315,6 +315,7 @@ process DADA2_POSTPROC {
         val parallel
         path amplicon_coverage
         path sample_coverage
+        path amplicon_info
 
         output:
         path '*.{RDS,txt,csv,pdf}'
@@ -333,7 +334,8 @@ process DADA2_POSTPROC {
             --n-cores ${params.n_cores} \
             --parallel \
             --sample-coverage ${sample_coverage} \
-            --amplicon-coverage ${amplicon_coverage}
+            --amplicon-coverage ${amplicon_coverage} \
+            --amplicon-table ${amplicon_info}
 
           """
         else
@@ -349,7 +351,8 @@ process DADA2_POSTPROC {
             --masked-fasta ${masked_fasta} \
             --n-cores ${params.n_cores} \
             --sample-coverage ${sample_coverage} \
-            --amplicon-coverage ${amplicon_coverage}
+            --amplicon-coverage ${amplicon_coverage} \
+            --amplicon-table ${amplicon_info}
 
           """
 }
