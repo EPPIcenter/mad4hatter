@@ -12,6 +12,8 @@ parser$add_argument('--n-cores', type = 'integer', default = -1, help = "Number 
 parser$add_argument('--sample-coverage', type="character", help = "Sample coverage file from QC to append sample coverage statistics that are P. falciparum specific.")
 parser$add_argument('--amplicon-coverage', type="character", help = "Amplicon coverage file from QC to append amplicon coverage statistics that are P. falciparum specific.")
 parser$add_argument('--amplicon-table', type="character", required=TRUE, help = "Amplicon table with primer pools. This is used to organize the sequence table by amplicon.")
+parser$add_argument('--clusters', type="character", required=TRUE, help="Clusters from DADA2.")
+parser$add_argument('--pseudo-fastq-output', type="character", default="pseudo-fastqs", help = "Fastq files are created using the DADA clusters, and will be output to the specified location by sample name.")
 
 args <- parser$parse_args()
 print(args)
@@ -27,8 +29,8 @@ library(doMC)
 library(tibble)
 library(ggplot2)
 
-# setwd("~/Documents/work/03/8853fb1c4c0fbbedf0b53bd6668727")
-# # FOR DEBUGGING
+# setwd("/home/bpalmer/Documents/work/11/62bb7f4b9de948eed9472158d2b998")
+# # # # FOR DEBUGGING
 # args <- list()
 # args$homopolymer_threshold <- 5
 # args$refseq_fasta <- "v4_refseq.fasta"
@@ -36,51 +38,13 @@ library(ggplot2)
 # args$dada2_output <- "seqtab.nochim.RDS"
 # args$parallel <- FALSE
 # args$alignment_threshold <- 60
+# args$clusters = "clusters.RDS"
+# args$amplicon_table="v4_amplicon_info.tsv"
+# args$pseudo_fastq_output="pseudo-fastqs"
+
+clusters=readRDS(args$clusters)
 
 ## Postprocessing QC
-
-seqtab.nochim <- readRDS(args$dada2_output)
-seqtab.nochim.df = as.data.frame(seqtab.nochim)
-seqtab.nochim.df$sample = rownames(seqtab.nochim)
-seqtab.nochim.df[seqtab.nochim.df==0]=NA
-amplicon.table=read.table(args$amplicon_table, header = TRUE, sep = "\t")
-
-# find amplicons (use to select)
-pat=paste(amplicon.table$amplicon, collapse="|") # find amplicons specified in amplicon table
-
-# create regex to extract sampleID (to be used with remove)
-pat.sampleID=paste(sprintf("^%s_", amplicon.table$amplicon), collapse="|") # find amplicons specified in amplicon table (with _)
-pat.sampleID=paste(c(pat.sampleID, "_trimmed$"),collapse="|")  # remove _trimmed from end
-
-seqtab.nochim.df = seqtab.nochim.df %>%
-  pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>%
-  mutate(locus = str_extract(sample, pat)) %>%
-  mutate(sampleID = str_remove_all(sample, pat.sampleID)) %>%
-  select(sampleID,locus,asv,reads)
-
-temp = seqtab.nochim.df %>% select(locus,asv) %>% distinct()
-loci =unique(temp$locus)
-k=1
-allele.sequences = data.frame(locus = seq(1,nrow(temp)),allele = seq(1,nrow(temp)),sequence = seq(1,nrow(temp)))
-for(i in seq(1,length(loci))){
-  temp2 = temp %>% filter(locus==loci[i])
-  for(j in seq(1,nrow(temp2))){
-    allele.sequences$locus[k+j-1] = loci[i]
-    allele.sequences$allele[k+j-1] = paste0(loci[i],".",j)
-    allele.sequences$sequence[k+j-1] = temp2$asv[j]
-  }
-  k=k+nrow(temp2)
-}
-
-allele.data = seqtab.nochim.df %>%
-  left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
-  group_by(sampleID,locus,allele) %>%
-  group_by(sampleID,locus) %>%
-  mutate(norm.reads.locus = reads/sum(reads))%>%
-  mutate(n.alleles = n())
-
-saveRDS(allele.data,file="pre_processed_allele_table.RDS")
-write.table(allele.data,file="pre_processed_allele_table.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
 seqtab.nochim <- readRDS(args$dada2_output)
 
@@ -205,49 +169,152 @@ if (args$parallel) {
   registerDoSEQ()
 }
 
+ref_sequences <- readDNAStringSet(args$refseq_fasta)
+ref_names <- unique(names(ref_sequences))
+
+sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
+
+# This object contains the aligned ASV sequences
+df_aln <- NULL
+df_aln <- foreach(seq1 = 1:length(sequences), .combine = "bind_rows") %dopar% {
+  aln <- pairwiseAlignment(ref_sequences, sequences[seq1], substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
+  num <- which.max(score(aln))
+  patt <- c(alignedPattern(aln[num]), alignedSubject(aln[num]))
+  ind <- sum(str_count(as.character(patt),"-"))
+  data.frame(
+    seqid = df.sequences[seq1,]$seqid,
+    hapseq = as.character(patt)[2],
+    refseq = as.character(patt)[1],
+    refid = names(patt)[1],
+    score = score(aln[num]),
+    indels = ind
+  )
+}
+
+saveRDS(df_aln,file="alignments.RDS")
+write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
+
+## add a histogram of the scores
+## add a vline where the filter threshold is
+# pdf(filename="alignments.pdf")
+g = ggplot(df_aln) +
+  geom_histogram(aes(df_aln$score)) +
+  geom_vline(xintercept = args$alignment_threshold) +
+  ggtitle("Distribution of alignment scores and the alignment threshold") +
+  xlab("Alignment Score") +
+  ylab("Frequency")
+
+ggsave(filename="alignments.pdf", g, device="pdf")
+
+df_aln <- df_aln %>% filter(score > args$alignment_threshold)
+
+colnames(seqtab.nochim)=df.sequences$seqid
+seqtab.nochim.df = as.data.frame(seqtab.nochim)
+seqtab.nochim.df$sample = rownames(seqtab.nochim)
+seqtab.nochim.df[seqtab.nochim.df==0]=NA
+amplicon.table=read.table(args$amplicon_table, header = TRUE, sep = "\t")
+
+# find amplicons (use to select)
+pat=paste(amplicon.table$amplicon, collapse="|") # find amplicons specified in amplicon table
+
+# create regex to extract sampleID (to be used with remove)
+pat.sampleID=paste(sprintf("^%s_", amplicon.table$amplicon), collapse="|") # find amplicons specified in amplicon table (with _)
+pat.sampleID=paste(c(pat.sampleID, "_trimmed_merged.fastq.gz$"),collapse="|")  # remove _trimmed from end
+
+seqtab.nochim.df = seqtab.nochim.df %>%
+  pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>%
+  mutate(locus = str_extract(sample, pat)) %>%
+  mutate(sampleID = str_remove_all(sample, pat.sampleID)) %>%
+  select(sampleID,locus,asv,reads)
+
+temp = seqtab.nochim.df %>% select(locus,asv) %>% distinct()
+loci =unique(temp$locus)
+k=1
+allele.sequences = data.frame(locus = seq(1,nrow(temp)),allele = seq(1,nrow(temp)),sequence = seq(1,nrow(temp)))
+for(i in seq(1,length(loci))){
+  temp2 = temp %>% filter(locus==loci[i])
+  for(j in seq(1,nrow(temp2))){
+    allele.sequences$locus[k+j-1] = loci[i]
+    allele.sequences$allele[k+j-1] = paste0(loci[i],".",j)
+    allele.sequences$sequence[k+j-1] = temp2$asv[j]
+  }
+  k=k+nrow(temp2)
+}
+
+allele.data = seqtab.nochim.df %>%
+  left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
+  group_by(sampleID,locus,allele) %>%
+  group_by(sampleID,locus) %>%
+  mutate(norm.reads.locus = reads/sum(reads))%>%
+  mutate(n.alleles = n()) %>%
+  inner_join(df_aln, by = c("asv"="seqid", "locus"="refid"))
+
+saveRDS(allele.data,file="pre_processed_allele_table.RDS")
+write.table(allele.data,file="pre_processed_allele_table.txt",quote=F,sep="\t",col.names=T,row.names=F)
+
+## Grab the quality scores from the clusters here and adjust
+## by where the indels are
+
+# create regex to extract sampleID (to be used with `str_remove_all()`)
+pat=paste(sprintf("^%s_", amplicon.table$amplicon), collapse="|") # find amplicons specified in amplicon table (with _)
+pat=paste(c(pat, "_trimmed_merged.fastq.gz$"),collapse="|")  # remove _trimmed from end
+
+# foreach::registerDoSEQ()
+clusterx=foreach(ii=1:length(clusters), .combine="bind_rows") %dopar% {
+  clusterID=names(clusters)[ii]
+  locus=amplicon.table$amplicon[!is.na(str_extract(clusterID, amplicon.table$amplicon))]
+  sampleID=str_remove_all(clusterID, pat)
+
+  qs=as.integer(round(clusters[[clusterID]]$quality))
+  qs=qs[!is.na(qs)]
+
+  tibble(
+    clusterID=clusterID,
+    sampleID=sampleID,
+    locus=locus,
+    seqid=df.sequences[df.sequences$sequences==clusters[[clusterID]]$sequence, ]$seqid,
+    quality=intToUtf8(qs + 33)
+  )
+}
+
+allele.data.1=allele.data %>%
+  inner_join(clusterx, by=c("sampleID", "locus")) %>%
+  ungroup()
+
+quality=PhredQuality(allele.data.1$quality)
+hapseq=DNAStringSet(allele.data.1$hapseq)
+
+
+# qs.updated = foreach(ii=1:nrow(allele.data.1)) %dopar% {
+#   x.hapseq=DNAString(as.character(hapseq[ii]))
+#   x.hapseq.rle=Rle(as.vector(x.hapseq))
+#   x.hapseq.ranges=ranges(x.hapseq.rle)
+#
+#   x.quality=BString(as.character(quality[ii]))
+#   y.quality=BString(paste(rep("N", length(x.hapseq)), collapse=""))
+#
+#   offset=0
+#   if (length(x.hapseq.ranges) > 0) {
+#     for (jj in 1:length(x.hapseq.ranges)) {
+#       x.hapseq.rle=Rle(as.vector(x.hapseq[x.hapseq.ranges[jj]]))
+#       if (runValue(x.hapseq.rle) == "-") {
+#         offset = offset + runLength(x.hapseq.rle)
+#       } else {
+#         for(kk in start(x.hapseq.ranges[jj]):end(x.hapseq.ranges[jj])) {
+#           y.quality[kk] = x.quality[kk - offset]
+#         }
+#       }
+#     }
+#   }
+#
+#   allele.data.1[ii,]$quality = as.character(y.quality)
+#
+#   return(x.quality != y.quality)
+# }
 
 ## II. Check for homopolymers.
 
 if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
-
-  ref_sequences <- readDNAStringSet(args$refseq_fasta)
-  ref_names <- unique(names(ref_sequences))
-
-  sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
-
-  # This object contains the aligned ASV sequences
-  df_aln <- NULL
-  df_aln <- foreach(seq1 = 1:length(sequences), .combine = "rbind") %dopar% {
-    aln <- pairwiseAlignment(ref_sequences, sequences[seq1], substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
-    num <- which.max(score(aln))
-    patt <- c(alignedPattern(aln[num]), alignedSubject(aln[num]))
-    ind <- sum(str_count(as.character(patt),"-"))
-    data.frame(
-      seqid = df.sequences[seq1,]$seqid,
-      hapseq = as.character(patt)[2],
-      refseq = as.character(patt)[1],
-      refid = names(patt)[1],
-      score = score(aln[num]),
-      indels = ind
-    )
-  }
-
-  saveRDS(df_aln,file="alignments.RDS")
-  write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
-
-  ## add a histogram of the scores
-  ## add a vline where the filter threshold is
-  # pdf(filename="alignments.pdf")
-  g = ggplot(df_aln) +
-    geom_histogram(aes(df_aln$score)) +
-    geom_vline(xintercept = args$alignment_threshold) +
-    ggtitle("Distribution of alignment scores and the alignment threshold") +
-    xlab("Alignment Score") +
-    ylab("Frequency")
-
-  ggsave(filename="alignments.pdf", g, device="pdf")
-
-  df_aln <- df_aln %>% filter(score > args$alignment_threshold)
 
   masked_sequences <- readDNAStringSet(args$masked_fasta)
   df_masked <- NULL
@@ -259,9 +326,20 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     asv_prime <-  DNAString(df_aln$hapseq[seq1])
     ref_rle <- Rle(as.vector(seq_1))
 
-    # additionally, look for potential homopolymers that would exist in our
-    # pairwise alignment reference sequence if it were not for insertions
-    # in the sample haplotype in those regions.
+    ## The masking algorithm works as follows:
+    ## 1) Identify the regions that we want to mask. This will be
+    ##    a) homopolymer regions (n-bases > args$homopolymer_length)
+    ##    b) tandem repeat regions (provided by user in args$masked_refseq)
+    ## 2) Collapse these regions so that they are all on one line (group by masked and tandem repeat)
+    ## 3) Go through and mask
+
+
+    ## start by identifying homopolymer ranges.
+    ## a homopolymer range will be any range that has a dna base
+    ## count greater than args$homopolymer_length.
+    ## extend the homopolymer range +1 on each end to handle phasing.
+    ## if start(range) < 1 or end(range) > length(seq_1), then adjust the range
+    ## to stay in-bounds.
 
     ref_rge <- ranges(ref_rle)
     mask_ranges <- IRanges()
@@ -269,14 +347,25 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
       dna_ranges <- reduce(ref_rge[runValue(ref_rle) == dna_base | runValue(ref_rle) == "-"])
 
       vb <- NULL
+      ## Determine which of the subranges meet the criteria to be homopolymers
       for (i in 1:length(dna_ranges)) {
         ss <- seq_1[dna_ranges[i]]
         kss <- as.character(ss)
         vb <- c(vb, str_count(kss, dna_base) > args$homopolymer_threshold)
       }
 
-      mask_ranges <- append(mask_ranges, dna_ranges[vb])
+      ## Add the mask +1 extension here (goes in both directions so the length will be +2)...
+      new_ranges=dna_ranges[vb] + 1
+      if (length(new_ranges) > 0) {
+        for (ii in 1:length(new_ranges)) {
+          start(new_ranges[ii])=ifelse(start(new_ranges)[ii] < 1, 1, start(new_ranges)[ii])
+          end(new_ranges[ii])=ifelse(end(new_ranges)[ii] > length(seq_1), length(seq_1), end(new_ranges)[ii])
+        }
+      }
+      mask_ranges <- append(mask_ranges, new_ranges)
     }
+
+
 
     maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
     trseq <- DNAString(as.character(maskseq))
@@ -329,7 +418,6 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
         n_base <- sum(vec_subseq == dna_base)
         n_gaps <- sum(vec_subseq == '-')
-        mask_ranges[i] <- mask_ranges[i] + sum(dna_base != 'N')
 
         replacement <- NULL
 
@@ -391,13 +479,18 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
 print("Done masking sequences...")
 
-# pat="-1A_|-1B_|-1_|-2_|-1AB_|-1B2_"
+# find amplicons (use to select)
+pat=paste(amplicon.table$amplicon, collapse="|") # find amplicons specified in amplicon table
+
+# create regex to extract sampleID (to be used with remove)
+pat.sampleID=paste(sprintf("^%s_", amplicon.table$amplicon), collapse="|") # find amplicons specified in amplicon table (with _)
+pat.sampleID=paste(c(pat.sampleID, "_trimmed_merged.fastq.gz$"),collapse="|")  # remove _trimmed from end
+
 seqtab.nochim.df = seqtab.nochim.df %>%
   pivot_longer(cols = -c(sample), names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>%
   mutate(locus = str_extract(sample, pat)) %>%
   mutate(sampleID = str_remove_all(sample, pat.sampleID)) %>%
   select(sampleID,locus,asv,reads)
-
 
 temp = seqtab.nochim.df %>% select(locus,asv) %>% distinct()
 loci =unique(temp$locus)
@@ -422,6 +515,83 @@ allele.data = seqtab.nochim.df %>%
 
 saveRDS(allele.data,file="allele_data.RDS")
 write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
+
+
+## Link the collapsed reads back to their original sequences
+allele.data.1=allele.data %>%
+  inner_join(df_collapsed, by = c("locus"="refid", "asv"="asv_prime")) %>%
+  dplyr::mutate(
+    seqid=strsplit(seqid,";")
+  ) %>%
+  tidyr::unnest(cols=c("seqid")) %>%
+  inner_join(df.sequences %>% dplyr::rename(denoised=sequences), by=c("seqid")) %>%
+  inner_join(clusterx, by=c("sampleID", "locus", "seqid")) %>%
+  inner_join(df_aln, by = c("seqid", "locus"="refid"))
+
+quality=PhredQuality(allele.data.1$quality)
+hapseq=DNAStringSet(allele.data.1$hapseq)
+# refseq=DNAStringSet(allele.data.1$refseq)
+
+qs.updated = foreach(ii=1:nrow(allele.data.1)) %dopar% {
+  x.hapseq=DNAString(as.character(hapseq[ii]))
+  x.hapseq.rle=Rle(as.vector(x.hapseq))
+  x.hapseq.ranges=ranges(x.hapseq.rle)
+
+  x.quality=BString(as.character(quality[ii]))
+  y.quality=BString(paste(rep("N", length(x.hapseq)), collapse=""))
+
+  offset=0
+  if (length(x.hapseq.ranges) > 0) {
+    for (jj in 1:length(x.hapseq.ranges)) {
+      x.hapseq.rle=Rle(as.vector(x.hapseq[x.hapseq.ranges[jj]]))
+      if (runValue(x.hapseq.rle) == "-") {
+        offset = offset + runLength(x.hapseq.rle)
+      } else {
+        for(kk in start(x.hapseq.ranges[jj]):end(x.hapseq.ranges[jj])) {
+          y.quality[kk] = x.quality[kk - offset]
+        }
+      }
+    }
+  }
+
+  return(as.character(y.quality))
+}
+
+allele.data.1$quality=unlist(qs.updated)
+
+## Go through and remove indels ('-')
+indels.removed=foreach(ii=1:nrow(allele.data.1), .combine = "bind_rows") %dopar% {
+  x.asv=DNAString(allele.data.1[ii,]$asv)
+  x.quality=BString(allele.data.1[ii,]$quality)
+
+  x.asv.rle=Rle(as.vector(x.asv))
+  x.asv.ranges=ranges(x.asv.rle)
+
+  x.asv.ranges.1=x.asv.ranges[runValue(x.asv.rle) != "-"]
+
+  tibble(
+    quality=as.character(x.quality[x.asv.ranges.1]),
+    asv=as.character(x.asv[x.asv.ranges.1])
+  )
+}
+
+allele.data.1$quality=indels.removed$quality
+allele.data.1$asv=indels.removed$asv
+
+
+if (!dir.exists(args$pseudo_fastq_output)) {
+  dir.create(args$pseudo_fastq_output)
+}
+
+for (sid in unique(clusterx$sampleID)) {
+  clusters.filtered=allele.data.1[allele.data.1$sampleID==sid,]
+  ss=DNAStringSet(clusters.filtered$asv)
+  names(ss)<-clusters.filtered$allele
+  qs=PhredQuality(clusters.filtered$quality)
+
+  out=QualityScaledDNAStringSet(ss,qs)
+  writeQualityScaledXStringSet(out, filepath = file.path(args$pseudo_fastq_output, sprintf("%s.fastq.gz", sid)), compress=T)
+}
 
 ## QC Postprocessing
 

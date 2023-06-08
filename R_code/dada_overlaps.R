@@ -13,16 +13,32 @@ parser$add_argument('--omega-a', type='double', default=1e-120)
 parser$add_argument('--concat-non-overlaps', action='store_true')
 parser$add_argument('--use-quals', type="character", default="false")
 parser$add_argument('--maxEE', type="integer", default=2)
-
+parser$add_argument('--self-consist', action='store_true')
+parser$add_argument('--omega-c', type='double', default=1e-40)
 
 args <- parser$parse_args()
 print(args)
+## For debugging
+args <- list()
+setwd("/home/bpalmer/Documents/work/5e/0c033ae668caa0c89d4d7cbe574985")
+args$trimmed_path = file.path("/home/bpalmer/Documents/work/2c/1c3462361b2882484daec490c7859e", c("trimmed_demuxed1", "trimmed_demuxed2"))
+args$dada2_rdada_output = "dada2.seqtab.RDS"
+args$pool = "pseudo"
+args$band_size = -1
+args$omega_a = 1e-120
+args$concat_non_overlaps = T
+args$use_quals="false"
+args$maxEE = 2
+args$ampliconFILE = "v4_amplicon_info.tsv"
+args$omega_c=1e-40
+args$self_consist=T
+
+
+# args <- parser$parse_args()
+# print(args)
 
 fnFs <- sort(list.files(path=args$trimmed_path, pattern="_R1.fastq.gz", recursive=T, full.names = TRUE))
 fnRs <- sort(list.files(path=args$trimmed_path, pattern="_R2.fastq.gz", recursive=T, full.names = TRUE))
-
-#fnFs = sort(grep("_R1.fastq.gz",trimmed_path,value=T))
-#fnRs = sort(grep("_R2.fastq.gz",trimmed_path,value=T))
 
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample.names <- sapply(strsplit(basename(fnFs), "_R1"), `[`, 1)
@@ -31,102 +47,106 @@ print(sample.names)
 filtFs <- paste0(args$trimmed_path,"/filtered/",sample.names,"_F_filt.fastq.gz")
 filtRs <- paste0(args$trimmed_path,"/filtered/",sample.names,"_R_filt.fastq.gz")
 
-#filtFs <- paste0(dirname(trimmed_path),"/filtered/",sample.names,"_F_filt.fastq.gz")
-#filtRs <- paste0(dirname(trimmed_path),"/filtered/",sample.names,"_R_filt.fastq.gz")
-
-
 names(filtFs) <- sample.names
 names(filtRs) <- sample.names
-# 
 
 out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs,
               maxN=0, maxEE=c(args$maxEE, args$maxEE), truncQ=c(5,5), rm.phix=TRUE,
               compress=TRUE, multithread=TRUE,
-              trimRight = c(0,0),trimLeft = 1, minLen=75,matchIDs=TRUE) 
+              trimRight = c(0,0),trimLeft = 1, minLen=75,matchIDs=TRUE)
 head(out)
+sample.names.1<-sapply(strsplit(rownames(out[out[,2]>0,]), "_R1"), `[`, 1)
 
+for (sampleID in sample.names.1) {
+  cat("Merging:", sampleID, "\n")
 
-errF <- learnErrors(filtFs[out[,2]>0], multithread=TRUE,MAX_CONSIST=10,randomize=TRUE)
-errR <- learnErrors(filtRs[out[,2]>0], multithread=TRUE,MAX_CONSIST=10,randomize=TRUE)
+  fR <- filtFs[grepl(sampleID, filtFs)]
+  rR <- filtRs[grepl(sampleID, filtRs)]
 
-derepFs <- derepFastq(filtFs[out[,2]>0], verbose = TRUE)
-derepRs <- derepFastq(filtRs[out[,2]>0], verbose = TRUE)
+  if (file.exists(fR) && file.exists(rR)) {
+    # TODO: add comment here describing literals
+    system2("flash", args=sprintf("-t %d -f %d -r %d -s %d --quiet --compress %s %s", 4, 150, 252, 17, fR, rR))
+    if (file.size("out.hist") > 0) { # this will be zero if nothing merged
+      file.rename("out.extendedFrags.fastq.gz", sprintf("%s_merged.fastq.gz", sampleID))
+    }
+  }
+}
 
+merged <- sort(list.files(pattern = "merged.fastq.gz"))
+err <- learnErrors(merged, multithread=TRUE,MAX_CONSIST=10,randomize=TRUE,verbose = 0)
 
 pool=switch(
   args$pool,
   "true" = TRUE,
   "false" = FALSE,
-  "pseudo" = "pseudo"
+  "pseudo" = FALSE
 )
 
-dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
-dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+if (!dir.exists("dereps")) {
+  dir.create("dereps")
+}
 
-if(args$concat_non_overlaps){
-  
+clusters<-NULL
+derep.fs<-gsub(".fastq.gz", "_derep.rds", merged)
+names(derep.fs)<-merged
 
-  amplicon.info = data.frame(
-    names = sapply(strsplit(names(dadaFs),"_trimmed"),"[",1)
-  )
+for (sampleID in merged) {
+  tryCatch({
+    cat("Denoising (Step 1):", sampleID, "\n")
 
-  amplicon.info <- amplicon.info %>%
-    mutate(names=sapply(str_split(names,'_S(\\d+)'),head,1)) %>% 
-    mutate(amplicon=unlist(lapply(str_split(names,'_'), function(x) { paste(x[1:3], collapse = "_") }))) %>%
-    inner_join(read.table(args$ampliconFILE,header=T) %>% 
-             select(amplicon, ampInsert_length), by = c("amplicon")) %>%
-    # mutate(Pool=sapply(str_split(Amplicon,'-'),tail,1)) %>% 
-    # mutate(Amplicon=unlist(lapply(str_split(Amplicon,'-'), function(x) { paste(x[1:2], collapse = "-") })))
-
-    select(amplicon, ampInsert_length) %>%
-    mutate(
-      sum.mean.length.reads = sapply(sapply(unlist(lapply(dadaFs,"[","sequence"),recursive = F),nchar),mean)+
-        sapply(sapply(unlist(lapply(dadaRs,"[","sequence"),recursive = F),nchar),mean)
+    derep <- derepFastq(sampleID, verbose = TRUE)
+    clusters[[sampleID]] <- dada(
+      derep=derep,
+      err=err,
+      selfConsist=args$self_consist,
+      multithread=TRUE, verbose=TRUE,
+      pool=pool,
+      BAND_SIZE=args$band_size,
+      OMEGA_A=args$omega_a,
+      OMEGA_C=args$omega_c
     )
+    saveRDS(derep, file = file.path("dereps", derep.fs[[sampleID]]))
+    rm(derep)
+  }, error = function(e) {
+    message(sprintf("Caught an exception while processing sample %s: %s", sampleID, e$message))
+  })
+}
 
-  rownames(amplicon.info)=names(dadaFs)
+## for pseudo pooling - priors are set from the previous run
+if ("pseudo" == args$pool) {
 
-  
-#  sample.names.no.overlap = sample.names[as.numeric(sapply(strsplit(sample.names ,"-"),"[",3)) - as.numeric(sapply(strsplit(sample.names ,"-"),"[",2))>275]
-#  sample.names.overlap = sample.names[as.numeric(sapply(strsplit(sample.names ,"-"),"[",3)) - as.numeric(sapply(strsplit(sample.names ,"-"),"[",2))<276]
-  
-  mergers.overlap = mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))],
-                               derepFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))], 
-                               dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))], 
-                               derepRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))], 
-                               verbose=TRUE, 
-                               justConcatenate=FALSE, 
-                               trimOverhang = TRUE,
-                               minOverlap=10,
-                               maxMismatch=1)
-  
-  mergers.no.overlap = mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))],
-                                  derepFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))], 
-                                  dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))], 
-                                  derepRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))], 
-                                  verbose=TRUE, 
-                                  justConcatenate=TRUE)
-  
+  cat("Denoising with priors...\n")
 
-  mergers = c(mergers.overlap,mergers.no.overlap)[names(dadaFs)]
-  save(file = 'mergers.rda', mergers, mergers.overlap, mergers.no.overlap, amplicon.info, dadaFs, dadaRs, args)
+  seqtab <- makeSequenceTable(clusters)
+  clusters <- NULL
+  priors <- colnames(seqtab[, colSums(seqtab > 0) >= 2])
+  # use the dereplicated sequences (maybe both?)
 
-}else{
-    mergers=  mergePairs(dadaFs,
-                         derepFs, 
-                         dadaRs, 
-                         derepRs, 
-                         verbose=TRUE, 
-                         justConcatenate=FALSE, 
-                         trimOverhang = TRUE,
-                         minOverlap=10,
-                         maxMismatch=1)
+  for(sampleID in merged) {
+    cat("Denoising (Step 2):", sampleID, "\n")
+    tryCatch({
+      derep <- readRDS(file.path("dereps", derep.fs[[sampleID]]))
+      clusters[[sampleID]] <- dada(
+        derep=derep,
+        err=err,
+        selfConsist=args$self_consist,
+        multithread=TRUE, verbose=TRUE,
+        pool=pool,
+        BAND_SIZE=args$band_size,
+        OMEGA_A=args$omega_a,
+        OMEGA_C=args$omega_c
+      )
+
+      rm(derep)
+    }, error = function(e) {
+      message(sprintf("Caught an exception while processing sample %s: %s", sampleID, e$message))
+    })
   }
+}
 
-
-seqtab <- makeSequenceTable(mergers)
-
+seqtab <- makeSequenceTable(clusters)
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
-save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim, file = "DADA2.RData")
+save(clusters, err, seqtab.nochim, file = "DADA2.RData")
 saveRDS(seqtab.nochim, file = args$dada2_rdata_output)
+saveRDS(clusters, file = "clusters.RDS")

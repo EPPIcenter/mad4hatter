@@ -64,7 +64,7 @@ workflow {
 
       DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REFERENCE_SEQUENCES.out[0], MASK_SEQUENCES.out[0], params.parallel, amplicon_coverage, sample_coverage, params.amplicon_info) // They're all the same. It would be good to output coverage for each sample and collapse into one file using collectFile(), but I could not get it to work.
     
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], CREATE_REFERENCE_SEQUENCES.out[0], params.codontable, params.resmarkers_amplicon)
+      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], CREATE_REFERENCE_SEQUENCES.out[0], params.codontable, params.resmarkers_amplicon, DADA2_POSTPROC.out[1])
 
     } else if (params.masked_fasta == null) {
 
@@ -76,13 +76,13 @@ workflow {
 
       DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, MASK_SEQUENCES.out[0], params.parallel, amplicon_coverage, sample_coverage, params.amplicon_info)
 
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon)
+      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon, DADA2_POSTPROC.out[1])
 
     } else {
 
       DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta, params.parallel, amplicon_coverage, sample_coverage, params.amplicon_info)
 
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon)
+      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon, DADA2_POSTPROC.out[1])
 
     }
   }
@@ -319,12 +319,26 @@ process DADA2_POSTPROC {
 
         output:
         path '*.{RDS,txt,csv,pdf}'
-        
+        file("pseudo-fastqs")
+
         script:
 
         if (parallel == true)
           """
-          seqtab_nochim_rds="\$(echo $rdatafile | tr ' ' '\n' | grep *.RDS)"
+          seqtab_nochim_rds="\$(echo $rdatafile | tr ' ' '\n' | grep ^seqtab.nochim)"
+          clusters_rds="\$(echo $rdatafile | tr ' ' '\n' | grep ^clusters)"
+
+          echo "Rscript ${params.scriptDIR}/postdada_rearrange.R \
+            --dada2-output \${seqtab_nochim_rds} \
+            --homopolymer-threshold ${homopolymer_threshold} \
+            --refseq-fasta ${refseq_fasta} \
+            --masked-fasta ${masked_fasta} \
+            --n-cores ${params.n_cores} \
+            --parallel \
+            --sample-coverage ${sample_coverage} \
+            --amplicon-coverage ${amplicon_coverage} \
+            --amplicon-table ${amplicon_info} \
+            --clusters clusters.RDS" > mycommand.txt
 
           Rscript ${params.scriptDIR}/postdada_rearrange.R \
             --dada2-output \${seqtab_nochim_rds} \
@@ -335,24 +349,36 @@ process DADA2_POSTPROC {
             --parallel \
             --sample-coverage ${sample_coverage} \
             --amplicon-coverage ${amplicon_coverage} \
-            --amplicon-table ${amplicon_info}
+            --amplicon-table ${amplicon_info} \
+            --clusters \${clusters_rds}
 
           """
         else
           """
-          seqtab_nochim_rds="\$(echo $rdatafile | tr ' ' '\n' | grep *.RDS)"
-          sample_coverage="\$(echo $coverage_files | tr ' ' '\n' | grep ^sample)"
-          amplicon_coverage="\$(echo $coverage_files | tr ' ' '\n' | grep ^amplicon)"
+          seqtab_nochim_rds="\$(echo $rdatafile | tr ' ' '\n' | grep ^seqtab.nochim)"
+          clusters_rds="\$(echo $rdatafile | tr ' ' '\n' | grep ^clusters)"
+
+          echo "Rscript ${params.scriptDIR}/postdada_rearrange.R \
+            --dada2-output \${seqtab_nochim_rds} \
+            --homopolymer-threshold ${homopolymer_threshold} \
+            --refseq-fasta ${refseq_fasta} \
+            --masked-fasta ${masked_fasta} \
+            --n-cores ${params.n_cores} \
+            --parallel \
+            --sample-coverage ${sample_coverage} \
+            --amplicon-coverage ${amplicon_coverage} \
+            --amplicon-table ${amplicon_info} \
+            --clusters clusters.RDS" > mycommand.txt
 
           Rscript ${params.scriptDIR}/postdada_rearrange.R \
             --dada2-output \${seqtab_nochim_rds} \
             --homopolymer-threshold ${homopolymer_threshold} \
             --refseq-fasta ${refseq_fasta} \
             --masked-fasta ${masked_fasta} \
-            --n-cores ${params.n_cores} \
             --sample-coverage ${sample_coverage} \
             --amplicon-coverage ${amplicon_coverage} \
-            --amplicon-table ${amplicon_info}
+            --amplicon-table ${amplicon_info} \
+            --clusters \${clusters_rds}
 
           """
 }
@@ -372,9 +398,10 @@ process RESISTANCE_MARKERS {
         path refseq_fasta
         path codontable
         path resmarkers_amplicon
+        path clusters
 
  output:
-        path '*.txt' 
+        path '*{.txt,*.vcf}' 
         file('Mapping')
              
         script:
@@ -402,6 +429,20 @@ process RESISTANCE_MARKERS {
         cd ..
         Rscript ${params.scriptDIR}/resistance_marker_genotypes_bcftools_v4.R "\${rdsfile2}" ${codontable} ${resmarkers_amplicon} Mapping
 
+        test -d vcf || mkdir -p vcf
+
+        for bfile in ${clusters}/*.fastq.gz; do
+              allele=`basename \$bfile | cut -f 1 -d '.'`
+              echo \$allele
+              bwa mem -L 10000 ${refseq_fasta} \$bfile | samtools sort -o vcf/\${allele}.bam -
+              samtools index vcf/\${allele}.bam
+        done
+
+        ls -1 vcf/*.bam > bam.txt
+        # freebayes -f ${refseq_fasta} --bam-list bam.txt > all.vcf
+
+        freebayes -f v4_refseq.fasta --haplotype-length 0 --min-alternate-count 1 \
+          --min-alternate-fraction 0 --pooled-continuous --report-monomorphic --bam-list bam.txt > var.vcf
         """
 }
 
