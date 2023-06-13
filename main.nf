@@ -401,7 +401,7 @@ process RESISTANCE_MARKERS {
         path clusters
 
  output:
-        path '*{.txt,*.vcf}' 
+        path '*{.txt,.vcf}' 
         file('Mapping')
              
         script:
@@ -434,14 +434,19 @@ process RESISTANCE_MARKERS {
         for bfile in ${clusters}/*.fastq.gz; do
               allele=`basename \$bfile | cut -f 1 -d '.'`
               echo \$allele
-              bwa mem -L 10000 ${refseq_fasta} \$bfile | samtools sort -o vcf/\${allele}.bam -
-              samtools index vcf/\${allele}.bam
+              # bwa mem -L 10000 ${refseq_fasta} \$bfile | samtools sort -o vcf/\${allele}.bam -
+              # samtools index vcf/\${allele}.bam
+
+              bcftools mpileup -Ou -d 2000 -f ${refseq_fasta} \$cfile | bcftools call -mv --ploidy 2 -Ob -o vcf/\${allele}.bcf
+              bcftools index vcf/\${allele}.bcf
         done
 
-        ls -1 vcf/*.bam > bam.txt
+        # ls -1 vcf/*.bam > bam.txt
+        ls -1 vcf/*.bcf > bcf.txt
+        bcftools merge --file-list bcf.txt -Ov -o all.vcf
         # freebayes -f ${refseq_fasta} --bam-list bam.txt > all.vcf
 
-        freebayes -f v4_refseq.fasta --haplotype-length 0 --min-alternate-count 1 \
+        # freebayes -f v4_refseq.fasta --haplotype-length 0 --min-alternate-count 1 \
           --min-alternate-fraction 0 --pooled-continuous --report-monomorphic --bam-list bam.txt > var.vcf
         """
 }

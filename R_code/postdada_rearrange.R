@@ -28,9 +28,10 @@ library(tidyr)
 library(doMC)
 library(tibble)
 library(ggplot2)
+library(Biostrings)
 
 # setwd("/home/bpalmer/Documents/work/11/62bb7f4b9de948eed9472158d2b998")
-# # # # FOR DEBUGGING
+# # # FOR DEBUGGING
 # args <- list()
 # args$homopolymer_threshold <- 5
 # args$refseq_fasta <- "v4_refseq.fasta"
@@ -583,14 +584,35 @@ if (!dir.exists(args$pseudo_fastq_output)) {
   dir.create(args$pseudo_fastq_output)
 }
 
-for (sid in unique(clusterx$sampleID)) {
-  clusters.filtered=allele.data.1[allele.data.1$sampleID==sid,]
-  ss=DNAStringSet(clusters.filtered$asv)
-  names(ss)<-clusters.filtered$allele
-  qs=PhredQuality(clusters.filtered$quality)
+sampleIDs=unique(clusterx$sampleID)
+foreach (sid = 1:length(sampleIDs)) %dopar% {
+  clusters.filtered=allele.data.1[allele.data.1$sampleID==sampleIDs[sid],]
+  filepath = file.path(args$pseudo_fastq_output, sprintf("%s.fastq.gz", sampleIDs[sid]))
 
-  out=QualityScaledDNAStringSet(ss,qs)
-  writeQualityScaledXStringSet(out, filepath = file.path(args$pseudo_fastq_output, sprintf("%s.fastq.gz", sid)), compress=T)
+  print(filepath)
+  for (allele in clusters.filtered$allele) {
+
+    ## get reads to produce duplicates so that coverage can be calculated
+    reads=clusters.filtered[clusters.filtered$allele == allele,]$reads
+
+    ## add asvs here
+    asv=clusters.filtered[clusters.filtered$allele == allele,]$asv
+    asv.dups=rep(asv,reads)
+    ss=Biostrings::DNAStringSet(asv.dups)
+    names(ss)=sprintf("%s.%d", allele, 1:reads)
+
+    ## add quality here
+    quality=clusters.filtered[clusters.filtered$allele == allele,]$quality
+    quality.dups=rep(quality, reads)
+    qs=PhredQuality(quality.dups)
+    names(qs)=sprintf("%s.%d", allele, 1:reads)
+
+    out=QualityScaledDNAStringSet(ss,qs)
+    writeQualityScaledXStringSet(out, filepath, compress=T, append = T)
+
+  }
+
+  return(file.exists(filepath))
 }
 
 ## QC Postprocessing
