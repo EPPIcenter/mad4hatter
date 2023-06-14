@@ -19,19 +19,20 @@ parser$add_argument('--omega-c', type='double', default=1e-40)
 args <- parser$parse_args()
 print(args)
 ## For debugging
-args <- list()
-setwd("/home/bpalmer/Documents/work/5e/0c033ae668caa0c89d4d7cbe574985")
-args$trimmed_path = file.path("/home/bpalmer/Documents/work/2c/1c3462361b2882484daec490c7859e", c("trimmed_demuxed1", "trimmed_demuxed2"))
-args$dada2_rdada_output = "dada2.seqtab.RDS"
-args$pool = "pseudo"
-args$band_size = -1
-args$omega_a = 1e-120
-args$concat_non_overlaps = T
-args$use_quals="false"
-args$maxEE = 2
-args$ampliconFILE = "v4_amplicon_info.tsv"
-args$omega_c=1e-40
-args$self_consist=T
+# args <- list()
+# setwd("/home/bpalmer/Documents/work/7d/875b8c404f348200b6eb70f92e3d80")
+# args$trimmed_path = list.files(pattern="trimmed_demuxed")
+# args$dada2_rdada_output = "dada2.seqtab.RDS"
+# args$pool = "pseudo"
+# args$band_size = -1
+# args$omega_a = 1e-120
+# args$concat_non_overlaps = T
+# args$use_quals="false"
+# args$maxEE = 2
+# args$ampliconFILE = "v4_amplicon_info.tsv"
+# args$omega_c=1e-40
+# args$self_consist=T
+# args$args$dada2_rdata_output="seqtab.nochim.RDS"
 
 
 # args <- parser$parse_args()
@@ -69,11 +70,34 @@ for (sampleID in sample.names.1) {
     if (file.size("out.hist") > 0) { # this will be zero if nothing merged
       file.rename("out.extendedFrags.fastq.gz", sprintf("%s_merged.fastq.gz", sampleID))
     }
+
+    if (file.exists('out.notCombined_1.fastq.gz') && file.exists('out.notCombined_1.fastq.gz')) {
+      file.stats.1=sprintf("%s-1.txt", sampleID)
+      file.stats.2=sprintf("%s-2.txt", sampleID)
+      system2("gzip", "-l out.notCombined_1.fastq.gz", stdout = file.stats.1)
+      system2("gzip", "-l out.notCombined_2.fastq.gz", stdout = file.stats.2)
+
+      file.stats.table.1=read.table(file.stats.1,header = T)
+      file.stats.table.2=read.table(file.stats.2,header = T)
+      if (file.stats.table.1$uncompressed > 0 && file.stats.table.2$uncompressed > 0) {
+        cat("Unmerged reads detected:", sampleID, "\n")
+
+        file.rename("out.notCombined_1.fastq.gz", sprintf("%s_unmerged1.fastq.gz", sampleID))
+        file.rename("out.notCombined_2.fastq.gz", sprintf("%s_unmerged2.fastq.gz", sampleID))
+      } else {
+        file.remove(c("out.notCombined_1.fastq.gz", "out.notCombined_2.fastq.gz"))
+      }
+    }
   }
 }
 
 merged <- sort(list.files(pattern = "merged.fastq.gz"))
-err <- learnErrors(merged, multithread=TRUE,MAX_CONSIST=10,randomize=TRUE,verbose = 0)
+unmerged1 = sort(list.files(pattern = "unmerged1.fastq.gz"))
+unmerged2 = sort(list.files(pattern = "unmerged2.fastq.gz"))
+
+all.files=c(merged,unmerged1,unmerged2)
+
+err <- learnErrors(all.files, multithread=TRUE,MAX_CONSIST=10,randomize=TRUE,verbose = 0)
 
 pool=switch(
   args$pool,
@@ -87,18 +111,19 @@ if (!dir.exists("dereps")) {
 }
 
 clusters<-NULL
-derep.fs<-gsub(".fastq.gz", "_derep.rds", merged)
-names(derep.fs)<-merged
+derep.fs<-gsub(".fastq.gz", "_derep.rds", all.files)
+names(derep.fs)<-all.files
 
-for (sampleID in merged) {
+for (sampleID in all.files) {
   tryCatch({
+    zz <- file("denoising.step1.txt", open="a")
     cat("Denoising (Step 1):", sampleID, "\n")
 
     derep <- derepFastq(sampleID, verbose = TRUE)
     clusters[[sampleID]] <- dada(
       derep=derep,
       err=err,
-      selfConsist=args$self_consist,
+      selfConsist=F,
       multithread=TRUE, verbose=TRUE,
       pool=pool,
       BAND_SIZE=args$band_size,
@@ -109,12 +134,16 @@ for (sampleID in merged) {
     rm(derep)
   }, error = function(e) {
     message(sprintf("Caught an exception while processing sample %s: %s", sampleID, e$message))
+    writeLines(sprintf("%s\t%s\n", sampleID, e$message), con = zz)
   })
+
+  close(zz)
 }
 
 ## for pseudo pooling - priors are set from the previous run
 if ("pseudo" == args$pool) {
 
+  zz <- file("denoising.step2.txt", open="a")
   cat("Denoising with priors...\n")
 
   seqtab <- makeSequenceTable(clusters)
@@ -122,14 +151,14 @@ if ("pseudo" == args$pool) {
   priors <- colnames(seqtab[, colSums(seqtab > 0) >= 2])
   # use the dereplicated sequences (maybe both?)
 
-  for(sampleID in merged) {
+  for(sampleID in all.files) {
     cat("Denoising (Step 2):", sampleID, "\n")
     tryCatch({
       derep <- readRDS(file.path("dereps", derep.fs[[sampleID]]))
       clusters[[sampleID]] <- dada(
         derep=derep,
         err=err,
-        selfConsist=args$self_consist,
+        selfConsist=F,
         multithread=TRUE, verbose=TRUE,
         pool=pool,
         BAND_SIZE=args$band_size,
@@ -140,11 +169,36 @@ if ("pseudo" == args$pool) {
       rm(derep)
     }, error = function(e) {
       message(sprintf("Caught an exception while processing sample %s: %s", sampleID, e$message))
+      writeLines(sprintf("%s\t%s\n", sampleID, e$message), con = zz)
     })
+  }
+
+  close(zz)
+}
+
+unmerged.dereps.1=sort(derep.fs[names(derep.fs) %in% c(unmerged1)])
+unmerged.dereps.2=sort(derep.fs[names(derep.fs) %in% c(unmerged2)])
+unmerged.merged=list()
+
+for (ii in seq_along(unmerged.dereps.1)) {
+  rds.1=file.path("dereps", unmerged.dereps.1[[ii]])
+  rds.2=file.path("dereps", unmerged.dereps.2[[ii]])
+  if (file.exists(rds.1) && file.exists(rds.2)) {
+    derepF=readRDS(rds.1)
+    derepR=readRDS(rds.2)
+    dadaF=clusters[[names(unmerged.dereps.1[ii])]]
+    dadaR=clusters[[names(unmerged.dereps.2[ii])]]
+    merged.id=str_replace(names(unmerged.dereps.1[ii]), "unmerged1", "merged")
+    unmerged.merged[[merged.id]]=mergePairs(dadaF,derepF,dadaR,derepR,justConcatenate = TRUE)
+  } else {
+    # print info message here...
   }
 }
 
-seqtab <- makeSequenceTable(clusters)
+seqtab.unmerged <- makeSequenceTable(unmerged.merged)
+seqtab.merged <- makeSequenceTable(clusters[names(clusters) %in% merged])
+seqtab=mergeSequenceTables(seqtab.unmerged,seqtab.merged, repeats = "sum")
+
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
 save(clusters, err, seqtab.nochim, file = "DADA2.RData")
