@@ -6,7 +6,6 @@ parser <- ArgumentParser(prog="DADA2 Workflow", description='DADA2 workflow scri
 parser$add_argument('--trimmed-path', type="character",
                    help='homopolymer threshold to begin masking', nargs='+', required = TRUE)
 parser$add_argument('--ampliconFILE', type="character", required = TRUE)
-parser$add_argument('--dada2-rdata-output', type="character", required = TRUE)
 parser$add_argument('--pool', type="character", default="false")
 parser$add_argument('--band-size', type='integer', default=16)
 parser$add_argument('--omega-a', type='double', default=1e-120)
@@ -18,11 +17,10 @@ parser$add_argument('--omega-c', type='double', default=1e-40)
 
 args <- parser$parse_args()
 print(args)
-## For debugging
+# ## For debugging
 # args <- list()
-# setwd("/home/bpalmer/Documents/work/7d/875b8c404f348200b6eb70f92e3d80")
+# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/ae/e32151d86c71677d3c204b23e4f6f5")
 # args$trimmed_path = list.files(pattern="trimmed_demuxed")
-# args$dada2_rdada_output = "dada2.seqtab.RDS"
 # args$pool = "pseudo"
 # args$band_size = -1
 # args$omega_a = 1e-120
@@ -32,7 +30,6 @@ print(args)
 # args$ampliconFILE = "v4_amplicon_info.tsv"
 # args$omega_c=1e-40
 # args$self_consist=T
-# args$args$dada2_rdata_output="seqtab.nochim.RDS"
 
 
 # args <- parser$parse_args()
@@ -58,6 +55,7 @@ out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs,
 head(out)
 sample.names.1<-sapply(strsplit(rownames(out[out[,2]>0,]), "_R1"), `[`, 1)
 
+files.stats.final=NULL
 for (sampleID in sample.names.1) {
   cat("Merging:", sampleID, "\n")
 
@@ -72,8 +70,8 @@ for (sampleID in sample.names.1) {
     }
 
     if (file.exists('out.notCombined_1.fastq.gz') && file.exists('out.notCombined_1.fastq.gz')) {
-      file.stats.1=sprintf("%s-1.txt", sampleID)
-      file.stats.2=sprintf("%s-2.txt", sampleID)
+      file.stats.1=sprintf("%s-stats.1.txt", sampleID)
+      file.stats.2=sprintf("%s-stats.2.txt", sampleID)
       system2("gzip", "-l out.notCombined_1.fastq.gz", stdout = file.stats.1)
       system2("gzip", "-l out.notCombined_2.fastq.gz", stdout = file.stats.2)
 
@@ -87,6 +85,21 @@ for (sampleID in sample.names.1) {
       } else {
         file.remove(c("out.notCombined_1.fastq.gz", "out.notCombined_2.fastq.gz"))
       }
+
+      ## store information about the files that could not be merged
+      ## it would be good to know how many reads were in them for example
+      tmp=data.frame(
+        sampleID=sampleID,
+        R1.compressed=file.stats.table.1$compressed,
+        R1.uncompressed=file.stats.table.1$uncompressed,
+        R1.ratio=file.stats.table.1$ratio,
+        R2.compressed=file.stats.table.2$compressed,
+        R2.uncompressed=file.stats.table.2$uncompressed,
+        R2.ratio=file.stats.table.2$ratio
+      )
+
+      files.stats.final=rbind(files.stats.final, tmp)
+      file.remove(file.stats.1, file.stats.2)
     }
   }
 }
@@ -201,6 +214,48 @@ seqtab=mergeSequenceTables(seqtab.unmerged,seqtab.merged, repeats = "sum")
 
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
-save(clusters, err, seqtab.nochim, file = "DADA2.RData")
-saveRDS(seqtab.nochim, file = args$dada2_rdata_output)
-saveRDS(clusters, file = "clusters.RDS")
+### Create clusters output file with quality control
+
+seqtab.nochim.df = as.data.frame(seqtab.nochim)
+seqtab.nochim.df$sample = rownames(seqtab.nochim)
+seqtab.nochim.df[seqtab.nochim.df==0]=NA
+
+amplicon.table=read.table(args$ampliconFILE, header = TRUE, sep = "\t")
+
+# find amplicons (use to select)
+pat=paste(amplicon.table$amplicon, collapse="|") # find amplicons specified in amplicon table
+
+# create regex to extract sampleID (to be used with remove)
+pat.sampleID=paste(sprintf("^%s_", amplicon.table$amplicon), collapse="|") # find amplicons specified in amplicon table (with _)
+pat.sampleID=paste(c(pat.sampleID, "_trimmed_merged.fastq.gz$"),collapse="|")  # remove _trimmed from end
+
+seqtab.nochim.df = seqtab.nochim.df %>%
+  pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>%
+  mutate(locus = str_extract(sample, pat)) %>%
+  mutate(sampleID = str_remove_all(sample, pat.sampleID)) %>%
+  select(sampleID,locus,asv,reads)
+
+temp = seqtab.nochim.df %>% select(locus,asv) %>% distinct()
+loci =unique(temp$locus)
+k=1
+allele.sequences = data.frame(locus = seq(1,nrow(temp)),allele = seq(1,nrow(temp)),sequence = seq(1,nrow(temp)))
+for(i in seq(1,length(loci))){
+  temp2 = temp %>% filter(locus==loci[i])
+  for(j in seq(1,nrow(temp2))){
+    allele.sequences$locus[k+j-1] = loci[i]
+    allele.sequences$allele[k+j-1] = paste0(loci[i],".",j)
+    allele.sequences$sequence[k+j-1] = temp2$asv[j]
+  }
+  k=k+nrow(temp2)
+}
+
+allele.data = seqtab.nochim.df %>%
+  left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
+  group_by(sampleID,locus,allele) %>%
+  group_by(sampleID,locus) %>%
+  mutate(norm.reads.locus = reads/sum(reads))%>%
+  mutate(n.alleles = n()) %>%
+  ungroup()
+
+write.table(allele.data,file="dada2.clusters.txt",quote=F,sep="\t",col.names=T,row.names=F)
+saveRDS(allele.data, file = "dada2.clusters.RDS")
