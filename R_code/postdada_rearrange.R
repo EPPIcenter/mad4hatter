@@ -12,7 +12,6 @@ parser$add_argument('--sample-coverage', type="character", help = "Sample covera
 parser$add_argument('--amplicon-coverage', type="character", help = "Amplicon coverage file from QC to append amplicon coverage statistics that are P. falciparum specific.")
 parser$add_argument('--amplicon-table', type="character", required=TRUE, help = "Amplicon table with primer pools. This is used to organize the sequence table by amplicon.")
 parser$add_argument('--clusters', type="character", required=TRUE, help="RDS Clusters from DADA2. This is the main output from the DADA module.")
-parser$add_argument('--pseudo-fastq-output', type="character", default="pseudo-fastqs", help = "Fastq files are created using the DADA clusters, and will be output to the specified location by sample name.")
 
 args <- parser$parse_args()
 print(args)
@@ -28,19 +27,6 @@ library(doMC)
 library(tibble)
 library(ggplot2)
 library(Biostrings)
-
-# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/ff/9c3bf0fc286f71823ce47257f0c8f5")
-# # # FOR DEBUGGING
-# args <- list()
-# args$homopolymer_threshold <- 5
-# args$refseq_fasta <- "v4_refseq.fasta"
-# args$masked_fasta <- "v4_refseq.fasta.2.7.7.80.10.25.3.mask"
-# args$dada2_output <- "seqtab.nochim.RDS"
-# args$parallel <- FALSE
-# args$alignment_threshold <- 60
-# args$clusters = "dada2.clusters.RDS"
-# args$amplicon_table="v4_amplicon_info.tsv"
-# args$pseudo_fastq_output="pseudo-fastqs"
 
 clusters=NULL
 if (grepl(".RDS|.rds", args$clusters)) {

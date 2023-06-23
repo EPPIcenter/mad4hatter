@@ -370,32 +370,12 @@ process RESISTANCE_MARKERS {
         path resmarkers_amplicon
 
  output:
-        path '*{.txt,.vcf}' 
-        file('Mapping')
-             
+        path "resmarker_table.txt"
+        path "resmarker_novel_snps.txt"
+
         script:
         """
-        #!/usr/bin/env bash
-        set -e
-
         rdsfile2="\$(echo $asvfile | tr ' ' '\n' | grep allele_data.txt)"
-        echo "\${rdsfile2}"    
-        mkdir -p Mapping
-        bwa index ${refseq_fasta}
-
-        awk 'BEGIN{FS=OFS="\\t";} {if(NR !=1) {print \$5,\$3}} END {close(\$rdsfile2)}' "\${rdsfile2}" | sort -u | awk 'BEGIN{FS=OFS="\\t"}{print">"\$1"\\n"\$2 >"Mapping/"\$1".fa"; close("Mapping/"\$1".fa") };'
-
-        cd Mapping
-
-        # this code removes deletion characters in the alleles demarcated by '-'.
-        # since each fasta contains a specific allele, we can assume that there will be 2 lines (the header followed by the string).
-        ls -1 *.fa | while read fasta; do sed -E '2~2s/[-]+//g' -i \$fasta; done 
-
-        for bfile in *.fa; do allele=`echo \$bfile | cut -f 1-2 -d '.'`; echo \$allele; bwa mem -L 10000 ../${refseq_fasta} \$bfile | samtools sort -o \$allele".bam" - ; samtools index \$allele".bam" ; done
-
-        for cfile in *.bam; do allele=`echo \$cfile | cut -f 1-2 -d '.'`; echo \$allele; 
-        bcftools mpileup -d 2000 -f ../${refseq_fasta} \$cfile | bcftools query --format '%CHROM\\t%POS\\t%REF\\t%ALT\\n' > \$allele".mpileup.txt"; done
-        cd ..
-        Rscript ${params.scriptDIR}/resistance_marker_genotypes_bcftools_v4.R "\${rdsfile2}" ${codontable} ${resmarkers_amplicon} Mapping
+        Rscript ${params.scriptDIR}/resistance_marker_genotypes_bcftools_v4.R --alleledata_FILE \${rdsfile2} --codontable_FILE ${codontable} --res_markers_info_FILE ${resmarkers_amplicon} --refseq ${refseq_fasta}
         """
 }
