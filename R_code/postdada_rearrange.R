@@ -28,6 +28,19 @@ library(tibble)
 library(ggplot2)
 library(Biostrings)
 
+# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/13/444d5f387c683912ce0855f452fce4")
+# # # FOR DEBUGGING
+# args <- list()
+# args$homopolymer_threshold <- 5
+# args$refseq_fasta <- "v4_refseq.fasta"
+# args$masked_fasta <- "v4_refseq.fasta.2.7.7.80.10.25.3.mask"
+# args$dada2_output <- "seqtab.nochim.RDS"
+# args$parallel <- FALSE
+# args$alignment_threshold <- 60
+# args$clusters = "dada2.clusters.RDS"
+# args$amplicon_table="v4_amplicon_info.tsv"
+# # args$pseudo_fastq_output="pseudo-fastqs"
+
 clusters=NULL
 if (grepl(".RDS|.rds", args$clusters)) {
   clusters=readRDS(args$clusters)
@@ -217,9 +230,9 @@ pat=paste(c(pat, "_trimmed_merged.fastq.gz$"),collapse="|")  # remove _trimmed f
 if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
   masked_sequences <- readDNAStringSet(args$masked_fasta)
-  df_masked <- NULL
+  allele.data <- NULL
 
-  df_masked <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
+  allele.data <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
 
     seq_1 <- DNAString(df_aln$refseq[seq1])
 
@@ -243,6 +256,8 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
     ref_rge <- ranges(ref_rle)
     mask_ranges <- IRanges()
+
+    ## for each dna base, identify homopolymers that are greater than our threshold
     for (dna_base in DNA_ALPHABET[1:4]) {
       dna_ranges <- reduce(ref_rge[runValue(ref_rle) == dna_base | runValue(ref_rle) == "-"])
 
@@ -262,23 +277,45 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
           end(new_ranges[ii])=ifelse(end(new_ranges)[ii] > length(seq_1), length(seq_1), end(new_ranges)[ii])
         }
       }
+
+      ## Finally append the homopolymers we found to the list of ranges to be masked
       mask_ranges <- append(mask_ranges, new_ranges)
     }
 
+    ## Next, find tandem repeat ranges from the user provided masked tandem repeats fasta file (ie. 'masked sequences')
     maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
     trseq <- DNAString(as.character(maskseq))
     tr_rle <- Rle(as.vector(trseq))
 
+    ## From our alignments, we now have indels and snps captured in our asvs. We want to keep this information
+    ## if they occur outside of the masked ranges. We do not want to keep any indels that occur within the masked ranges too.
+    ## Therefore, we need to do a bit of mapping to make sure that we mask the correct coordinates which are very likely
+    ## going to be different then what is provided by the user.
+
+    ## These ranges keep track of masked ranges in the users masked regions file (ie. 'args$masked_refseq')
     tr_rge <- ranges(tr_rle)[runValue(tr_rle) == "N"]
+
+    ## These ranges keep track of the insertions found the in the asv sequence. Insertions appear as '-'
+    ## in the reference sequence, and will change the coordinates of regions to be masked if they are outside
+    ## of mask regions.
     gap_range <- ref_rge[runValue(ref_rle) == "-"]
 
     if (length(tr_rge) > 0) {
       for (i in 1:length(tr_rge)) {
-        n_inserts <- sum(as.vector(seq_1[1:start(tr_rge[i])]) == '-')
-        gaps_over_tr_rge <- gap_range[gap_range %over% shift(tr_rge[i], n_inserts)]
-        n_over_range_gaps <- ifelse(length(gaps_over_tr_rge) == 0, 0, width(gaps_over_tr_rge))
-        new_range <- IRanges(start = start(tr_rge[i]) + n_inserts, end = end(tr_rge[i]) + n_inserts + n_over_range_gaps)
 
+        ## identify how many insertions there were before the tr range so that
+        ## we know how many positions to move the masked region
+        n_inserts_before_tr_range <- sum(as.vector(seq_1[1:start(tr_rge[i])]) == '-')
+
+        ## With the updated masked region (see 'shift'), now identify any insertions in the asv
+        ## that occurred within that region. These are indels that we want to ignore.
+        gaps_over_tr_rge <- gap_range[gap_range %over% shift(tr_rge[i], n_inserts_before_tr_range)]
+
+        ## Finally, calculate the new range using our updated coordinates
+        n_over_range_gaps <- ifelse(length(gaps_over_tr_rge) == 0, 0, width(gaps_over_tr_rge))
+        new_range <- IRanges(start = start(tr_rge[i]) + n_inserts_before_tr_range, end = end(tr_rge[i]) + n_inserts_before_tr_range + n_over_range_gaps)
+
+        ## Here we update the reference to reflect the tandem repeat masked region.
         seq_1[new_range] <- "N" # mask refseq prime
         if (length(gaps_over_tr_rge) > 0) {
           for (j in 1:length(gaps_over_tr_rge)) {
@@ -337,56 +374,21 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
       }
     }
 
-    data.frame(
-      seqid = df_aln[seq1, ]$seqid,
-      refid = df_aln[seq1, ]$refid,
-      asv_prime = as.character(asv_prime)
-    )
-  }
+    ## Add CIGAR here
+    bs.cigar=BString(x=paste(rep("M", length(asv_prime)), collapse="")) # Start with all matches
 
-  ## this is a workaround due the large memory usage of the seqtab.nochim object
-  df_collapsed <- df_masked %>%
-    group_by(asv_prime) %>%
-    mutate(seqid = paste(c(seqid), collapse = ";")) %>%
-    distinct()
-
-  ## replace sequences in seqtab.nochim matrix with seqids to use less memory
-  # colnames(seqtab.nochim) <- df.sequences$seqid
-
-  seqtab.nochim.df <- foreach (idx = 1:nrow(df_collapsed), .combine = "bind_rows") %do% {
-
-    ## add masked asv
-    aln <- df_collapsed[idx,]
-    seqids <- unlist(strsplit(aln$seqid, ";"))
-    seqs <- df.sequences[df.sequences$seqid %in% seqids,]
-    df <- clusters.1[(clusters.1$seqid %in% seqs$asvid),]
-    indices = as(unlist(strsplit(df$seqid, ";")), "integer")
-
-    clx=clusters[indices, ]
-    clx$asv = aln$asv_prime
-
-    ## add cigar string
-    aln.joined=aln %>%
-      dplyr::mutate(seqid=strsplit(seqid,";")) %>%
-      tidyr::unnest(seqid) %>%
-      inner_join(df_aln, by=c("seqid", "refid"))
-
-    ## Just take first row if they were collapsed
-    aln.joined=aln.joined[1,]
-
-    asv.1 <-  DNAString(aln.joined$asv_prime)
+    asv.1 <-  DNAString(asv_prime)
     asv.1.rle <- Rle(as.vector(asv.1))
     asv.1.rge <- ranges(asv.1.rle)
 
-    refseq <- BSgenome::getSeq(ref_sequences, aln$refid)
+    refseq <- BSgenome::getSeq(ref_sequences, df_aln$refid[seq1])
     refseq <- DNAString(as.character(refseq))
     refseq.rle = Rle(as.vector(refseq))
     refseq.rge = ranges(refseq.rle)
 
-    bs.cigar=BString(x=paste(rep("M", length(asv.1)), collapse="")) # Start with all matches
-
+    ## Grab inserts from the reference sequence
     ranges.list=list()
-    ranges.list=c(ranges.list, refseq.rge[runValue(refseq.rle) == "-"])
+    ranges.list=c(ranges.list, reference_ranges[ref_rge[runValue(ref_rle) == "-"] %outside% reference_ranges])
     names(ranges.list)[1] <- "I"
 
     ranges.list<-c(ranges.list, asv.1.rge[runValue(asv.1.rle) == "-"])
@@ -420,19 +422,30 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     cigar.rle = Rle(as.vector(bs.cigar))
 
     cigar=paste(sprintf("%d%s", runLength(cigar.rle), runValue(cigar.rle)), collapse = "")
-    clx$cigar=cigar
 
-    return(clx)
+    data.frame(
+      seqid = df_aln[seq1, ]$seqid,
+      refid = df_aln[seq1, ]$refid,
+      asv_prime = as.character(asv_prime),
+      cigar=cigar
+    )
   }
 
-  allele.data=seqtab.nochim.df %>%
-    group_by(sampleID, locus, asv) %>%
+  ## ASV in the original user file should be replaced with the identfier to use less memory
+  allele.data <- allele.data %>%
+    dplyr::rename(locus=refid) %>%
+    inner_join(df.sequences, by=c("seqid")) %>%
+    inner_join(clusters.1,by=c('asvid'='seqid')) %>%
+    inner_join(clusters,by=c('locus', "asv")) %>%
+    select(sampleID, locus, asv_prime, reads, allele, norm.reads.locus, n.alleles, cigar) %>%
+    group_by(sampleID, locus, asv_prime) %>%
     mutate(reads=sum(reads)) %>%
-    ungroup()
+    dplyr::rename(asv=asv_prime) %>%
+    distinct()
 
 } else {
 
-  seqtab.nochim.df <- foreach (idx = 1:nrow(df_aln), .combine = "bind_rows") %do% {
+  allele.data <- foreach (idx = 1:nrow(df_aln), .combine = "bind_rows") %do% {
 
     aln <- df_aln[idx,]
     seqids <- unlist(strsplit(aln$seqid, ";"))
@@ -493,7 +506,7 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     return(clx)
   }
 
-  allele.data=seqtab.nochim.df %>%
+  allele.data=allele.data %>%
     group_by(sampleID, locus, asv) %>%
     mutate(reads=sum(reads)) %>%
     ungroup()
@@ -502,8 +515,8 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
 
 print("Done masking sequences...")
 
-saveRDS(seqtab.nochim.df,file="allele_data.RDS")
-write.table(seqtab.nochim.df,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
+saveRDS(allele.data,file="allele_data.RDS")
+write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
 ## QC Postprocessing
 
