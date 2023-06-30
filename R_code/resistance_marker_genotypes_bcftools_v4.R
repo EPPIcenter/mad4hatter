@@ -48,6 +48,8 @@ res_markers_info=read.delim(args$res_markers_info_FILE,header=T,sep="\t") %>%
   dplyr::mutate(cigar.keys=str_extract_all(cigar, "I|S|D|M")) %>%
   dplyr::mutate(cigar.values=str_split(cigar, "I|S|D|M")) %>%
   filter(!is.na(sampleID))
+nrow(res_markers_info)
+sum(is.na(res_markers_info$sampleID))
 
 if (args$parallel) {
   n_cores <- ifelse(args$n_cores <= 0, detectCores(), args$n_cores)
@@ -182,6 +184,7 @@ if (nrow(res_markers_info)>0) {
       novel.cigar=novel.cigar %>%
         filter(!((pos >= codon_start) & (pos <= (codon_start+2) )))
 
+      if(nrow(novel.cigar)>0){
       novel.cigar=foreach (jj = 1:nrow(novel.cigar), .combine="bind_rows") %do% {
         novel.cigar.row = novel.cigar[jj,]
         pos=as.integer(novel.cigar.row$pos)
@@ -189,6 +192,7 @@ if (nrow(res_markers_info)>0) {
         novel.cigar.row$ALT=as.character(asv[pos])
 
         novel.cigar.row
+        }
       }
     }
     return(novel.cigar)
