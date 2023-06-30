@@ -108,6 +108,15 @@ if(args$concat_non_overlaps){
                                   justConcatenate=TRUE)
   
 
+if(length(rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads)))==1){
+ mergers.no.overlap.temp = mergers.no.overlap
+ mergers.no.overlap = list()
+ mergers.no.overlap[[rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))]]=
+	mergers.no.overlap.temp
+
+}
+
+
   mergers = c(mergers.overlap,mergers.no.overlap)[names(dadaFs)]
   save(file = 'mergers.rda', mergers, mergers.overlap, mergers.no.overlap, amplicon.info, dadaFs, dadaRs, args)
 

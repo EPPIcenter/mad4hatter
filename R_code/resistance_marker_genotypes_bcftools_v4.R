@@ -46,7 +46,8 @@ res_markers_info=read.delim(args$res_markers_info_FILE,header=T,sep="\t") %>%
   dplyr::filter(Codon_Start > 0, Codon_Start < ampInsert_length) %>% distinct(V5, .keep_all = T) %>%
   dplyr::left_join(allele.data, by=c("amplicon"="locus"), multiple = "all") %>%
   dplyr::mutate(cigar.keys=str_extract_all(cigar, "I|S|D|M")) %>%
-  dplyr::mutate(cigar.values=str_split(cigar, "I|S|D|M"))
+  dplyr::mutate(cigar.values=str_split(cigar, "I|S|D|M")) %>%
+  filter(!is.na(sampleID))
 
 if (args$parallel) {
   n_cores <- ifelse(args$n_cores <= 0, detectCores(), args$n_cores)
