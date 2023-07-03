@@ -27,6 +27,7 @@ library(doMC)
 library(tibble)
 library(ggplot2)
 library(Biostrings)
+library(magrittr)
 
 # setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/13/444d5f387c683912ce0855f452fce4")
 # # # FOR DEBUGGING
@@ -41,6 +42,8 @@ library(Biostrings)
 # args$amplicon_table="v4_amplicon_info.tsv"
 # # args$pseudo_fastq_output="pseudo-fastqs"
 
+
+# load the output from the dada2 process (allele_data saved into dada2.clusters.RDS)
 clusters=NULL
 if (grepl(".RDS|.rds", args$clusters)) {
   clusters=readRDS(args$clusters)
@@ -48,37 +51,51 @@ if (grepl(".RDS|.rds", args$clusters)) {
   clusters=read.table(args$clusters, header=T)
 }
 
+clusters %<>% 
+  mutate(sampleID = str_remove_all(sampleID, pat = "_trimmed"))
+
 ## I. Check for non overlapping sequences.
 
+# make data frame clusters.1 that has the distinct asvs and records in which row (sample/locus/allele in clusters) it showed
 clusters.1=clusters %>%
   ungroup() %>%
   dplyr::mutate(seqid=row_number()) %>%
-  group_by(asv) %>%
+  group_by(locus,asv) %>%
   dplyr::mutate(seqid=paste(seqid,collapse=";")) %>%
-  select(asv,seqid) %>%
-  distinct()
-
-
+  select(locus,asv,seqid) %>%
+  distinct() 
+# make a list of sequences
 sequences = clusters.1$asv
+# identify the sequences that didn't overlap as those that have 10 N's, which is how they are concatenated in merge in dada2
 non_overlaps_idx <- which(str_detect(sequences, paste(rep("N", 10), collapse = "")))
 
+# read in the amplicon info tsv which has the name and genomic location
 amplicon.table=read.table(args$amplicon_table,header=T)
 
 # if there are any sequences that do not overlap,
 # see if they can be collapsed and sum their
 # counts
 
+# here we will collapse all the non overlapping sequences that only differed in the length of the reads on either side
+# the thinking is that those differences are driven by differences in quality of reads rather than actual variation
+
+
+# Note for Brian: in df_aln we would have only unique sequences but there's no collapsing of the truncated sequences so those are repeated
 if (length(non_overlaps_idx) > 0) {
 
+  # extract the non overlapping sequences
   non_overlaps <- sequences[non_overlaps_idx]
+  # split the two ends of the sequence
   non_overlaps_split = strsplit(non_overlaps, paste(rep("N", 10), collapse = ""))
 
+  # put both ends of the sequence and the positions in the sequences list in a data frame
   df_non_overlap <- data.frame(
-    column_indexes = non_overlaps_idx,
+    column_indexes = non_overlaps_idx,  # note for Brian: why are these called column_indexes if they are from rows?
     left_sequences = sapply(non_overlaps_split, "[[", 1),
     right_sequences = sapply(non_overlaps_split, "[[", 2)
   )
 
+  # extract and order the left sequences and order them alphabetically (and keep the indexes in sequence as names)
   ordered_left_sequences <- df_non_overlap %>%
     arrange(left_sequences, str_length(left_sequences)) %>%
     pull(left_sequences, name = column_indexes)
@@ -87,16 +104,22 @@ if (length(non_overlaps_idx) > 0) {
   # store modified left sequences in this list
   processed_left_sequences <- c()
 
+  # for each sequence find any others that start with the same sequence 
   while (idx <= length(ordered_left_sequences)) {
     base_sequence <- ordered_left_sequences[idx]
     # 'x' is all sequences that match the base sequence. they should
-    # already be together because of the prerequiste seqtab sorting above
+    # already be together because of the prerequiste seqtab sorting above 
+    # sequences were sorted alphabetically so matching ones will be together, and then sorted by length so the shortest will come first
+    # note that some left sequences will be identical because the differences in the asv are in the right sequence
     x <- ordered_left_sequences[
       startsWith(ordered_left_sequences, base_sequence)]
-
-    t <- nchar(x)
-    if (length(t) == 2 && (max(t) - min(t) == 1)) {
-      x <- substr(x, 1, min(t))
+    
+    if (length(x) > 1) {     # Note for Brian: why only if you have 2 and if the difference is 1? I'm temporarily changing to more than 1 and at most 3, but that's an arbitrary number to not get rid of true trs
+    # if there are sequences that are longer than the first by more than 3 bases then those are not analyzed/modified
+    #if (length(t) == 2 && (max(t) - min(t) == 1)) {  
+      t <- nchar(x)
+      idx.close = which((t-t[1])<4)
+      x <- substr(x[idx.close], 1, t[1])
     }
 
     processed_left_sequences <- c(processed_left_sequences, x)
@@ -112,11 +135,13 @@ if (length(non_overlaps_idx) > 0) {
     column_indexes = df_non_overlap$column_indexes,
     reversed = sapply(lapply(strsplit(df_non_overlap$right_sequences, NULL), rev), paste, collapse="")
   )
+  # extract and order the reversed right sequences and order them alphabetically (and keep the indexes in sequence as names)
   ordered_reversed_right_sequences <- tmp %>%
     arrange(reversed, str_length(reversed)) %>%
     pull(reversed, name = column_indexes)
-
+  # start idx to loop over sequences
   idx <- 1
+  # store modified sequences in this list
   processed_right_sequences <- c()
 
   while (idx <= length(ordered_reversed_right_sequences)) {
@@ -125,17 +150,21 @@ if (length(non_overlaps_idx) > 0) {
     x <- ordered_reversed_right_sequences[
       startsWith(ordered_reversed_right_sequences, base_sequence)]
 
-    t <- nchar(x)
-    if (length(t) == 2 && (max(t) - min(t) == 1)) {
-      x <- substr(x, 1, min(t))
+    # if there are more than 1 sequences , take the ones that differ by less than 4 bases and shorten to the length of the first one, if there are longer ones, leave out for the next round
+    if (length(x) >1) {
+      t <- nchar(x)
+      idx.close = which((t-t[1])<4)
+      x <- substr(x[idx.close], 1, t[1])
     }
 
+    #append the sequences, modified if so
     processed_right_sequences <- c(processed_right_sequences, x)
 
     # update index
     idx <- idx + length(x)
   }
 
+  # reverse the sequences
   processed_right_sequences <- sapply(lapply(strsplit(processed_right_sequences, NULL), rev), paste, collapse="")
 
   # re-order the sequences by their indexes (ie. [1..n])
@@ -152,11 +181,14 @@ if (length(non_overlaps_idx) > 0) {
   )
 
   # combine the processed sequences
-  combined <- NULL
-  for (idx in 1:nrow(df_non_overlap)) {
-    combined <- c(combined, paste(c(df_non_overlap[idx, ]$processed_left_sequences, df_non_overlap[idx, ]$processed_right_sequences), collapse = ""))
-  }
-  df_non_overlap$combined <- combined
+  #combined <- NULL
+  #for (idx in 1:nrow(df_non_overlap)) {
+  #  combined <- c(combined, paste(c(df_non_overlap[idx, ]$processed_left_sequences, df_non_overlap[idx, ]$processed_right_sequences), collapse = ""))
+  #}
+  #df_non_overlap$combined <- combined
+
+  df_non_overlap %<>% 
+    mutate(combined = paste0(processed_left_sequences,processed_right_sequences)) 
 
   saveRDS(df_non_overlap,file="non_overlapping_seqs.RDS")
   write.table(df_non_overlap,file="non_overlapping_seqs.txt",quote=F,sep="\t",col.names=T,row.names=F)
@@ -164,10 +196,10 @@ if (length(non_overlaps_idx) > 0) {
   # finally write back to sequences
   sequences[df_non_overlap$column_indexes] <- df_non_overlap$combined
 }
-
+clusters.1$sequences <- sequences
 ## Reference table for sequences - this is to reduce memory usage in intermediate files
 ## This table keeps track of which sample/locus had the unique sequence
-df.sequences <- data.frame(
+df.sequences.idx <- data.frame(
   seqid = sprintf("S%d", 1:length(sequences)),
   asvid = clusters.1$seqid
 )
@@ -181,24 +213,39 @@ if (args$parallel) {
   registerDoSEQ()
 }
 
+# read the sequences from the reference genome (already extracted into a fasta file)
 ref_sequences <- readDNAStringSet(args$refseq_fasta)
-ref_names <- unique(names(ref_sequences))
+# read the names (loci)
+#ref_names <- unique(names(ref_sequences))  # note to Brian: commenting out as it doesn't show up again
 
+
+# Note to Brian: please explain what this does and why those numbers are chosen
 sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
+
+#########  IMPORTANT: NON PF SEQUENCES NEED TO BE INCLUDED IN REFERENCE!
+
+
+####################### NEED TO ANNOTATE BETTER BELOW THIS   ##############################
+
 
 # This object contains the aligned ASV sequences
 df_aln <- NULL
-df_aln <- foreach(seq1 = 1:length(sequences), .combine = "bind_rows") %dopar% {
-  aln <- pairwiseAlignment(ref_sequences, sequences[seq1], substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
-  num <- which.max(score(aln))
-  patt <- c(alignedPattern(aln[num]), alignedSubject(aln[num]))
+df_aln <- foreach(seq1 = 1:nrow(clusters.1), .combine = "bind_rows") %dopar% {
+  # the alignment is performed only with the reference sequence for the corresponding locus as we have this information from the demultiplexing step
+  if(substr(clusters.1$locus[seq1],1,2)=="Pf"){   # temporary fix to deal with other species
+    refseq.seq1 = ref_sequences[clusters.1$locus[seq1]]
+  }else{
+    refseq.seq1 = ref_sequences["Pf3D7_13_v3-1041593-1041860-1AB"]  # in the meantime I'll use Pf's ldh as reference, which is wrong because it's not the same sequence...!
+  }
+  aln <- pairwiseAlignment(refseq.seq1, sequences[seq1], substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
+  patt <- c(alignedPattern(aln), alignedSubject(aln))
   ind <- sum(str_count(as.character(patt),"-"))
   data.frame(
-    seqid = df.sequences[seq1,]$seqid,
+    seqid = df.sequences.idx[seq1,]$seqid,
     hapseq = as.character(patt)[2],
     refseq = as.character(patt)[1],
-    refid = names(patt)[1],
-    score = score(aln[num]),
+    refid = clusters.1$locus[seq1],
+    score = score(aln),
     indels = ind
   )
 }
@@ -219,301 +266,273 @@ g = ggplot(df_aln) +
 ggsave(filename="alignments.pdf", g, device="pdf")
 
 ## Filter off targets here
-df_aln <- df_aln %>% filter(score > args$alignment_threshold)
+df_aln %<>% filter(score > args$alignment_threshold)
 
+## Note for Brian: commenting the next 3 lines out because they don't show up again
 # create regex to extract sampleID (to be used with `str_remove_all()`)
-pat=paste(sprintf("^%s_", amplicon.table$amplicon), collapse="|") # find amplicons specified in amplicon table (with _)
-pat=paste(c(pat, "_trimmed_merged.fastq.gz$"),collapse="|")  # remove _trimmed from end
+#pat=paste(sprintf("^%s_", amplicon.table$amplicon), collapse="|") # find amplicons specified in amplicon table (with _)
+#pat=paste(c(pat, "_trimmed_merged.fastq.gz$"),collapse="|")  # remove _trimmed from end
 
 ## II. Check for homopolymers.
 
+# This only needs to be done in the reference sequences. We may want to change how homopolymers are defined in the future. As in we could also use homopolymers observed in data, not in reference to define one that doesn't make the cut in the reference
+ 
 if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
+  # Define a function to process each sequence
+  homomask_sequence <- function(sequence) {
+    # somewhat convoluted way to get the Rle from the sequence in the DNAStringSet object that will be passed to the function
+    ref_seq_rle <- Rle(as.vector(unlist(strsplit(as.character(sequence), ""))))
+    # replace the homopolymers with Ns
+    ref_seq_rle@values[ref_seq_rle@lengths > args$homopolymer_threshold] <- "N"
+    # add 2 N's to the run to mask 1 base upstream and 1 base downstream
+    ref_seq_rle@lengths[ref_seq_rle@lengths > args$homopolymer_threshold] <-  as.integer(ref_seq_rle@lengths[ref_seq_rle@lengths > args$homopolymer_threshold] + 2)
+    # remove one N from the run to mask 1 base upstream and 1 base downstream
+    ref_seq_rle@lengths[lag(ref_seq_rle@lengths > args$homopolymer_threshold,default=FALSE)] <-  as.integer(ref_seq_rle@lengths[lag(ref_seq_rle@lengths > args$homopolymer_threshold,default=FALSE)] -1)
+    ref_seq_rle@lengths[lead(ref_seq_rle@lengths > args$homopolymer_threshold,default=FALSE)] <-  as.integer(ref_seq_rle@lengths[lead(ref_seq_rle@lengths > args$homopolymer_threshold,default=FALSE)] -1)
+    # if a base was between homopolymers we have a -1 now, so we need to account by taking an N out of one of the homopolymers, and I'll do from the left
+    ref_seq_rle@lengths[lead(ref_seq_rle@lengths == -1 ,default=FALSE)] <-  as.integer(ref_seq_rle@lengths[lead(ref_seq_rle@lengths == -1 ,default=FALSE)]  -1)
+    # if homopolymer was at the beginning or end we added an N, so let's remove it
+    ref_seq_rle@lengths[c(1, length(ref_seq_rle@lengths))] <- ref_seq_rle@lengths[c(1, length(ref_seq_rle@lengths))] - (ref_seq_rle@values[c(1, length(ref_seq_rle@lengths))] == "N")
+    # remove empty runs, make -1's, 0
+    ref_seq_rle <- Rle(ref_seq_rle@values, ifelse(ref_seq_rle@lengths<0, 0, ref_seq_rle@lengths))
+    # paste the Rle back together into a sequence
+    homomasked_seq <- DNAString(paste(rep(runValue(ref_seq_rle), times = runLength(ref_seq_rle)), collapse = ""))
+    # return the sequence
+    return(homomasked_seq)
+  }
+  # Apply the function to each element in ref_sequences
+  homomask_ref_sequences <-DNAStringSet(lapply(ref_sequences, homomask_sequence))
+}
 
-  masked_sequences <- readDNAStringSet(args$masked_fasta)
-  allele.data <- NULL
+# load the masked sequences:
+trmask_ref_sequences = readDNAStringSet(args$masked_fasta)
 
-  allele.data <- foreach(seq1 = 1:nrow(df_aln), .combine = "rbind") %dopar% {
+# now we have ref_sequences, homomask_ref_sequences and trmask_ref_sequences. they all have the same number of objects and each object has the same length across them 
 
-    seq_1 <- DNAString(df_aln$refseq[seq1])
+#Note to Brian:
+#for now I'll keep the choice using args$homopolymer_threshold, but we should add the option to do tr masking only etc. And the homopolymers should come out of this code. 
+#also if no masking is required skip the processes to mask. 
 
-    asv_prime <-  DNAString(df_aln$hapseq[seq1])
-    ref_rle <- Rle(as.vector(seq_1))
+merge_homo_tr = function(seq.homo, seq.tr) {
+  seq1=as.character(seq.homo)
+  seq2=as.character(seq.tr)
+  combined <- character(max(nchar(seq1), nchar(seq2)))
+  combined[(strsplit(seq1,"")[[1]]=="N") | (strsplit(seq2,"")[[1]]=="N")] <- "N"
+  combined[!((strsplit(seq1,"")[[1]]=="N") | (strsplit(seq2,"")[[1]]=="N"))] <- strsplit(seq1[[1]],"")[[1]][!((strsplit(seq1,"")[[1]]=="N") | (strsplit(seq2,"")[[1]]=="N"))]
+  combined_rle = Rle(combined)
+  combined_seq = DNAString(paste(rep(runValue(combined_rle), times = runLength(combined_rle)), collapse = ""))
+  return(combined_seq)
+}
 
-    ## The masking algorithm works as follows:
-    ## 1) Identify the regions that we want to mask. This will be
-    ##    a) homopolymer regions (n-bases > args$homopolymer_length)
-    ##    b) tandem repeat regions (provided by user in args$masked_refseq)
-    ## 2) Collapse these regions so that they are all on one line (group by masked and tandem repeat)
-    ## 3) Go through and mask
+homo_tr_mask_ref_sequences = DNAStringSet(mapply(merge_homo_tr,homomask_ref_sequences,trmask_ref_sequences))
+
+df_homo_tr_mask_ref_sequences = tibble(homo_tr_ref_seq = as.character(homo_tr_mask_ref_sequences),refid = names(homo_tr_mask_ref_sequences))
+
+# Now let's mask the aligned reference sequences 
+# first make a data frame with all the unique aligned sequences and join with the data frame that has the masked references
+df_aln_references = df_aln  %>% 
+  select(refid,refseq) %>% 
+  distinct() %>% 
+  left_join(df_homo_tr_mask_ref_sequences,by="refid")
 
 
-    ## start by identifying homopolymer ranges.
-    ## a homopolymer range will be any range that has a dna base
-    ## count greater than args$homopolymer_length.
-    ## extend the homopolymer range +1 on each end to handle phasing.
-    ## if start(range) < 1 or end(range) > length(seq_1), then adjust the range
-    ## to stay in-bounds.
-
-    ref_rge <- ranges(ref_rle)
-    mask_ranges <- IRanges()
-
-    ## for each dna base, identify homopolymers that are greater than our threshold
-    for (dna_base in DNA_ALPHABET[1:4]) {
-      dna_ranges <- reduce(ref_rge[runValue(ref_rle) == dna_base | runValue(ref_rle) == "-"])
-
-      vb <- NULL
-      ## Determine which of the subranges meet the criteria to be homopolymers
-      for (i in 1:length(dna_ranges)) {
-        ss <- seq_1[dna_ranges[i]]
-        kss <- as.character(ss)
-        vb <- c(vb, str_count(kss, dna_base) > args$homopolymer_threshold)
-      }
-
-      ## Add the mask +1 extension here (goes in both directions so the length will be +2)...
-      new_ranges=dna_ranges[vb] + 1
-      if (length(new_ranges) > 0) {
-        for (ii in 1:length(new_ranges)) {
-          start(new_ranges[ii])=ifelse(start(new_ranges)[ii] < 1, 1, start(new_ranges)[ii])
-          end(new_ranges[ii])=ifelse(end(new_ranges)[ii] > length(seq_1), length(seq_1), end(new_ranges)[ii])
-        }
-      }
-
-      ## Finally append the homopolymers we found to the list of ranges to be masked
-      mask_ranges <- append(mask_ranges, new_ranges)
+mask_aligned_sequence = function(homo_tr_ref_seq,refseq){
+  string_homo_tr_ref_seq = homo_tr_ref_seq
+  split_string <- gregexpr("[^-]+|-+", refseq)
+  split_string <- regmatches(refseq, split_string)[[1]]
+  newstring = character()
+  for(i in split_string){
+    if(grepl("-",i)){
+      newstring=paste0(newstring,i)
+    }else{
+      newstring=paste0(newstring,substr(string_homo_tr_ref_seq,1,nchar(i)))
+      string_homo_tr_ref_seq = substr(string_homo_tr_ref_seq,nchar(i)+1,nchar(string_homo_tr_ref_seq))
     }
+  }
+  return(newstring)
+}
 
-    ## Next, find tandem repeat ranges from the user provided masked tandem repeats fasta file (ie. 'masked sequences')
-    maskseq <- getSeq(masked_sequences, df_aln$refid[seq1])
-    trseq <- DNAString(as.character(maskseq))
-    tr_rle <- Rle(as.vector(trseq))
-
-    ## From our alignments, we now have indels and snps captured in our asvs. We want to keep this information
-    ## if they occur outside of the masked ranges. We do not want to keep any indels that occur within the masked ranges too.
-    ## Therefore, we need to do a bit of mapping to make sure that we mask the correct coordinates which are very likely
-    ## going to be different then what is provided by the user.
-
-    ## These ranges keep track of masked ranges in the users masked regions file (ie. 'args$masked_refseq')
-    tr_rge <- ranges(tr_rle)[runValue(tr_rle) == "N"]
-
-    ## These ranges keep track of the insertions found the in the asv sequence. Insertions appear as '-'
-    ## in the reference sequence, and will change the coordinates of regions to be masked if they are outside
-    ## of mask regions.
-    gap_range <- ref_rge[runValue(ref_rle) == "-"]
-
-    if (length(tr_rge) > 0) {
-      for (i in 1:length(tr_rge)) {
-
-        ## identify how many insertions there were before the tr range so that
-        ## we know how many positions to move the masked region
-        n_inserts_before_tr_range <- sum(as.vector(seq_1[1:start(tr_rge[i])]) == '-')
-
-        ## With the updated masked region (see 'shift'), now identify any insertions in the asv
-        ## that occurred within that region. These are indels that we want to ignore.
-        gaps_over_tr_rge <- gap_range[gap_range %over% shift(tr_rge[i], n_inserts_before_tr_range)]
-
-        ## Finally, calculate the new range using our updated coordinates
-        n_over_range_gaps <- ifelse(length(gaps_over_tr_rge) == 0, 0, width(gaps_over_tr_rge))
-        new_range <- IRanges(start = start(tr_rge[i]) + n_inserts_before_tr_range, end = end(tr_rge[i]) + n_inserts_before_tr_range + n_over_range_gaps)
-
-        ## Here we update the reference to reflect the tandem repeat masked region.
-        seq_1[new_range] <- "N" # mask refseq prime
-        if (length(gaps_over_tr_rge) > 0) {
-          for (j in 1:length(gaps_over_tr_rge)) {
-            seq_1[gaps_over_tr_rge[j]] <- "-"
-          }
-        }
-      }
-    }
-
-    tr_masks <- IRanges()
-    ref_rle <- Rle(as.vector(seq_1))
-    ref_rge <- ranges(ref_rle)
-    tr_ranges <- reduce(ref_rge[runValue(ref_rle) == 'N' | runValue(ref_rle) == "-"])
-
-    if (length(tr_ranges) > 0) {
-      for (i in 1:length(tr_ranges)) {
-        vseq <- as.vector(seq_1[tr_ranges[i]])
-        if (all(c('N', '-') %in% vseq) || 'N' %in% vseq) {
-          mask_ranges <- append(mask_ranges, tr_ranges[i])
-        }
-      }
-    }
-
-    mask_ranges <- unique(sort(mask_ranges))
-    mask_ranges <- reduce(mask_ranges)
-    reference_ranges <- mask_ranges
-
-    pos <- c(DNA_ALPHABET[1:4], "N")
-    if (length(mask_ranges) > 0) {
-      for (i in 1:length(mask_ranges)) {
-
-        vec_subseq <- as.vector(seq_1[reference_ranges[i]])
-        ibase <- which(DNA_ALPHABET[1:4] %in% vec_subseq)
-        dna_base <- ifelse(length(ibase) == 0, "N", DNA_ALPHABET[1:4][ibase])
-
-        n_base <- sum(vec_subseq == dna_base)
-        n_gaps <- sum(vec_subseq == '-')
-
-        replacement <- NULL
-
-        # for homopolymers, replacement should be N * length of the mask
-        # for tandem repeats, replacement should be length of original N mask
-        trun <- end(mask_ranges[i]) - length(asv_prime)
-        trun <- ifelse(trun < 0, 0, trun)
-        if (dna_base %in% DNA_ALPHABET[1:4]) {
-          replacement <- paste(as(Rle('N', width(mask_ranges[i]) - n_gaps - trun), 'character'), collapse = "")
-        } else {
-          replacement <- paste(as(Rle('N', n_base - trun), 'character'), collapse = "")
-        }
-
-        left_str <- ifelse(start(mask_ranges[i]) <= 1, "", as(subseq(asv_prime, 1, start(mask_ranges[i]) - 1), "character"))
-        right_str <- ifelse(end(mask_ranges[i]) >= length(asv_prime), "", as(subseq(asv_prime, end(mask_ranges[i]) + 1, length(asv_prime)), "character"))
-        asv_prime <- DNAString(paste(c(left_str, replacement, right_str), collapse = ""))
-
-        mask_ranges <- shift(mask_ranges, -n_gaps)
-      }
-    }
-
-    ## Add CIGAR here
-    bs.cigar=BString(x=paste(rep("M", length(asv_prime)), collapse="")) # Start with all matches
-
-    asv.1 <-  DNAString(asv_prime)
-    asv.1.rle <- Rle(as.vector(asv.1))
-    asv.1.rge <- ranges(asv.1.rle)
-
-    refseq <- BSgenome::getSeq(ref_sequences, df_aln$refid[seq1])
-    refseq <- DNAString(as.character(refseq))
-    refseq.rle = Rle(as.vector(refseq))
-    refseq.rge = ranges(refseq.rle)
-
-    ## Grab inserts from the reference sequence
-    ranges.list=list()
-    ranges.list=c(ranges.list, reference_ranges[ref_rge[runValue(ref_rle) == "-"] %outside% reference_ranges])
-    names(ranges.list)[1] <- "I"
-
-    ranges.list<-c(ranges.list, asv.1.rge[runValue(asv.1.rle) == "-"])
-    names(ranges.list)[2] <- "D"
-
-    # ranges.list<-c(ranges.list, asv.1.rge[runValue(asv.1.rle) == "N"])
-    # names(ranges.list)[3] <- "N"
-
-    snp.ranges=IRanges()
-    for (dna_base in c("A", "C", "T", "G")) {
-      refseq.rge.base = refseq.rge[runValue(refseq.rle) %in% c(dna_base, "N", "-")]
-      asv.1.rge.base = asv.1.rge[runValue(asv.1.rle) %in% c(dna_base, "N", "-")]
-      snp.rge = IRanges::setdiff(refseq.rge.base, asv.1.rge.base)
-
-      snp.ranges <- append(snp.ranges, snp.rge)
-    }
-
-    ranges.list=c(ranges.list, snp.ranges)
-    names(ranges.list)[3] <- "S"
-
-    for (ii in names(ranges.list)) {
-      if (length(ranges.list[[ii]]) > 0) {
-        for (jj in 1:length(ranges.list[[ii]])) {
-          bs.cigar[ranges.list[[ii]][jj]] <- c(ii)
-        }
-      } else {
-        bs.cigar[ranges.list[[ii]]] <- c(ii)
-      }
-    }
-
-    cigar.rle = Rle(as.vector(bs.cigar))
-
-    cigar=paste(sprintf("%d%s", runLength(cigar.rle), runValue(cigar.rle)), collapse = "")
-
-    data.frame(
-      seqid = df_aln[seq1, ]$seqid,
-      refid = df_aln[seq1, ]$refid,
-      asv_prime = as.character(asv_prime),
-      cigar=cigar
-    )
+remove_dashes_between_N = function(newstring){
+  NdashN = unique(regmatches(newstring,gregexpr("N-+N", newstring))[[1]])
+  newstring_nodash = newstring
+  for(i in NdashN){
+    newstring_nodash=gsub(i,strrep("N",nchar(i)),newstring_nodash)
+  }
+  return(newstring_nodash)
   }
 
+
+
+df_aln_references %<>% 
+  mutate(masked_aligned_refseq = mapply(mask_aligned_sequence,homo_tr_ref_seq,refseq)) %>% 
+  mutate(masked_aligned_nodashinN_refseq = sapply(masked_aligned_refseq,remove_dashes_between_N))
+
+
+#update df_aln 
+df_aln %<>% left_join(df_aln_references,by=c("refid","refseq"))
+
+
+
+# now let's make a pseudoCIGAR
+
+if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
+  allele.data <- foreach(seq2cigar = 1:nrow(df_aln), .combine = "rbind") %dopar% {
+
+      hapseq = df_aln[seq2cigar,]$hapseq
+      masked_aligned_refseq=df_aln[seq2cigar,]$masked_aligned_refseq[[1]]
+
+      bs.cigar=BString(x=paste(rep("M", nchar(hapseq)), collapse=""))
+
+      hapseq_dna = DNAString(hapseq)
+      hapseq_rle = Rle(as.vector(hapseq_dna))
+      hapseq_rge = ranges(hapseq_rle)
+
+      masked_aligned_refseq_dna = DNAString(masked_aligned_refseq)
+      masked_aligned_refseq_rle = Rle(as.vector(masked_aligned_refseq_dna))
+      masked_aligned_refseq_rge = ranges(masked_aligned_refseq_rle)
+
+      masked_ranges = masked_aligned_refseq_rge[runValue(masked_aligned_refseq_rle) == "N"]
+
+      # ranges_pseudocigar is where we'll add each of the ranges for the pseudocigar
+      ranges_pseudocigar=list()
+
+      # note that insertions are ambiguous!
+
+      insertion_rge = masked_aligned_refseq_rge[runValue(masked_aligned_refseq_rle) == "-"]
+      ranges_pseudocigar[["I"]]=insertion_rge[insertion_rge %outside% masked_ranges]
+
+      deletion_rge = hapseq_rge[runValue(hapseq_rle) == "-"]
+      ranges_pseudocigar[["D"]]<-deletion_rge[deletion_rge %outside% masked_ranges]
+
+      ranges_pseudocigar[["N"]]<-masked_ranges
+
+          for (dna_base in c("A", "C", "T", "G")) {
+            refbase = masked_aligned_refseq_rge[runValue(masked_aligned_refseq_rle) == dna_base]
+            hapbase = hapseq_rge[runValue(hapseq_rle) == dna_base]
+            snprge = IRanges::setdiff(hapbase, refbase)
+            snprge = snprge[snprge %outside% masked_ranges & snprge %outside% insertion_rge]
+            ranges_pseudocigar[[dna_base]] <- snprge
+          }
+
+
+          for (ii in names(ranges_pseudocigar)) {
+            if (length(ranges_pseudocigar[[ii]]) > 0) {
+              for (jj in 1:length(ranges_pseudocigar[[ii]])) {
+                bs.cigar[ranges_pseudocigar[[ii]][jj]] <- c(ii)
+              }
+            } else {
+              bs.cigar[ranges_pseudocigar[[ii]]] <- c(ii)
+            }
+          }
+
+          remove_insertions_between_N = function(newstring){
+            NIN = unique(regmatches(newstring,gregexpr("NI+N", newstring))[[1]])
+            newstring_noI = newstring
+            for(i in NIN){
+              newstring_noI=gsub(i,"NN",newstring_noI)
+            }
+            return(newstring_noI)
+          }
+
+          pseudo_cigar_build = remove_insertions_between_N(as.character(bs.cigar))
+
+          pseudo_cigar_rle = Rle(strsplit(pseudo_cigar_build,"")[[1]])
+
+          pseudo_cigar=paste(sprintf("%d%s", runLength(pseudo_cigar_rle), runValue(pseudo_cigar_rle)), collapse = "")
+
+          pseudo_cigar_build_simple = str_replace_all(pseudo_cigar_build,"N","M")
+
+          pseudo_cigar_simple_rle = Rle(strsplit(pseudo_cigar_build_simple,"")[[1]])
+
+          pseudo_cigar_simple=paste(sprintf("%d%s", runLength(pseudo_cigar_simple_rle), runValue(pseudo_cigar_simple_rle)), collapse = "")
+
+
+          data.frame(
+            seqid = df_aln[seq2cigar, ]$seqid,
+            refid = df_aln[seq2cigar, ]$refid,
+            asv_prime = hapseq,
+            pseudo_cigar_simple=pseudo_cigar_simple,
+            pseudo_cigar = pseudo_cigar
+          )
+  }
+}else{
+  allele.data <- foreach(seq2cigar = 1:nrow(df_aln), .combine = "rbind") %dopar% {
+
+      hapseq = df_aln[seq2cigar,]$hapseq
+      refseq=df_aln[seq2cigar,]$refseq[[1]]
+
+      bs.cigar=BString(x=paste(rep("M", nchar(hapseq)), collapse=""))
+
+      hapseq_dna = DNAString(hapseq)
+      hapseq_rle = Rle(as.vector(hapseq_dna))
+      hapseq_rge = ranges(hapseq_rle)
+
+      refseq_dna = DNAString(refseq)
+      refseq_rle = Rle(as.vector(refseq_dna))
+      refseq_rge = ranges(refseq_rle)
+
+      # ranges_pseudocigar is where we'll add each of the ranges for the pseudocigar
+      ranges_pseudocigar=list()
+
+      # note that insertions are ambiguous!
+
+      insertion_rge = refseq_rge[runValue(refseq_rle) == "-"]
+      ranges_pseudocigar[["I"]]=insertion_rge
+
+      deletion_rge = hapseq_rge[runValue(hapseq_rle) == "-"]
+      ranges_pseudocigar[["D"]]<-deletion_rge
+
+
+          for (dna_base in c("A", "C", "T", "G")) {
+            refbase = refseq_rge[runValue(refseq_rle) == dna_base]
+            hapbase = hapseq_rge[runValue(hapseq_rle) == dna_base]
+            snprge = IRanges::setdiff(hapbase, refbase)
+            snprge = snprge[snprge %outside% insertion_rge]
+            ranges_pseudocigar[[dna_base]] <- snprge
+          }
+
+
+          for (ii in names(ranges_pseudocigar)) {
+            if (length(ranges_pseudocigar[[ii]]) > 0) {
+              for (jj in 1:length(ranges_pseudocigar[[ii]])) {
+                bs.cigar[ranges_pseudocigar[[ii]][jj]] <- c(ii)
+              }
+            } else {
+              bs.cigar[ranges_pseudocigar[[ii]]] <- c(ii)
+            }
+          }
+
+
+          pseudo_cigar_build = as.character(bs.cigar)
+
+          pseudo_cigar_rle = Rle(strsplit(pseudo_cigar_build,"")[[1]])
+
+          pseudo_cigar=paste(sprintf("%d%s", runLength(pseudo_cigar_rle), runValue(pseudo_cigar_rle)), collapse = "")
+
+          data.frame(
+            seqid = df_aln[seq2cigar, ]$seqid,
+            refid = df_aln[seq2cigar, ]$refid,
+            asv_prime = hapseq,
+            pseudo_cigar_simple=pseudo_cigar,
+            pseudo_cigar = pseudo_cigar
+          )
+  }
+}
+
+
   ## ASV in the original user file should be replaced with the identfier to use less memory
-  allele.data <- allele.data %>%
+  allele.data %<>%
     dplyr::rename(locus=refid) %>%
-    inner_join(df.sequences, by=c("seqid")) %>%
-    inner_join(clusters.1,by=c('asvid'='seqid')) %>%
+    inner_join(df.sequences.idx, by=c("seqid")) %>%
+    inner_join(clusters.1,by=c('locus','asvid'='seqid')) %>%
     inner_join(clusters,by=c('locus', "asv")) %>%
-    select(sampleID, locus, asv_prime, reads, allele, norm.reads.locus, n.alleles, cigar) %>%
+    select(sampleID, locus, asv_prime, reads, allele, pseudo_cigar_simple, pseudo_cigar) %>%
     group_by(sampleID, locus, asv_prime) %>%
-    mutate(reads=sum(reads)) %>%
+    summarise(reads=sum(reads)) %>%
     dplyr::rename(asv=asv_prime) %>%
     distinct()
 
-} else {
-
-  allele.data <- foreach (idx = 1:nrow(df_aln), .combine = "bind_rows") %do% {
-
-    aln <- df_aln[idx,]
-    seqids <- unlist(strsplit(aln$seqid, ";"))
-    seqs <- df.sequences[df.sequences$seqid %in% seqids,]
-    df <- clusters.1[(clusters.1$seqid %in% seqs$asvid),]
-    indices = as(unlist(strsplit(df$seqid, ";")), "integer")
-
-    clx=clusters[indices, ]
-    clx$asv = aln$hapseq
-
-    hapseq <-  DNAString(aln$hapseq)
-    hapseq.rle <- Rle(as.vector(hapseq))
-    hapseq.rge <- ranges(hapseq.rle)
-
-    refseq <-  DNAString(aln$refseq)
-    refseq.rle <- Rle(as.vector(refseq))
-    refseq.rge <- ranges(refseq.rle)
-
-    bs.cigar=BString(x=paste(rep("M", length(asv.1)), collapse="")) # Start with all matches
-
-    ranges.list=list()
-    ranges.list=c(ranges.list, refseq.rge[runValue(refseq.rle) == "-"])
-    names(ranges.list)[1] <- "I"
-
-    ranges.list<-c(ranges.list, hapseq.rge[runValue(hapseq.rle) == "-"])
-    names(ranges.list)[2] <- "D"
-
-    # ranges.list<-c(ranges.list, asv.1.rge[runValue(asv.1.rle) == "N"])
-    # names(ranges.list)[3] <- "N"
-
-    snp.ranges=IRanges()
-    for (dna_base in c("A", "C", "T", "G")) {
-      refseq.rge.base = refseq.rge[runValue(refseq.rle) %in% c(dna_base, "-")]
-      hapseq.rge.base = hapseq.rge[runValue(hapseq.rle) %in% c(dna_base, "-")]
-      snp.rge = IRanges::setdiff(refseq.rge.base, hapseq.rge.base)
-
-      snp.ranges <- append(snp.ranges, snp.rge)
-    }
-
-    ranges.list=c(ranges.list, snp.ranges)
-    names(ranges.list)[3] <- "S"
-
-    for (ii in names(ranges.list)) {
-      if (length(ranges.list[[ii]]) > 0) {
-        for (jj in 1:length(ranges.list[[ii]])) {
-          bs.cigar[ranges.list[[ii]][jj]] <- c(ii)
-        }
-      } else {
-        bs.cigar[ranges.list[[ii]]] <- c(ii)
-      }
-    }
-
-    cigar.rle = Rle(as.vector(bs.cigar))
-
-    cigar=paste(sprintf("%d%s", runLength(cigar.rle), runValue(cigar.rle)), collapse = "")
-    clx$cigar=cigar
-
-    return(clx)
-  }
-
-  allele.data=allele.data %>%
-    group_by(sampleID, locus, asv) %>%
-    mutate(reads=sum(reads)) %>%
-    ungroup()
-
-}
-
-print("Done masking sequences...")
+print("Done with pseudoCIGAR...")
 
 saveRDS(allele.data,file="allele_data.RDS")
 write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
@@ -524,15 +543,20 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
   sample.coverage <- read.table(args$sample_coverage, header = TRUE, sep = "\t") %>%
     pivot_wider(names_from = "X", values_from = "NumReads")
 
-  qc.postproc <- allele.data %>%
-    left_join(sample.coverage, by = c("sampleID" = "SampleName")) %>%
-    group_by(sampleID) %>%
-    select(sampleID, Input, `No Dimers`, Amplicons, reads) %>%
-    group_by(sampleID) %>%
-    mutate(Amplicons.Pf = sum(reads)) %>%
-    select(-c(reads)) %>%
-    distinct() %>%
-    pivot_longer(cols = c(Input, `No Dimers`, Amplicons, Amplicons.Pf))
+  qc.postproc <- sample.coverage %>% 
+    left_join(clusters  %>% 
+      ungroup()  %>% 
+      select(sampleID,reads) %>% 
+      group_by(sampleID) %>%
+      summarise(OutputDada2 = sum(reads)), by = c("SampleName" = "sampleID")
+    )  %>% 
+    left_join(allele.data  %>% 
+      ungroup()  %>% 
+      select(sampleID,reads) %>% 
+      group_by(sampleID) %>%
+      summarise(OutputPostprocessing = sum(reads)), by = c("SampleName" = "sampleID")
+    )  %>%
+    pivot_longer(cols = c(Input, `No Dimers`, Amplicons, OutputDada2, OutputPostprocessing))
 
   colnames(qc.postproc) <- c("SampleName","","NumReads")
   write.table(qc.postproc, quote=F,sep='\t',col.names = TRUE, row.names = F, file = args$sample_coverage)
@@ -541,15 +565,19 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
 if (!is.null(args$amplicon_coverage) && file.exists(args$amplicon_coverage)) {
   amplicon.coverage <- read.table(args$amplicon_coverage, header = TRUE, sep = "\t")
 
-  qc.postproc <- allele.data %>%
-    group_by(sampleID, locus) %>%
-    summarise(
-      Amplicons.Pf = sum(reads)
-    ) %>%
-    inner_join(amplicon.coverage, by = c("sampleID" = "SampleName", "locus" = "Amplicon")) %>%
-    select(sampleID, locus, NumReads, Amplicons.Pf) %>%
-    dplyr::rename(SampleName = sampleID, Amplicon = locus, NumReads.Pf = Amplicons.Pf)
-
+  qc.postproc <- amplicon.coverage  %>% 
+    left_join(clusters %>% 
+      group_by(sampleID,locus) %>%
+      summarise(OutputDada2 = sum(reads)),
+      by = c("SampleName" = "sampleID", "Amplicon" = "locus"),
+      ) %>% 
+    left_join(allele.data %>%
+      group_by(sampleID,locus) %>%
+      summarise(OutputPostprocessing = sum(reads)),
+          by = c("SampleName" = "sampleID", "Amplicon" = "locus")) 
+   qc.postproc$OutputDada2[is.na(qc.postproc$OutputDada2)] <- 0
+   qc.postproc$OutputPostprocessing[is.na(qc.postproc$OutputPostprocessing)] <- 0 
+    )
   write.table(qc.postproc, quote=F,sep='\t',col.names = TRUE, row.names = F, file = args$amplicon_coverage)
 }
 
