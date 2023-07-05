@@ -17,40 +17,6 @@ parser$add_argument('--n-cores', type = 'integer', default = -1, help = "Number 
 args <- parser$parse_args()
 print(args)
 
-# FOR DEBUGGING
-# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/c7/0bbb19773e5494fc5e5f8ecb749bed")
-# args=list()
-# args$alleledata_FILE="allele_data.txt"
-# args$codontable_FILE="codontable.txt"
-# args$res_markers_info_FILE="resistance_markers_amplicon_v4.txt"
-# args$refseq="v4_refseq.fasta"
-# args$parallel=F
-
-pat="-1A$|-1B$|-1AB$|-1B2$|-2$"
-##Allele table from dada2##
-allele.data=read.delim(args$alleledata_FILE,header=T,sep="\t")
-
-##File containing amino acid code from DNA triplet##
-codon.table=read.delim(args$codontable_FILE,header=F,sep="\t")
-
-ss.refseq=readDNAStringSet(args$refseq)
-
-## Create a table that combines the provided resmarker information and the allele table.
-## They will be joined by locus (many-to-many) relationship. Each row will contain
-## an allele from a sample at that locus, and will be inspected for codon changes
-## described in the resmarker table.
-
-## note: the resistance markers are a subset of the panel. Therefore, do not
-## be surprised if loci from group A do not make it through here.
-res_markers_info=read.delim(args$res_markers_info_FILE,header=T,sep="\t") %>%
-  dplyr::filter(Codon_Start > 0, Codon_Start < ampInsert_length) %>% distinct(V5, .keep_all = T) %>%
-  dplyr::left_join(allele.data, by=c("amplicon"="locus"), multiple = "all") %>%
-  dplyr::mutate(cigar.keys=str_extract_all(cigar, "I|S|D|M")) %>%
-  dplyr::mutate(cigar.values=str_split(cigar, "I|S|D|M")) %>%
-  filter(!is.na(sampleID))
-nrow(res_markers_info)
-sum(is.na(res_markers_info$sampleID))
-
 if (args$parallel) {
   n_cores <- ifelse(args$n_cores <= 0, detectCores(), args$n_cores)
   registerDoMC(n_cores)
@@ -58,156 +24,160 @@ if (args$parallel) {
   registerDoSEQ()
 }
 
-columns=c("sampleID", "locus_gene", "pos", "snp(AA)", "reads")
-resmarker.final=matrix(nrow=0,ncol=length(columns))
-colnames(resmarker.final)=columns
-if (nrow(res_markers_info)>0) {
 
-  resmarker.table=foreach(ii = 1:nrow(res_markers_info), .combine="bind_rows") %dopar% {
-    resmarker=res_markers_info[ii,]
-    cigar.keys=unlist(resmarker$cigar.keys)
-    cigar.values=unlist(resmarker$cigar.values)
-    cigar.values=as.integer(cigar.values[cigar.values!=""]) # the last entry is always an empty string from the str_split, should figure this out...
-    cigar.rle=Rle(cigar.keys, cigar.values)
-    cigar.rge=ranges(cigar.rle)
 
-    ## Use the reference sequence and the cigar string from the asv to
-    ## identify codon changes
-    refseq=as.character(getSeq(ss.refseq,resmarker$amplicon))
-    refseq=DNAString(refseq)
-    refseq.rle=Rle(as.vector(refseq))
-    refseq.rge=ranges(refseq.rle)
+##Allele table from dada2##
+allele.data=read.delim(args$alleledata_FILE,header=T,sep="\t")
 
-    ## concatenate sequences around deletions so that we can see what the new codon will be
-    cigar.rge.1=cigar.rge[runValue(cigar.rle) != "D"]
-    asv=DNAString(resmarker$asv)
-    asv.1=asv[cigar.rge.1]
+##File containing amino acid code from DNA triplet##
+codon.table=read.delim(args$codontable_FILE,header=F,sep="\t")
 
-    ## Ns do not carry significance for codon changes, they are there to hide variation
-    ## caused by sequencing errors. Map the N sequence to back to the reference sequence
-    ## and replace it.
-    asv.1.rle=Rle(as.vector(asv.1))
-    asv.1.rge=ranges(asv.1.rle)
+# load the reference sequence from fasta file
+refseq_dnaset=readDNAStringSet(args$refseq)
 
-    asv.1.rge.masked = asv.1.rge[runValue(asv.1.rle) == "N"]
-    if (length(asv.1.rge.masked) > 0) {
-      for (jj in 1:length(asv.1.rge.masked)) {
-        run.values=runValue(cigar.rle[1:start(asv.1.rge.masked[jj])])
-        shift.right=sum(width(cigar.rge[run.values == "I"]))
-        shift.left=-sum(width(cigar.rge[run.values == "D"]))
+# load the information for the resistance markers we want to take a look at
+res_markers_info=read.delim(args$res_markers_info_FILE,header=T,sep="\t") %>%
+  filter(Codon_Start > 0, Codon_Start < ampInsert_length) %>% distinct(V5, .keep_all = T) 
 
-        asv.1.new.range=shift(asv.1.rge.masked[jj], shift.left + shift.right)
-        asv.1[asv.1.new.range] = refseq[asv.1.new.range]
-      }
-    }
+#simplify the allele table to keep the locus and the cigar string and only for those loci that are in the resistance marker table
+unique_asvs = allele.data  %>% 
+  ungroup() %>% 
+  distinct(locus, pseudo_cigar_simple)  %>% 
+  filter(locus %in% res_markers_info$amplicon)
 
-    codon.start=resmarker$Codon_Start
-    strand=resmarker$V4
-    codon=asv.1[codon.start:(codon.start+2)]
+refseqs = tibble(locus = names(refseq_dnaset),refseq = as.character(refseq_dnaset))  %>% 
+  filter(locus %in% unique_asvs$locus & locus %in% res_markers_info$amplicon)
 
-    if(strand=="-")  {
-      codon=Biostrings::reverseComplement(codon)
-    }
+#simplify the table to keep the marker, its locus and the codon start, and to keep only the ones that have any data
+res_markers_info_simple =res_markers_info%>%
+  select(V5,amplicon,Codon_Start,V4) %>% 
+  dplyr::rename(marker=V5,locus=amplicon,orientation=V4) %>% 
+  filter(locus %in% unique_asvs$locus) 
 
-    ## Check for AA change
-    codon=as.character(codon)
-    resmarker$aa.expected=resmarker$V6
-    resmarker$aa.actual=codon.table %>% filter(V1==codon) %>% pull(V2)
-    resmarker$aa.change=resmarker$aa.actual!=resmarker$aa.expected
 
-    ## May not be necessary - should be optional. Check for codon change.
-    ref=as.character(getSeq(ss.refseq,resmarker$amplicon))
-    ref=DNAString(ref)
-    ref.codon=ref[codon.start:(codon.start+2)]
-    if(strand=="-")  {
-      ref.codon=Biostrings::reverseComplement(ref.codon)
-    }
-    ref.codon=as.character(ref.codon)
-    resmarker$codon.expected=ref.codon
-    resmarker$codon.actual=codon
-    resmarker$codon.change=codon != ref.codon
-
-    return(resmarker)
-  }
-  ## `V5` is the gene
-  resmarker.final=resmarker.table %>%
-    dplyr::mutate(refalt = ifelse(aa.change, "ALT", "REF")) %>%
-    select(sampleID, V5, Codon_Start, aa.actual, codon.actual, reads, refalt) %>%
-    dplyr::rename(`locus_gene`=V5, `snp(AA)` = aa.actual, `snp(codon)`= codon.actual, pos=Codon_Start)
+# for each snp, get the allele table for that locus and join it with the resistance marker table
+reversecomplement_pseudoCIGAR = function(string){
+    pseudo_cigar_digits = strsplit(string, "\\D+")
+    pseudo_cigar_letters = map(strsplit(string, "\\d+"), ~ .x[.x != ""])
+    pseudo_cigar_split=Map(paste, pseudo_cigar_digits, pseudo_cigar_letters, sep = "")
+    reversed = paste(rev(unlist(pseudo_cigar_split)),collapse="")
+    complemented = chartr("TACG","ATGC",reversed)
+  return(complemented)
 }
+
+res_markers_alleles = res_markers_info_simple %>% 
+  left_join(refseqs, by="locus")   %>% 
+  mutate(refseq_orientation = ifelse(orientation=="-", lapply(refseq, function(x) as.character(reverseComplement(DNAString(x)))), refseq),
+         Codon_Start = ifelse(orientation=="-", nchar(refseq)-(Codon_Start + 2) +1,Codon_Start),
+         reference_codon = substr(refseq_orientation, Codon_Start, Codon_Start+2)) %>% 
+  left_join(codon.table  %>% select(V1,V2), by=c("reference_codon"="V1")) %>% 
+  dplyr::rename(reference_aa=V2) %>%
+  select(-refseq,-refseq_orientation) %>% 
+  left_join(unique_asvs, by="locus")  %>% 
+  mutate(pseudo_cigar_simple_rc = unlist(ifelse(orientation =="-",lapply(pseudo_cigar_simple, reversecomplement_pseudoCIGAR),pseudo_cigar_simple)) ) 
+  # I'm here. I need to make sure reference codon is taken from the right one and that the mutations are taken from the reversed complemented pseudo cigar string
+res_markers_alleles_allmatch = res_markers_alleles  %>% 
+  filter(grepl("^\\d+M$",pseudo_cigar_simple_rc)) %>% 
+  mutate(codon=reference_codon,
+    aa = reference_aa,
+    codon_refalt = "REF",
+    aa_refalt = "REF")
+
+modify_codon = function(codon_pseudocigar,codon){
+  codon_split = strsplit(codon,"")[[1]]
+  codon_pseudocigar_split = strsplit(codon_pseudocigar,"")[[1]]
+  codon_split[codon_pseudocigar_split!="M"] = codon_pseudocigar_split[codon_pseudocigar_split!="M"]
+  codon = paste(codon_split,collapse="")
+  return(codon)
+  }
+
+
+res_markers_alleles_no_allmatch = res_markers_alleles  %>% 
+  filter(!grepl("^\\d+M$",pseudo_cigar_simple_rc)) %>% 
+  mutate(
+    pseudo_cigar_noins = gsub("\\d+I", "", pseudo_cigar_simple_rc),
+    pseudo_cigar_digits = strsplit(pseudo_cigar_noins, "\\D+"),
+    pseudo_cigar_letters = map(strsplit(pseudo_cigar_noins, "\\d+"), ~ .x[.x != ""]),
+    pseudo_cigar_digits_cumsum = lapply(strsplit(pseudo_cigar_noins, "\\D+"), function(x) cumsum(c(0, x))),
+    idx1 = mapply(function(x,y) max(which(y>=x)), pseudo_cigar_digits_cumsum, Codon_Start),
+    idx2 = mapply(function(x,y) max(which(y>=x)), pseudo_cigar_digits_cumsum, Codon_Start+1),
+    idx3 = mapply(function(x,y) max(which(y>=x)), pseudo_cigar_digits_cumsum, Codon_Start+2),
+    codon_pseudocigar = paste0(pseudo_cigar_letters[[1]][idx1],pseudo_cigar_letters[[1]][idx2],pseudo_cigar_letters[[1]][idx3]),
+    codon_refalt = ifelse(codon_pseudocigar=="MMM","REF","ALT"),
+    codon = ifelse(codon_refalt=="REF",reference_codon,mapply(modify_codon,codon_pseudocigar,reference_codon))
+    ) %>% 
+    select(colnames(res_markers_alleles_allmatch %>% select(-aa,-aa_refalt))) 
+
+res_markers_alleles_no_allmatch_nochange = res_markers_alleles_no_allmatch  %>% 
+  filter(codon_refalt=="REF") %>% 
+  mutate(aa = reference_aa,
+         aa_refalt = "REF")
+
+res_markers_alleles_no_allmatch_change = res_markers_alleles_no_allmatch  %>% 
+  filter(codon_refalt=="ALT")  %>% 
+  left_join(codon.table  %>% select(V1,V2), by=c("codon"="V1")) %>%
+  dplyr::rename(aa=V2) %>%
+  mutate(aa_refalt = ifelse(aa==reference_aa,"REF","ALT"))
+
+res_markers_alleles_all = rbind(
+  res_markers_alleles_allmatch,
+  res_markers_alleles_no_allmatch_nochange,
+  res_markers_alleles_no_allmatch_change
+)
+
+allele_data_snps_raw = allele.data %>% 
+  left_join(res_markers_alleles_all %>% 
+    select(locus,pseudo_cigar_simple,marker,reference_codon,codon,codon_refalt,reference_aa,aa,aa_refalt),
+    by = c("locus","pseudo_cigar_simple")) %>% 
+  filter(locus %in% res_markers_info$amplicon) %>% 
+  mutate(geneID = sapply(strsplit(marker,"-"),"[",1),
+    gene = sapply(strsplit(marker,"-"),"[",2),
+    codonID = sapply(strsplit(marker,"-"),tail,1)) 
+    
+allele_data_snps = allele_data_snps_raw %>% 
+  select(sampleID,geneID,gene,codonID,reference_codon,codon,codon_refalt,reference_aa,aa,aa_refalt,reads)
+
+
+out_allele_data_snps = allele_data_snps
+colnames(out_allele_data_snps) = 
+  c("sampleID","Gene_ID","Gene","Codon_ID","Reference_Codon","Codon","Codon_Ref/Alt","Reference_AA","AA","AA_Ref/Alt","Reads")
+
+allele_data_snps_collapsed = allele_data_snps  %>% 
+  group_by(sampleID,geneID,gene,codonID,reference_codon,codon,codon_refalt,reference_aa,aa,aa_refalt) %>% 
+  summarize(reads = sum(reads))
+
+out_allele_data_snps_collapsed = allele_data_snps_collapsed
+colnames(out_allele_data_snps_collapsed) = 
+  c("sampleID","Gene_ID","Gene","Codon_ID","Reference_Codon","Codon","Codon_Ref/Alt","Reference_AA","AA","AA_Ref/Alt","Reads")
+
+allele_data_microhap = allele_data_snps_raw %>% 
+  select(sampleID,locus,pseudo_cigar_simple,geneID,gene,codonID,reference_aa,aa,reads)  %>% 
+  group_by(sampleID,locus,pseudo_cigar_simple,geneID,gene,reads) %>% 
+  summarize(microhap_idx = paste(codonID,collapse="/"),
+            microhap = paste(aa,collapse="/"),
+            microhap_ref = paste(reference_aa,collapse="/"))              
+
+out_allele_data_microhap = allele_data_microhap %>% 
+  select(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,reads)
+colnames(out_allele_data_microhap) = 
+  c("sampleID","Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype","Reads")
+
+
+allele_data_microhap_collapsed = allele_data_microhap  %>% 
+  group_by(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap) %>% 
+  summarize(reads = sum(reads))
+
+out_allele_data_microhap_collapsed = allele_data_microhap_collapsed %>% 
+  select(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,reads)
+colnames(out_allele_data_microhap_collapsed) =  
+  c("sampleID","Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype","Reads")
 
 ##File containing the amplicon infos for the resistance marker positions##
-write.table(resmarker.final, file="resmarker_table.txt", quote = F, row.names = F)
+write.table(out_allele_data_snps_collapsed, file="resmarker_table.txt", quote = F, row.names = F,sep="\t")
+write.table(out_allele_data_microhap_collapsed, file="resmarker_microhap_table.txt", quote = F, row.names = F,sep="\t")
 
-## Now look at novel SNPs
-novel.snps=NULL
-if (nrow(res_markers_info)>0) {
-  novel.snps=foreach(ii = 1:nrow(res_markers_info), .combine="bind_rows") %dopar% {
-    resmarker=res_markers_info[ii,]
-    asv=DNAString(resmarker$asv)
 
-    ref=as.character(getSeq(ss.refseq,resmarker$amplicon))
-    ref=DNAString(ref)
 
-    cigar.keys=unlist(resmarker$cigar.keys)
-    cigar.values=unlist(resmarker$cigar.values)
-    cigar.values=as.integer(cigar.values[cigar.values!=""]) # the last entry is always an empty string from the str_split, should figure this out...
-    cigar.rle=Rle(cigar.keys, cigar.values)
-    cigar.rge=ranges(cigar.rle)
-
-    cigar.rge.2=cigar.rge[runValue(cigar.rle) %in% c("S", "I", "D")]
-    novel.cigar=NULL
-    if (length(cigar.rge.2) > 0) {
-      novel.cigar=foreach (jj = 1:length(cigar.rge.2), .combine="bind_rows") %do% {
-        pos=paste(start(cigar.rge.2[jj]):end(cigar.rge.2[jj]), collapse=",")
-        cigar=paste(rep(runValue(cigar.rle[cigar.rge.2[jj]]), width(cigar.rge.2[jj])), collapse = ",")
-
-        tibble(pos, cigar)
-      }
-
-      novel.cigar=novel.cigar %>%
-        dplyr::mutate(
-          sampleID=resmarker$sampleID,
-          locus_gene=resmarker$V5,
-          codon_start=resmarker$Codon_Start,
-          pos=strsplit(pos,","),
-          cigar=strsplit(cigar,","),
-          reads=resmarker$reads
-        ) %>%
-        tidyr::unnest(cols=c(pos,cigar)) %>%
-        dplyr::mutate(
-          pos=as.integer(pos),
-          codon_start=as.integer(codon_start)
-        )
-
-      # only keep positions that are novel snps
-      novel.cigar=novel.cigar %>%
-        filter(!((pos >= codon_start) & (pos <= (codon_start+2) )))
-
-      if(nrow(novel.cigar)>0){
-      novel.cigar=foreach (jj = 1:nrow(novel.cigar), .combine="bind_rows") %do% {
-        novel.cigar.row = novel.cigar[jj,]
-        pos=as.integer(novel.cigar.row$pos)
-        novel.cigar.row$REF=as.character(ref[pos])
-        novel.cigar.row$ALT=as.character(asv[pos])
-
-        novel.cigar.row
-        }
-      }
-    }
-    return(novel.cigar)
-  }
-}
-
-if (!is.null(novel.snps) && nrow(novel.snps) > 0) {
-  novel.snps = novel.snps %>%
-    select(sampleID, locus_gene, pos, cigar, REF, ALT, reads)
-} else {
-  columns=c("sampleID", "locus_gene", "pos", "cigar", "REF", "ALT", "reads")
-  novel.snps=matrix(nrow=0,ncol=length(columns))
-  colnames(novel.snps)=columns
-  novel.snps=as_tibble(novel.snps)
-}
-
-##File containing the amplicon infos for the resistance marker positions##
-write.table(novel.snps, file="resmarker_novel_snps.txt", quote = F, row.names = F)
+# need to account for snps that show up in more than 1 amplicon
+# need to account for deletions and insertions
+# need to put back the "novel" SNPs. And change the naming because they may not me novel. Maybe call otherSNP?

@@ -371,7 +371,7 @@ process RESISTANCE_MARKERS {
 
  output:
         path "resmarker_table.txt"
-        path "resmarker_novel_snps.txt"
+        path "resmarker_microhap_table.txt"
 
         script:
         """
