@@ -528,12 +528,12 @@ if (!is.null(args$homopolymer_threshold) && args$homopolymer_threshold > 0) {
     inner_join(clusters,by=c('locus', "asv")) %>%
     select(sampleID, locus, asv_prime, reads, allele, pseudo_cigar_simple, pseudo_cigar) %>%
     group_by(sampleID, locus, asv_prime) %>%
-    summarise(reads=sum(reads)) %>%
+    mutate(reads=sum(reads)) %>%
     dplyr::rename(asv=asv_prime) %>%
     distinct()
 
 print("Done with pseudoCIGAR...")
-
+print(allele.data[1,])
 saveRDS(allele.data,file="allele_data.RDS")
 write.table(allele.data,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
 
@@ -577,7 +577,7 @@ if (!is.null(args$amplicon_coverage) && file.exists(args$amplicon_coverage)) {
           by = c("SampleName" = "sampleID", "Amplicon" = "locus")) 
    qc.postproc$OutputDada2[is.na(qc.postproc$OutputDada2)] <- 0
    qc.postproc$OutputPostprocessing[is.na(qc.postproc$OutputPostprocessing)] <- 0 
-    )
+   
   write.table(qc.postproc, quote=F,sep='\t',col.names = TRUE, row.names = F, file = args$amplicon_coverage)
 }
 
