@@ -155,22 +155,23 @@ allele_data_microhap = allele_data_snps_raw %>%
   group_by(sampleID,locus,pseudo_cigar_simple,geneID,gene,reads) %>% 
   summarize(microhap_idx = paste(codonID,collapse="/"),
             microhap = paste(aa,collapse="/"),
-            microhap_ref = paste(reference_aa,collapse="/"))              
+            microhap_ref = paste(reference_aa,collapse="/")) %>% 
+  mutate(microhap_refalt = ifelse(microhap==microhap_ref,"REF","ALT"))              
 
 out_allele_data_microhap = allele_data_microhap %>% 
-  select(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,reads)
+  select(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,microhap_refalt,reads)
 colnames(out_allele_data_microhap) = 
-  c("sampleID","Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype","Reads")
+  c("sampleID","Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype","Microhaplotype_Ref/Alt","Reads")
 
 
 allele_data_microhap_collapsed = allele_data_microhap  %>% 
-  group_by(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap) %>% 
+  group_by(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,microhap_refalt) %>% 
   summarize(reads = sum(reads))
 
 out_allele_data_microhap_collapsed = allele_data_microhap_collapsed %>% 
-  select(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,reads)
+  select(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,microhap_refalt,reads)
 colnames(out_allele_data_microhap_collapsed) =  
-  c("sampleID","Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype","Reads")
+  c("sampleID","Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype_Ref/Alt","Reads")
 
 ##File containing the amplicon infos for the resistance marker positions##
 write.table(out_allele_data_snps_collapsed, file="resmarker_table.txt", quote = F, row.names = F,sep="\t")
