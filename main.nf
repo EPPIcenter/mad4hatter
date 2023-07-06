@@ -282,7 +282,7 @@ process DADA2_ANALYSIS {
         path amplicon_info
 
         output:
-        path '*.{RDS,RData,txt}'
+        path '*.{RDS,txt}'
         
         script:
         """
