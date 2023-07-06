@@ -90,20 +90,20 @@ if(args$concat_non_overlaps){
 #  sample.names.no.overlap = sample.names[as.numeric(sapply(strsplit(sample.names ,"-"),"[",3)) - as.numeric(sapply(strsplit(sample.names ,"-"),"[",2))>275]
 #  sample.names.overlap = sample.names[as.numeric(sapply(strsplit(sample.names ,"-"),"[",3)) - as.numeric(sapply(strsplit(sample.names ,"-"),"[",2))<276]
   
-  mergers.overlap = mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))],
-                               derepFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))], 
-                               dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))], 
-                               derepRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))], 
+  mergers.overlap = mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)<sum.mean.length.reads))],
+                               derepFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)<sum.mean.length.reads))], 
+                               dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)<sum.mean.length.reads))], 
+                               derepRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)<sum.mean.length.reads))], 
                                verbose=TRUE, 
                                justConcatenate=FALSE, 
                                trimOverhang = TRUE,
                                minOverlap=10,
                                maxMismatch=1)
   
-  mergers.no.overlap = mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))],
-                                  derepFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))], 
-                                  dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))], 
-                                  derepRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))], 
+  mergers.no.overlap = mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)>=sum.mean.length.reads))],
+                                  derepFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)>=sum.mean.length.reads))], 
+                                  dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)>=sum.mean.length.reads))], 
+                                  derepRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)>=sum.mean.length.reads))], 
                                   verbose=TRUE, 
                                   justConcatenate=TRUE)
   
