@@ -98,14 +98,17 @@ res_markers_alleles_no_allmatch = res_markers_alleles  %>%
     pseudo_cigar_noins = gsub("\\d+I", "", pseudo_cigar_simple_rc),
     pseudo_cigar_digits = strsplit(pseudo_cigar_noins, "\\D+"),
     pseudo_cigar_letters = map(strsplit(pseudo_cigar_noins, "\\d+"), ~ .x[.x != ""]),
-    pseudo_cigar_digits_cumsum = lapply(strsplit(pseudo_cigar_noins, "\\D+"), function(x) cumsum(c(0, x))),
+    pseudo_cigar_digits_cumsum = lapply(strsplit(pseudo_cigar_noins, "\\D+"), function(y) cumsum(c(0, y))),   
     idx1 = mapply(function(x,y) max(which(y>=x)), pseudo_cigar_digits_cumsum, Codon_Start),
     idx2 = mapply(function(x,y) max(which(y>=x)), pseudo_cigar_digits_cumsum, Codon_Start+1),
     idx3 = mapply(function(x,y) max(which(y>=x)), pseudo_cigar_digits_cumsum, Codon_Start+2),
-    codon_pseudocigar = paste0(pseudo_cigar_letters[[1]][idx1],pseudo_cigar_letters[[1]][idx2],pseudo_cigar_letters[[1]][idx3]),
+    cod1 = mapply(function(x,y) unlist(x)[y],pseudo_cigar_letters,idx1),
+    cod2 = mapply(function(x,y) unlist(x)[y],pseudo_cigar_letters,idx2),
+    cod3 = mapply(function(x,y) unlist(x)[y],pseudo_cigar_letters,idx3),
+    codon_pseudocigar = paste0(cod1,cod2,cod3),
     codon_refalt = ifelse(codon_pseudocigar=="MMM","REF","ALT"),
     codon = ifelse(codon_refalt=="REF",reference_codon,mapply(modify_codon,codon_pseudocigar,reference_codon))
-    ) %>% 
+    )    %>% 
     select(colnames(res_markers_alleles_allmatch %>% select(-aa,-aa_refalt))) 
 
 res_markers_alleles_no_allmatch_nochange = res_markers_alleles_no_allmatch  %>% 
