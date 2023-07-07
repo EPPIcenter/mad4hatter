@@ -232,11 +232,12 @@ sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
 df_aln <- NULL
 df_aln <- foreach(seq1 = 1:nrow(clusters.1), .combine = "bind_rows") %dopar% {
   # the alignment is performed only with the reference sequence for the corresponding locus as we have this information from the demultiplexing step
-  if(substr(clusters.1$locus[seq1],1,2)=="Pf"){   # temporary fix to deal with other species
-    refseq.seq1 = ref_sequences[clusters.1$locus[seq1]]
-  }else{
-    refseq.seq1 = ref_sequences["Pf3D7_13_v3-1041593-1041860-1AB"]  # in the meantime I'll use Pf's ldh as reference, which is wrong because it's not the same sequence...!
-  }
+  refseq.seq1 = ref_sequences[clusters.1$locus[seq1]] #commenting out next lines as I concatenated all genomes
+  #if(substr(clusters.1$locus[seq1],1,2)=="Pf"){   # temporary fix to deal with other species
+  #  refseq.seq1 = ref_sequences[clusters.1$locus[seq1]]
+  #}else{
+  #  refseq.seq1 = ref_sequences["Pf3D7_13_v3-1041593-1041860-1AB"]  # in the meantime I'll use Pf's ldh as reference, which is wrong because it's not the same sequence...!
+  #}
   aln <- pairwiseAlignment(refseq.seq1, sequences[seq1], substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
   patt <- c(alignedPattern(aln), alignedSubject(aln))
   ind <- sum(str_count(as.character(patt),"-"))
@@ -370,7 +371,6 @@ df_aln_references %<>%
 
 #update df_aln 
 df_aln %<>% left_join(df_aln_references,by=c("refid","refseq"))
-
 
 
 # now let's make a pseudoCIGAR
