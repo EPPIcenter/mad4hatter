@@ -188,7 +188,7 @@ if (length(non_overlaps_idx) > 0) {
   #df_non_overlap$combined <- combined
 
   df_non_overlap %<>% 
-    mutate(combined = paste0(processed_left_sequences,processed_right_sequences)) 
+    mutate(combined = paste0(processed_left_sequences,"N",processed_right_sequences)) 
 
   saveRDS(df_non_overlap,file="non_overlapping_seqs.RDS")
   write.table(df_non_overlap,file="non_overlapping_seqs.txt",quote=F,sep="\t",col.names=T,row.names=F)
@@ -238,7 +238,7 @@ df_aln <- foreach(seq1 = 1:nrow(clusters.1), .combine = "bind_rows") %dopar% {
   #}else{
   #  refseq.seq1 = ref_sequences["Pf3D7_13_v3-1041593-1041860-1AB"]  # in the meantime I'll use Pf's ldh as reference, which is wrong because it's not the same sequence...!
   #}
-  aln <- pairwiseAlignment(refseq.seq1, sequences[seq1], substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
+  aln <- pairwiseAlignment(refseq.seq1, str_remove_all(sequences[seq1],"N"), substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
   patt <- c(alignedPattern(aln), alignedSubject(aln))
   ind <- sum(str_count(as.character(patt),"-"))
   data.frame(
