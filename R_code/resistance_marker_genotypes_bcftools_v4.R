@@ -24,6 +24,16 @@ if (args$parallel) {
   registerDoSEQ()
 }
 
+## FOR DEBUGGING
+
+# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/79/1461110f9179a29b28379fea6dce8c")
+# args=list()
+# args$alleledata_FILE="allele_data.txt"
+# args$codontable_FILE="codontable.txt"
+# args$res_markers_info_FILE="resistance_markers_amplicon_v4.txt"
+# args$refseq="v4_refseq.fasta"
+# args$parallel=T
+# args$n_cores=4
 
 
 ##Allele table from dada2##
@@ -65,6 +75,7 @@ reversecomplement_pseudoCIGAR = function(string){
   return(complemented)
 }
 
+## res_markers_alleles holds the expecteed codon and the cigar strings from the allele table
 res_markers_alleles = res_markers_info_simple %>% 
   left_join(refseqs, by="locus")   %>% 
   mutate(refseq_orientation = ifelse(orientation=="-", lapply(refseq, function(x) as.character(reverseComplement(DNAString(x)))), refseq),
@@ -76,6 +87,8 @@ res_markers_alleles = res_markers_info_simple %>%
   left_join(unique_asvs, by="locus")  %>% 
   mutate(pseudo_cigar_simple_rc = unlist(ifelse(orientation =="-",lapply(pseudo_cigar_simple, reversecomplement_pseudoCIGAR),pseudo_cigar_simple)) ) 
   # I'm here. I need to make sure reference codon is taken from the right one and that the mutations are taken from the reversed complemented pseudo cigar string
+
+## Subset where the alleles match their reference
 res_markers_alleles_allmatch = res_markers_alleles  %>% 
   filter(grepl("^\\d+M$",pseudo_cigar_simple_rc)) %>% 
   mutate(codon=reference_codon,
@@ -91,9 +104,13 @@ modify_codon = function(codon_pseudocigar,codon){
   return(codon)
   }
 
-
+## Subset where the alleles DO NOT match their reference
 res_markers_alleles_no_allmatch = res_markers_alleles  %>% 
-  filter(!grepl("^\\d+M$",pseudo_cigar_simple_rc)) %>% 
+  filter(!grepl("^\\d+M$",pseudo_cigar_simple_rc))
+
+## For those alleles that do not match their reference, calculate what the
+if (nrow(res_markers_alleles_no_allmatch) > 0) {
+  res_markers_alleles_no_allmatch = res_markers_alleles_no_allmatch %>%
   mutate(
     pseudo_cigar_noins = gsub("\\d+I", "", pseudo_cigar_simple_rc),
     pseudo_cigar_digits = strsplit(pseudo_cigar_noins, "\\D+"),
@@ -111,6 +128,19 @@ res_markers_alleles_no_allmatch = res_markers_alleles  %>%
     )    %>% 
     select(colnames(res_markers_alleles_allmatch %>% select(-aa,-aa_refalt))) 
 
+  ## Resistance markere with
+  res_markers_alleles_no_allmatch_nochange = res_markers_alleles_no_allmatch  %>%
+    filter(codon_refalt=="REF") %>%
+    mutate(aa = reference_aa,
+           aa_refalt = "REF")
+
+  res_markers_alleles_no_allmatch_change = res_markers_alleles_no_allmatch  %>%
+    filter(codon_refalt=="ALT")  %>%
+    left_join(codon.table  %>% select(V1,V2), by=c("codon"="V1")) %>%
+    dplyr::rename(aa=V2) %>%
+    mutate(aa_refalt = ifelse(aa==reference_aa,"REF","ALT"))
+
+  ## Resistance markere with
 res_markers_alleles_no_allmatch_nochange = res_markers_alleles_no_allmatch  %>% 
   filter(codon_refalt=="REF") %>% 
   mutate(aa = reference_aa,
@@ -127,6 +157,10 @@ res_markers_alleles_all = rbind(
   res_markers_alleles_no_allmatch_nochange,
   res_markers_alleles_no_allmatch_change
 )
+} else {
+  ## there were no changes so just
+  res_markers_alleles_all = res_markers_alleles_allmatch
+}
 
 allele_data_snps_raw = allele.data %>% 
   left_join(res_markers_alleles_all %>% 
@@ -174,7 +208,7 @@ allele_data_microhap_collapsed = allele_data_microhap  %>%
 out_allele_data_microhap_collapsed = allele_data_microhap_collapsed %>% 
   select(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,microhap_refalt,reads)
 colnames(out_allele_data_microhap_collapsed) =  
-  c("sampleID","Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype_Ref/Alt","Reads")
+  c("sampleID","Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype", "Microhaplotype_Ref/Alt","Reads")
 
 ##File containing the amplicon infos for the resistance marker positions##
 write.table(out_allele_data_snps_collapsed, file="resmarker_table.txt", quote = F, row.names = F,sep="\t")

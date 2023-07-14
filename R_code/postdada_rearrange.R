@@ -29,7 +29,7 @@ library(ggplot2)
 library(Biostrings)
 library(magrittr)
 
-# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/13/444d5f387c683912ce0855f452fce4")
+# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/d9/53907a3ccd779181f10dba4e696a6a")
 # # # FOR DEBUGGING
 # args <- list()
 # args$homopolymer_threshold <- 5
@@ -40,8 +40,9 @@ library(magrittr)
 # args$alignment_threshold <- 60
 # args$clusters = "dada2.clusters.RDS"
 # args$amplicon_table="v4_amplicon_info.tsv"
-# # args$pseudo_fastq_output="pseudo-fastqs"
-
+# args$amplicon_coverage="amplicon_coverage.txt"
+# args$sample_coverage="sample_coverage.txt"
+# args$pseudo_fastq_output="pseudo-fastqs"
 
 # load the output from the dada2 process (allele_data saved into dada2.clusters.RDS)
 clusters=NULL
@@ -558,7 +559,7 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
     )  %>%
     pivot_longer(cols = c(Input, `No Dimers`, Amplicons, OutputDada2, OutputPostprocessing))
 
-  colnames(qc.postproc) <- c("SampleName","","NumReads")
+  colnames(qc.postproc) <- c("SampleName","Locus","NumReads", "OutputDada2", "OutputPostprocessing")
   write.table(qc.postproc, quote=F,sep='\t',col.names = TRUE, row.names = F, file = args$sample_coverage)
 }
 
