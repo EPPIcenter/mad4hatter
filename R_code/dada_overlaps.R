@@ -6,14 +6,14 @@ parser <- ArgumentParser(prog="DADA2 Workflow", description='DADA2 workflow scri
 parser$add_argument('--trimmed-path', type="character",
                    help='homopolymer threshold to begin masking', nargs='+', required = TRUE)
 parser$add_argument('--ampliconFILE', type="character", required = TRUE)
-parser$add_argument('--dada2-rdata-output', type="character", required = TRUE)
 parser$add_argument('--pool', type="character", default="false")
 parser$add_argument('--band-size', type='integer', default=16)
 parser$add_argument('--omega-a', type='double', default=1e-120)
 parser$add_argument('--concat-non-overlaps', action='store_true')
 parser$add_argument('--use-quals', type="character", default="false")
 parser$add_argument('--maxEE', type="integer", default=2)
-
+parser$add_argument('--self-consist', action='store_true')
+parser$add_argument('--omega-c', type='double', default=1e-40)
 
 args <- parser$parse_args()
 print(args)
@@ -90,23 +90,32 @@ if(args$concat_non_overlaps){
 #  sample.names.no.overlap = sample.names[as.numeric(sapply(strsplit(sample.names ,"-"),"[",3)) - as.numeric(sapply(strsplit(sample.names ,"-"),"[",2))>275]
 #  sample.names.overlap = sample.names[as.numeric(sapply(strsplit(sample.names ,"-"),"[",3)) - as.numeric(sapply(strsplit(sample.names ,"-"),"[",2))<276]
   
-  mergers.overlap = mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))],
-                               derepFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))], 
-                               dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))], 
-                               derepRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length<sum.mean.length.reads))], 
+  mergers.overlap = mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)<sum.mean.length.reads))],
+                               derepFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)<sum.mean.length.reads))], 
+                               dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)<sum.mean.length.reads))], 
+                               derepRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)<sum.mean.length.reads))], 
                                verbose=TRUE, 
                                justConcatenate=FALSE, 
                                trimOverhang = TRUE,
                                minOverlap=10,
                                maxMismatch=1)
   
-  mergers.no.overlap = mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))],
-                                  derepFs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))], 
-                                  dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))], 
-                                  derepRs[names(dadaFs) %in% rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))], 
+  mergers.no.overlap = mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)>=sum.mean.length.reads))],
+                                  derepFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)>=sum.mean.length.reads))], 
+                                  dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)>=sum.mean.length.reads))], 
+                                  derepRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length+10)>=sum.mean.length.reads))], 
                                   verbose=TRUE, 
                                   justConcatenate=TRUE)
   
+
+if(length(rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads)))==1){
+ mergers.no.overlap.temp = mergers.no.overlap
+ mergers.no.overlap = list()
+ mergers.no.overlap[[rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))]]=
+	mergers.no.overlap.temp
+
+}
+
 
   mergers = c(mergers.overlap,mergers.no.overlap)[names(dadaFs)]
   save(file = 'mergers.rda', mergers, mergers.overlap, mergers.no.overlap, amplicon.info, dadaFs, dadaRs, args)
@@ -125,8 +134,50 @@ if(args$concat_non_overlaps){
 
 
 seqtab <- makeSequenceTable(mergers)
-
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 
-save(out,dadaFs,dadaRs,mergers,seqtab,seqtab.nochim, file = "DADA2.RData")
-saveRDS(seqtab.nochim, file = args$dada2_rdata_output)
+### Create clusters output file with quality control
+
+seqtab.nochim.df = as.data.frame(seqtab.nochim)
+seqtab.nochim.df$sample = rownames(seqtab.nochim)
+seqtab.nochim.df[seqtab.nochim.df==0]=NA
+
+amplicon.table=read.table(args$ampliconFILE, header = TRUE, sep = "\t")
+
+# find amplicons (use to select)
+pat=paste(amplicon.table$amplicon, collapse="|") # find amplicons specified in amplicon table
+
+# create regex to extract sampleID (to be used with remove)
+pat.sampleID=paste(sprintf("^%s_", amplicon.table$amplicon), collapse="|") # find amplicons specified in amplicon table (with _)
+pat.sampleID=paste(c(pat.sampleID, "_trimmed_merged.fastq.gz$"),collapse="|")  # remove _trimmed from end
+
+seqtab.nochim.df = seqtab.nochim.df %>%
+  pivot_longer(cols = seq(1,ncol(seqtab.nochim)),names_to = "asv",values_to = "reads",values_drop_na=TRUE) %>%
+  mutate(locus = str_extract(sample, pat)) %>%
+  mutate(sampleID = str_remove_all(sample, pat.sampleID)) %>%
+  select(sampleID,locus,asv,reads)
+
+temp = seqtab.nochim.df %>% select(locus,asv) %>% distinct()
+loci =unique(temp$locus)
+k=1
+allele.sequences = data.frame(locus = seq(1,nrow(temp)),allele = seq(1,nrow(temp)),sequence = seq(1,nrow(temp)))
+for(i in seq(1,length(loci))){
+  temp2 = temp %>% filter(locus==loci[i])
+  for(j in seq(1,nrow(temp2))){
+    allele.sequences$locus[k+j-1] = loci[i]
+    allele.sequences$allele[k+j-1] = paste0(loci[i],".",j)
+    allele.sequences$sequence[k+j-1] = temp2$asv[j]
+  }
+  k=k+nrow(temp2)
+}
+
+allele.data = seqtab.nochim.df %>%
+  left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
+  group_by(sampleID,locus,allele) %>%
+  group_by(sampleID,locus) %>%
+  mutate(norm.reads.locus = reads/sum(reads))%>%
+  mutate(n.alleles = n()) %>%
+  ungroup()
+
+write.table(allele.data,file="dada2.clusters.txt",quote=F,sep="\t",col.names=T,row.names=F)
+saveRDS(allele.data, file = "dada2.clusters.RDS")
