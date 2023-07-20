@@ -108,13 +108,13 @@ if(args$concat_non_overlaps){
                                   justConcatenate=TRUE)
   
 
-if(length(rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads)))==1){
- mergers.no.overlap.temp = mergers.no.overlap
- mergers.no.overlap = list()
- mergers.no.overlap[[rownames(amplicon.info %>% filter(ampInsert_length>=sum.mean.length.reads))]]=
-	mergers.no.overlap.temp
-
-}
+  # the dada2 documentation says that a list of data.frames are returned by mergePairs if a list is 
+  # provided to it, but it also says it can return a data.frame or a list of data.frames. It seems 
+  # to return a single data.frame if there was only one demultiplex amplicon that did not merge, so 
+  # convert the output to a list of data.frames so that it can be concatenated with the other merged sequences
+  if (class(mergers.no.overlap) == "data.frame") {
+    mergers.no.overlap = list(mergers.no.overlap)
+  }
 
 
   mergers = c(mergers.overlap,mergers.no.overlap)[names(dadaFs)]
