@@ -1,5 +1,5 @@
 FROM rocker/r-ubuntu:22.04
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-pip libssl-dev libbz2-dev libsdl1.2-dev liblzma-dev libcurl4-openssl-dev zlib1g-dev libxml2-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev trf bwa bcftools samtools default-jre pandoc jq && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential python3-pip libssl-dev libbz2-dev libsdl1.2-dev liblzma-dev libcurl4-openssl-dev zlib1g-dev libxml2-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev trf bwa bcftools samtools default-jre pandoc jq parallel && rm -rf /var/lib/apt/lists/*
 RUN pip install cutadapt==4.4
 
 RUN mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/
