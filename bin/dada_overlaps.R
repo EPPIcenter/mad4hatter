@@ -188,8 +188,8 @@ for(i in seq(1,length(loci))){
 }
 
 allele.data = seqtab.nochim.df %>%
+  mutate(sampleID = str_remove_all(sampleID, pat = "_trimmed")) %>%
   left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
-  group_by(sampleID,locus,allele) %>%
   group_by(sampleID,locus) %>%
   mutate(norm.reads.locus = reads/sum(reads))%>%
   mutate(n.alleles = n()) %>%
