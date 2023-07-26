@@ -67,11 +67,11 @@ res_markers_info_simple =res_markers_info%>%
 
 # for each snp, get the allele table for that locus and join it with the resistance marker table
 reversecomplement_pseudoCIGAR = function(string){
-    pseudo_cigar_digits = strsplit(string, "\\D+")
-    pseudo_cigar_letters = map(strsplit(string, "\\d+"), ~ .x[.x != ""])
-    pseudo_cigar_split=Map(paste, pseudo_cigar_digits, pseudo_cigar_letters, sep = "")
-    reversed = paste(rev(unlist(pseudo_cigar_split)),collapse="")
-    complemented = chartr("TACG","ATGC",reversed)
+  pseudo_cigar_digits = strsplit(string, "\\D+")
+  pseudo_cigar_letters = map(strsplit(string, "\\d+"), ~ .x[.x != ""])
+  pseudo_cigar_split=Map(paste, pseudo_cigar_digits, pseudo_cigar_letters, sep = "")
+  reversed = paste(rev(unlist(pseudo_cigar_split)),collapse="")
+  complemented = chartr("TACG","ATGC",reversed)
   return(complemented)
 }
 
@@ -86,15 +86,15 @@ res_markers_alleles = res_markers_info_simple %>%
   select(-refseq,-refseq_orientation) %>% 
   left_join(unique_asvs, by="locus")  %>% 
   mutate(pseudo_cigar_simple_rc = unlist(ifelse(orientation =="-",lapply(pseudo_cigar_simple, reversecomplement_pseudoCIGAR),pseudo_cigar_simple)) ) 
-  # I'm here. I need to make sure reference codon is taken from the right one and that the mutations are taken from the reversed complemented pseudo cigar string
+# I'm here. I need to make sure reference codon is taken from the right one and that the mutations are taken from the reversed complemented pseudo cigar string
 
 ## Subset where the alleles match their reference
 res_markers_alleles_allmatch = res_markers_alleles  %>% 
   filter(grepl("^\\d+M$",pseudo_cigar_simple_rc)) %>% 
   mutate(codon=reference_codon,
-    aa = reference_aa,
-    codon_refalt = "REF",
-    aa_refalt = "REF")
+         aa = reference_aa,
+         codon_refalt = "REF",
+         aa_refalt = "REF")
 
 modify_codon = function(codon_pseudocigar,codon){
   codon_split = strsplit(codon,"")[[1]]
@@ -102,7 +102,7 @@ modify_codon = function(codon_pseudocigar,codon){
   codon_split[codon_pseudocigar_split!="M"] = codon_pseudocigar_split[codon_pseudocigar_split!="M"]
   codon = paste(codon_split,collapse="")
   return(codon)
-  }
+}
 
 ## Subset where the alleles DO NOT match their reference
 res_markers_alleles_no_allmatch = res_markers_alleles  %>% 
@@ -111,52 +111,52 @@ res_markers_alleles_no_allmatch = res_markers_alleles  %>%
 ## For those alleles that do not match their reference, calculate what the
 if (nrow(res_markers_alleles_no_allmatch) > 0) {
   res_markers_alleles_no_allmatch = res_markers_alleles_no_allmatch %>%
-  mutate(
-    pseudo_cigar_noins = gsub("\\d+I", "", pseudo_cigar_simple_rc),
-    pseudo_cigar_digits = strsplit(pseudo_cigar_noins, "\\D+"),
-    pseudo_cigar_letters = map(strsplit(pseudo_cigar_noins, "\\d+"), ~ .x[.x != ""]),
-    pseudo_cigar_digits_cumsum = lapply(strsplit(pseudo_cigar_noins, "\\D+"), function(y) cumsum(c(0, y))),   
-    idx1 = mapply(function(x,y) max(which(y>x)), pseudo_cigar_digits_cumsum, Codon_Start),
-    idx2 = mapply(function(x,y) max(which(y>x)), pseudo_cigar_digits_cumsum, Codon_Start+1),
-    idx3 = mapply(function(x,y) max(which(y>x)), pseudo_cigar_digits_cumsum, Codon_Start+2),
-    cod1 = mapply(function(x,y) unlist(x)[y],pseudo_cigar_letters,idx1),
-    cod2 = mapply(function(x,y) unlist(x)[y],pseudo_cigar_letters,idx2),
-    cod3 = mapply(function(x,y) unlist(x)[y],pseudo_cigar_letters,idx3),
-    codon_pseudocigar = paste0(cod1,cod2,cod3),
-    codon_refalt = ifelse(codon_pseudocigar=="MMM","REF","ALT"),
-    codon = ifelse(codon_refalt=="REF",reference_codon,mapply(modify_codon,codon_pseudocigar,reference_codon))
+    mutate(
+      pseudo_cigar_noins = gsub("\\d+I", "", pseudo_cigar_simple_rc),
+      pseudo_cigar_digits = strsplit(pseudo_cigar_noins, "\\D+"),
+      pseudo_cigar_letters = map(strsplit(pseudo_cigar_noins, "\\d+"), ~ .x[.x != ""]),
+      pseudo_cigar_digits_cumsum = lapply(strsplit(pseudo_cigar_noins, "\\D+"), function(y) cumsum(c(0, y))),   
+      idx1 = mapply(function(x,y) max(which(y>x)), pseudo_cigar_digits_cumsum, Codon_Start),
+      idx2 = mapply(function(x,y) max(which(y>x)), pseudo_cigar_digits_cumsum, Codon_Start+1),
+      idx3 = mapply(function(x,y) max(which(y>x)), pseudo_cigar_digits_cumsum, Codon_Start+2),
+      cod1 = mapply(function(x,y) unlist(x)[y],pseudo_cigar_letters,idx1),
+      cod2 = mapply(function(x,y) unlist(x)[y],pseudo_cigar_letters,idx2),
+      cod3 = mapply(function(x,y) unlist(x)[y],pseudo_cigar_letters,idx3),
+      codon_pseudocigar = paste0(cod1,cod2,cod3),
+      codon_refalt = ifelse(codon_pseudocigar=="MMM","REF","ALT"),
+      codon = ifelse(codon_refalt=="REF",reference_codon,mapply(modify_codon,codon_pseudocigar,reference_codon))
     )    %>% 
     select(colnames(res_markers_alleles_allmatch %>% select(-aa,-aa_refalt))) 
-
+  
   ## Resistance markere with
   res_markers_alleles_no_allmatch_nochange = res_markers_alleles_no_allmatch  %>%
     filter(codon_refalt=="REF") %>%
     mutate(aa = reference_aa,
            aa_refalt = "REF")
-
+  
   res_markers_alleles_no_allmatch_change = res_markers_alleles_no_allmatch  %>%
     filter(codon_refalt=="ALT")  %>%
     left_join(codon.table  %>% select(V1,V2), by=c("codon"="V1")) %>%
     dplyr::rename(aa=V2) %>%
     mutate(aa_refalt = ifelse(aa==reference_aa,"REF","ALT"))
-
+  
   ## Resistance markere with
-res_markers_alleles_no_allmatch_nochange = res_markers_alleles_no_allmatch  %>% 
-  filter(codon_refalt=="REF") %>% 
-  mutate(aa = reference_aa,
-         aa_refalt = "REF")
-
-res_markers_alleles_no_allmatch_change = res_markers_alleles_no_allmatch  %>% 
-  filter(codon_refalt=="ALT")  %>% 
-  left_join(codon.table  %>% select(V1,V2), by=c("codon"="V1")) %>%
-  dplyr::rename(aa=V2) %>%
-  mutate(aa_refalt = ifelse(aa==reference_aa,"REF","ALT"))
-
-res_markers_alleles_all = rbind(
-  res_markers_alleles_allmatch,
-  res_markers_alleles_no_allmatch_nochange,
-  res_markers_alleles_no_allmatch_change
-)
+  res_markers_alleles_no_allmatch_nochange = res_markers_alleles_no_allmatch  %>% 
+    filter(codon_refalt=="REF") %>% 
+    mutate(aa = reference_aa,
+           aa_refalt = "REF")
+  
+  res_markers_alleles_no_allmatch_change = res_markers_alleles_no_allmatch  %>% 
+    filter(codon_refalt=="ALT")  %>% 
+    left_join(codon.table  %>% select(V1,V2), by=c("codon"="V1")) %>%
+    dplyr::rename(aa=V2) %>%
+    mutate(aa_refalt = ifelse(aa==reference_aa,"REF","ALT"))
+  
+  res_markers_alleles_all = rbind(
+    res_markers_alleles_allmatch,
+    res_markers_alleles_no_allmatch_nochange,
+    res_markers_alleles_no_allmatch_change
+  )
 } else {
   ## there were no changes so just
   res_markers_alleles_all = res_markers_alleles_allmatch
@@ -164,13 +164,13 @@ res_markers_alleles_all = rbind(
 
 allele_data_snps_raw = allele.data %>% 
   left_join(res_markers_alleles_all %>% 
-    select(locus,pseudo_cigar_simple,marker,reference_codon,codon,codon_refalt,reference_aa,aa,aa_refalt),
-    by = c("locus","pseudo_cigar_simple")) %>% 
+              select(locus,pseudo_cigar_simple,marker,reference_codon,codon,codon_refalt,reference_aa,aa,aa_refalt),
+            by = c("locus","pseudo_cigar_simple")) %>% 
   filter(locus %in% res_markers_info$amplicon) %>% 
   mutate(geneID = sapply(strsplit(marker,"-"),"[",1),
-    gene = sapply(strsplit(marker,"-"),"[",2),
-    codonID = sapply(strsplit(marker,"-"),tail,1)) 
-    
+         gene = sapply(strsplit(marker,"-"),"[",2),
+         codonID = sapply(strsplit(marker,"-"),tail,1)) 
+
 allele_data_snps = allele_data_snps_raw %>% 
   select(sampleID,geneID,gene,codonID,reference_codon,codon,codon_refalt,reference_aa,aa,aa_refalt,reads)
 
@@ -196,23 +196,23 @@ allele_data_microhap = allele_data_snps_raw %>%
   mutate(microhap_refalt = ifelse(microhap==microhap_ref,"REF","ALT"))              
 
 out_allele_data_microhap = allele_data_microhap %>% 
-  select(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,microhap_refalt,reads)
+  select(sampleID, locus, geneID,gene,microhap_idx,microhap_ref,microhap,microhap_refalt,reads)
 colnames(out_allele_data_microhap) = 
-  c("sampleID","Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype","Microhaplotype_Ref/Alt","Reads")
+  c("sampleID","locus", "Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype","Microhaplotype_Ref/Alt","Reads")
 
 
 allele_data_microhap_collapsed = allele_data_microhap  %>% 
-  group_by(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,microhap_refalt) %>% 
+  group_by(sampleID,locus, geneID,gene,microhap_idx,microhap_ref,microhap,microhap_refalt) %>% 
   summarize(reads = sum(reads))
 
 out_allele_data_microhap_collapsed = allele_data_microhap_collapsed %>% 
-  select(sampleID,geneID,gene,microhap_idx,microhap_ref,microhap,microhap_refalt,reads)
+  select(sampleID,locus, geneID,gene,microhap_idx,microhap_ref,microhap,microhap_refalt,reads)
 colnames(out_allele_data_microhap_collapsed) =  
-  c("sampleID","Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype", "Microhaplotype_Ref/Alt","Reads")
+  c("sampleID","locus", "Gene_ID","Gene","Microhaplotype_Index","Reference_Microhaplotype","Microhaplotype", "Microhaplotype_Ref/Alt","Reads")
 
 ##File containing the amplicon infos for the resistance marker positions##
 write.table(out_allele_data_snps_collapsed, file="resmarker_table.txt", quote = F, row.names = F,sep="\t")
-write.table(out_allele_data_microhap_collapsed, file="resmarker_microhap_table.txt", quote = F, row.names = F,sep="\t")
+write.table(out_allele_data_microhap_collapsed, file="resmarker_microhap_table2.txt", quote = F, row.names = F,sep="\t")
 
 
 
