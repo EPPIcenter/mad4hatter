@@ -212,7 +212,7 @@ colnames(out_allele_data_microhap_collapsed) =
 
 ##File containing the amplicon infos for the resistance marker positions##
 write.table(out_allele_data_snps_collapsed, file="resmarker_table.txt", quote = F, row.names = F,sep="\t")
-write.table(out_allele_data_microhap_collapsed, file="resmarker_microhap_table2.txt", quote = F, row.names = F,sep="\t")
+write.table(out_allele_data_microhap_collapsed, file="resmarker_microhap_table.txt", quote = F, row.names = F,sep="\t")
 
 
 
