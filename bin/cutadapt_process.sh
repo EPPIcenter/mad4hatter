@@ -57,24 +57,26 @@ if [[ -z "$forward_read" || -z "$reverse_read" || -z "$cutadapt_minlen" || -z "$
     usage
 fi
 
-# Setup for temporary directory - note that this may make the script inoperable on windows machines (possibly macs)
-if [[ -z "$TMPDIR" ]]; then
-  if [[ -d /scratch ]]; then TMPDIR=/scratch/$USER; else TMPDIR=/tmp/$USER; fi
-  mkdir -p "$TMPDIR"
-  export TMPDIR
-fi
-
 # this is the directory that will contain forward and reverse
 # reads that have been quality filtered and their primers removed
 test -d $trimmed_demuxed_fastqs || mkdir -p $trimmed_demuxed_fastqs
 
 # The remaining reads that could not be demultiplexed
-trimmed_demuxed_unknown_fastqs=$(mktemp -d)
+# trimmed_demuxed_unknown_fastqs=$(mktemp -d)
+trimmed_demuxed_unknown_fastqs="trimmed_demuxed_unknown_fastqs"
+test -d $trimmed_demuxed_unknown_fastqs || mkdir -p $trimmed_demuxed_unknown_fastqs
 
 # Create intermediate directories and files
-adapter_dimers=$(mktemp -d)
-no_adapter_dimers=$(mktemp -d)
-cutadapt_json=$(mktemp)
+# adapter_dimers=$(mktemp -d)
+adapter_dimers="adapter_dimers"
+test -d $adapter_dimers || mkdir -p $adapter_dimers
+
+# no_adapter_dimers=$(mktemp -d)
+no_adapter_dimers="no_adapter_dimers"
+test -d $no_adapter_dimers || mkdir -p $no_adapter_dimers
+
+# cutadapt_json=$(mktemp)
+cutadapt_json="cutadapt.json"
 
 # Delete the directories on exit if specified on the command line
 trap "rm -rf '$adapter_dimers' '$no_adapter_dimers'" EXIT

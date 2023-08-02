@@ -51,10 +51,11 @@ if [ -z "${amplicon_info}" ] || [ -z "${fwd_primers_file}" ] || [ -z "${rev_prim
 fi
 
 # Create a temporary file to hold the forward and reverse adapters
-adapters=$(mktemp)
+# adapters=$(mktemp)
+adapters="adapters.txt"
 
 # Delete the file on exit
-trap "rm -f '$tmpfile'" EXIT
+trap "rm -f '$adapters'" EXIT
 
 # Parse the amplicon_info file and create adapters.txt
 cat $amplicon_info | awk 'NR==1 {
