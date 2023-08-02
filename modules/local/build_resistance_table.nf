@@ -7,13 +7,20 @@ process BUILD_RESISTANCE_TABLE {
 
   label 'process_low'
 
+  publishDir(
+    path: "${params.outDIR}/resistance_marker_module",
+    mode: 'copy'
+  )
+
   input:
   path alleledata
   path resmarkers
   path refseq
 
   output:
-  path("alignments.pseudocigar.txt"), emit: pseudocigar
+  path ('resmarker_table.txt'), emit: resmarkers
+  path ('resmarker_microhap_table.txt'), emit: microhaps
+  path ('resmarker_new_mutations.txt'), emit: new_mutations
 
   script:
   """

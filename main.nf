@@ -34,9 +34,10 @@ include { DEMULTIPLEX_AMPLICONS } from './workflows/demultiplex_amplicons.nf'
 include { DENOISE_AMPLICONS_1 } from './workflows/denoise_amplicons_1.nf'
 include { DENOISE_AMPLICONS_2 } from './workflows/denoise_amplicons_2.nf'
 include { RESISTANCE_MARKER_MODULE } from './workflows/resistance_marker_module.nf'
+include { QUALITY_CONTROL} from './workflows/quality_control.nf'
+
 
 // modules
-include { QUALITY_REPORT } from './modules/local/quality_report.nf'
 include { BUILD_ALLELETABLE } from './modules/local/build_alleletable.nf'
 
 // main workflow
@@ -48,11 +49,9 @@ workflow {
   if (params.QC_only == true) {
 
     // create a quality report with the raw data
-    QUALITY_REPORT(
+    QUALITY_CONTROL(
       DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
-      DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
-      params.amplicon_info,
-      params.qc_cores
+      DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch
     )
 
     // exit here
@@ -76,10 +75,9 @@ workflow {
   )
 
   // Create the quality report now
-  QUALITY_REPORT(
+  QUALITY_CONTROL(
     DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
-    DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
-    params.amplicon_info
+    DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch
   )
 
   // By default, run the resistance marker module in the main workflow

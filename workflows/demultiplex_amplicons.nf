@@ -24,17 +24,3 @@ workflow DEMULTIPLEX_AMPLICONS {
   demux_fastqs_ch = CUTADAPT.out.demultiplexed_fastqs
 }
 
-workflow QUALITY_CONTROL {
-  
-  take:
-  sample_summary_ch
-  amplicon_summary_ch
-
-  main:
-  QUALITY_REPORT(
-    sample_summary_ch.collect(),
-    amplicon_summary_ch.collect(),
-    params.amplicon_info,
-    params.qc_cores
-  )
-}

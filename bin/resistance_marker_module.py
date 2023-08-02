@@ -38,7 +38,6 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
     
     pseudo_cigar = row['pseudo_cigar']
     orientation = row['V4']
-    print(pseudo_cigar)
     new_mutations = {}
 
     if pseudo_cigar == ".":
@@ -47,7 +46,7 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
         row['Codon_Ref/Alt'] = 'REF'
         row['AA_Ref/Alt'] = 'REF'
     else:
-        refseq_len = len(ref_sequences[row['index']].seq)
+        refseq_len = len(ref_sequences[row['amplicon']].seq)
         changes = parse_pseudo_cigar(pseudo_cigar, orientation, refseq_len)
         codon = list(row['Reference_Codon'])
         # build the ASV codon using the reference codon and the changes listed in the cigar string
@@ -58,7 +57,7 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
                 # note: we expect substitutions in these regions
             else: 
                 # if the position is outside of the codon, then we need to add the mutation to the new_mutations dictionary
-                new_mutations[pos] = (alt, ref_sequences[row['index']].seq[int(pos)-1])
+                new_mutations[pos] = (alt, ref_sequences[row['amplicon']].seq[int(pos)-1])
             
         row['Codon'] = "".join(codon) # Collapse the bases into a 3 character string
         row['AA'] = translate(row['Codon']) # Use the Bio package to translate the codon to an amino acid
@@ -97,8 +96,8 @@ def process_row(row, ref_sequences):
 
     # Get codon and translate
     if row['V4'] == '-':
-        refseq_len = len(ref_sequences[row['index']].seq)
-        refseq_rc = ref_sequences[row['index']].seq.reverse_complement()
+        refseq_len = len(ref_sequences[row['amplicon']].seq)
+        refseq_rc = ref_sequences[row['amplicon']].seq.reverse_complement()
         codon_start = refseq_len - (row['Codon_Start']) - 2
         codon_end = refseq_len - (row['Codon_Start']) + 1
 
@@ -114,7 +113,7 @@ def process_row(row, ref_sequences):
 
         row['Codon_Start'] = codon_start
         row['Codon_End'] = codon_end
-        ref_codon = str(ref_sequences[row['index']].seq[row['Codon_Start'] : row['Codon_End']])
+        ref_codon = str(ref_sequences[row['amplicon']].seq[row['Codon_Start'] : row['Codon_End']])
         row['Reference_Codon'] = ref_codon
         row['Reference_AA'] = translate(ref_codon)
 
@@ -149,9 +148,9 @@ def main(args):
     # at the positions specified in the resistance marker table
     df_results = pd.DataFrame(results)
     df_results = df_results.sort_values('sampleID',ascending=True)
-    df_results = df_results[['sampleID', 'Gene_ID', 'Gene', 'Codon_ID', 'Reference_Codon', 'Codon', 'Codon_Start', 'Codon_Ref/Alt', 'Reference_AA', 'AA', 'AA_Ref/Alt', 'reads', 'index', 'pseudo_cigar', 'new_mutations']]
+    df_results = df_results[['sampleID', 'Gene_ID', 'Gene', 'Codon_ID', 'Reference_Codon', 'Codon', 'Codon_Start', 'Codon_Ref/Alt', 'Reference_AA', 'AA', 'AA_Ref/Alt', 'reads', 'amplicon', 'pseudo_cigar', 'new_mutations']]
     df_results = df_results.rename(columns={'reads': 'Reads'})
-    df_results.drop(['index', 'pseudo_cigar', 'new_mutations'], axis=1).to_csv('resmarker_table.txt', sep='\t', index=False)
+    df_results.drop(['amplicon', 'pseudo_cigar', 'new_mutations'], axis=1).to_csv('resmarker_table.txt', sep='\t', index=False)
 
 
     # Group data and create microhaplotypes
