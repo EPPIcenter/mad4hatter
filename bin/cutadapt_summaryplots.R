@@ -163,7 +163,7 @@ rmd_file=paste(outDIR,"QCplots.Rmd",sep='/')
 file.create(rmd_file)
 p=list(sample_stats,sample_amplicon_stats,loci_stats,p1,p3,p4)
 
-file <- tempfile()
+file <- "qc_data.rds"
 saveRDS(p, file)
 
 
