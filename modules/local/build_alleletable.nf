@@ -5,9 +5,8 @@
 
 process BUILD_ALLELETABLE {
 
-  tag "$meta.id"
   label 'process_single'
-    
+
   publishDir(
     path: "${params.outDIR}",
     mode: 'copy'

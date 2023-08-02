@@ -6,7 +6,6 @@
 
 process CREATE_REFERENCE_FROM_GENOMES {
 
-  tag "$meta.id"
   label 'process_single'
 
   input:

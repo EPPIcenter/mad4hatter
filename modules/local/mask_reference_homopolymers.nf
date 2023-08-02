@@ -1,6 +1,5 @@
 process MASK_REFERENCE_HOMOPOLYMERS {
 
-  tag "$meta.id"
   label 'process_low'  
 
   input:

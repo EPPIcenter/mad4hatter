@@ -77,8 +77,8 @@ pool=switch(
   "pseudo" = "pseudo"
 )
 
-dadaFs <- dada(derepFs, err=errF, selfConsist=args$selfConsist, multithread=args$cores, verbose=FALSE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
-dadaRs <- dada(derepRs, err=errR, selfConsist=args$selfConsist, multithread=args$cores, verbose=FALSE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+dadaFs <- dada(derepFs, err=errF, selfConsist=args$self_consist, multithread=args$cores, verbose=FALSE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+dadaRs <- dada(derepRs, err=errR, selfConsist=args$self_consist, multithread=args$cores, verbose=FALSE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
 
 if(args$concat_non_overlaps){
   

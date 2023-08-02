@@ -6,7 +6,7 @@
 
 process CUTADAPT {
 
-  tag "$meta.id"
+  tag "$pair_id"
   label 'process_low'
 
     input:

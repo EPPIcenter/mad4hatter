@@ -5,9 +5,8 @@
 
 process BUILD_PSEUDOCIGAR {
 
-  tag "$meta.id"
   label 'process_single'
-  
+
   input:
   path alignments
 

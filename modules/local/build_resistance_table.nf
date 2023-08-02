@@ -5,7 +5,6 @@
 
 process BUILD_RESISTANCE_TABLE {
 
-  tag "$meta.id"
   label 'process_low'
 
   input:

@@ -1,6 +1,5 @@
 process QUALITY_REPORT {
   
-  tag "$meta.id"
   label 'process_low'
 
   publishDir(
