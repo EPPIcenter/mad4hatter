@@ -4,6 +4,10 @@
  */
 
 process CREATE_PRIMER_FILES {
+
+    tag "$meta.id"
+    label 'process_single'
+
     input:
     path amplicon_info
 

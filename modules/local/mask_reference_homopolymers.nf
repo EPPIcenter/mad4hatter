@@ -1,5 +1,8 @@
 process MASK_REFERENCE_HOMOPOLYMERS {
 
+  tag "$meta.id"
+  label 'process_low'  
+
   input:
   path refseq_fasta
   val homopolymer_threshold

@@ -4,8 +4,7 @@ parser <- ArgumentParser(description='Aligns sequences (DADA2 clusters) against 
 parser$add_argument('--clusters', type="character", required=TRUE, help="RDS Clusters from DADA2. This is the main output from the DADA module.")
 parser$add_argument('--refseq-fasta', type="character")
 parser$add_argument('--alignment-threshold', type="integer", default = 60)
-parser$add_argument('--parallel', action='store_true')
-parser$add_argument('--n-cores', type = 'integer', default = -1, help = "Number of cores to use. Ignored if running parallel flag is unset.")
+parser$add_argument('--n-cores', type = 'integer', default = 1, help = "Number of cores to use. Ignored if running parallel flag is unset.")
 parser$add_argument('--amplicon-table', type="character", required=TRUE, help = "Amplicon table with primer pools. This is used to organize the sequence table by amplicon.")
 
 args <- parser$parse_args()
@@ -24,22 +23,19 @@ library(ggplot2)
 library(Biostrings)
 library(magrittr)
 
+## FOR DEUBGING
+# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/48/4bb9040a0aa3b2febe32ce38f4e3bd")
+# args=list()
+# args$clusters="clusters.concatenated.collapsed.txt"
+# args$refseq_fasta="v4_reference.fasta"
+# args$parallel=TRUE
+# args$n_cores=2
+# args$amplicon_table="v4_amplicon_table.tsv"
 
-clusters=NULL
-if (grepl(".RDS|.rds", args$clusters)) {
-  clusters=readRDS(args$clusters)
-} else {
-  clusters=read.table(args$clusters, header=T)
-}
+clusters=read.table(args$clusters, header=T)
 
-## Setup parallel backend if asked
-
-if (args$parallel) {
-  n_cores <- ifelse(args$n_cores <= 0, detectCores(), args$n_cores)
-  registerDoMC(n_cores)
-} else {
-  registerDoSEQ()
-}
+# register number of cores to use
+registerDoMC(args$n_cores)
 
 # read the sequences from the reference genome (already extracted into a fasta file)
 ref_sequences <- readDNAStringSet(args$refseq_fasta)
@@ -60,6 +56,8 @@ df_aln <- foreach(seq1 = 1:nrow(clusters), .combine = "bind_rows") %dopar% {
   patt <- c(alignedPattern(aln), alignedSubject(aln))
   ind <- sum(str_count(as.character(patt),"-"))
   data.frame(
+    sampleID = clusters$sampleID[seq1],
+    asv = clusters$asv[seq1],
     hapseq = as.character(patt)[2],
     refseq = as.character(patt)[1],
     refid = clusters$locus[seq1],
@@ -67,5 +65,6 @@ df_aln <- foreach(seq1 = 1:nrow(clusters), .combine = "bind_rows") %dopar% {
     indels = ind
   )
 }
+
 
 write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)

@@ -6,10 +6,8 @@
 
 process CREATE_REFERENCE_FROM_GENOMES {
 
-    publishDir(
-      path: "${params.outDIR}",
-      mode: 'copy'
-  )
+  tag "$meta.id"
+  label 'process_single'
 
   input:
   path genome

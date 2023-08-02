@@ -1,3 +1,9 @@
+/*
+ * WORKFLOW - ALIGN-TO-REFERENCE
+ * 
+ * This workflow allows users to optionally mask homopolymers and / or tandem repeats
+ */
+
 
 include { MASK_REFERENCE_TANDEM_REPEATS } from '../../modules/local/mask_reference_tandem_repeats.nf'
 include { MASK_REFERENCE_HOMOPOLYMERS } from '../../modules/local/mask_reference_homopolymers.nf'
@@ -23,6 +29,7 @@ workflow MASK_LOW_COMPLEXITY_REGIONS {
     mask_reference_tandem_repeats_ch = MASK_REFERENCE_TANDEM_REPEATS.out.masked_fasta
   }
 
+
   if (params.mask_homopolymers) {
     MASK_REFERENCE_HOMOPOLYMERS(
       reference,
@@ -36,9 +43,7 @@ workflow MASK_LOW_COMPLEXITY_REGIONS {
 
   MASK_SEQUENCES(
     masked_reference_ch.collect(),
-    alignments,
-    params.parallel,
-    params.n_cores
+    alignments
   )
 
   emit:

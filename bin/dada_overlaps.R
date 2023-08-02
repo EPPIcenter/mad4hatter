@@ -14,6 +14,7 @@ parser$add_argument('--use-quals', type="character", default="false")
 parser$add_argument('--maxEE', type="integer", default=2)
 parser$add_argument('--self-consist', action='store_true')
 parser$add_argument('--omega-c', type='double', default=1e-40)
+parser$add_argument('--cores', type="integer", default=1)
 
 
 args <- parser$parse_args()
@@ -76,8 +77,8 @@ pool=switch(
   "pseudo" = "pseudo"
 )
 
-dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
-dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+dadaFs <- dada(derepFs, err=errF, selfConsist=args$selfConsist, multithread=args$cores, verbose=FALSE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+dadaRs <- dada(derepRs, err=errR, selfConsist=args$selfConsist, multithread=args$cores, verbose=FALSE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
 
 if(args$concat_non_overlaps){
   

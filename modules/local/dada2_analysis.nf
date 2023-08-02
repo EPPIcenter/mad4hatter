@@ -5,7 +5,8 @@
 
 process DADA2_ANALYSIS {
 
-  // publishDir ${task.process}, pattern: "", mode: 'copy'
+  tag "$meta.id"
+  label 'process_medium'
 
   input:
   path (demultiplexed_fastqs, stageAs: "demuliplexed_fastqs?")
@@ -20,6 +21,7 @@ process DADA2_ANALYSIS {
   path 'dada2.clusters.txt', emit: dada2_clusters
   
   script:
+  def cores = ${task.cpus} ? "--cores ${task.cpus}" : ''
   def concatenate = just_concatenate ? '--concat-non-overlaps' : ''
   """
   Rscript ${projectDir}/bin/dada_overlaps.R \
@@ -29,6 +31,7 @@ process DADA2_ANALYSIS {
     --band-size ${params.band_size} \
     --omega-a ${params.omega_a} \
     --maxEE ${params.maxEE} \
-    ${concatenate}
+    ${concatenate} \
+    ${cores}
   """
 }

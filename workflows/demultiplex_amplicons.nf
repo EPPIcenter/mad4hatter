@@ -15,8 +15,7 @@ workflow DEMULTIPLEX_AMPLICONS {
     read_pairs,
     params.cutadapt_minlen,
     params.sequencer,
-    params.allowed_errors,
-    params.cutadapt_cores
+    params.allowed_errors
   )
 
   emit:

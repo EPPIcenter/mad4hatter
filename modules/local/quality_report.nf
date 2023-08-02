@@ -1,5 +1,8 @@
 process QUALITY_REPORT {
   
+  tag "$meta.id"
+  label 'process_low'
+
   publishDir(
       path: "${params.outDIR}",
       mode: 'copy'
@@ -9,7 +12,6 @@ process QUALITY_REPORT {
   path (sample_coverage) 
   path (amplicon_coverage)
   path (amplicon_info)
-  val (cores)
   
   output:
   file ('sample_coverage.txt')
@@ -31,8 +33,8 @@ process QUALITY_REPORT {
   echo -e "SampleName\\tAmplicon\\tNumReads" > amplicon_coverage.txt
 
   # concatenate sample and amplicon coverage files form all samples
-  printf "%s\n" ${sample_coverage.join(' ')} | parallel --jobs $cores add_sample_name_column {} >> sample_coverage.txt
-  printf "%s\n" ${amplicon_coverage.join(' ')} | parallel --jobs $cores add_sample_name_column {} >> amplicon_coverage.txt
+  printf "%s\n" ${sample_coverage.join(' ')} | parallel --jobs ${task.cpus} add_sample_name_column {} >> sample_coverage.txt
+  printf "%s\n" ${amplicon_coverage.join(' ')} | parallel --jobs ${task.cpus} add_sample_name_column {} >> amplicon_coverage.txt
 
   test -d quality_report || mkdir quality_report
   Rscript ${projectDir}/bin/cutadapt_summaryplots.R amplicon_coverage.txt sample_coverage.txt ${amplicon_info} quality_report

@@ -106,12 +106,12 @@ pos=df_aln_references[3,]$all_positions
 refseq=df_aln_references[3,]$refseq
 
 df_aln_references %<>%
-  mutate(masked_aligned_refseq1 = mapply(mask_aligned_sequence,all_positions,refseq)) %>%
-  mutate(masked_aligned_nodashinN_refseq1 = sapply(masked_aligned_refseq1,remove_dashes_between_N)) %>%
-  dplyr::rename(masked_aligned_refseq = masked_aligned_nodashinN_refseq1)
+  mutate(masked_aligned_refseq = mapply(mask_aligned_sequence,all_positions,refseq)) %>%
+  mutate(masked_aligned_nodashinN_refseq = sapply(masked_aligned_refseq,remove_dashes_between_N))
 
 #update df_aln
 df_aln %<>% left_join(df_aln_references,by=c("refid","refseq")) %>%
-  select(refid, hapseq, masked_aligned_refseq)
+  select(sampleID, asv, refid, hapseq, masked_aligned_nodashinN_refseq, score, indels) %>%
+  dplyr::rename(refseq = masked_aligned_nodashinN_refseq)
 
 write.table(df_aln,file="masked.alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)

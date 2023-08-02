@@ -6,7 +6,7 @@ from Bio import SeqIO
 from Bio.Seq import translate
 import argparse
 import re
-from multiprocessing import Pool
+from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 import numpy as np
 import json
@@ -35,7 +35,10 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
     :return: row 
 	
     """
+    
     pseudo_cigar = row['pseudo_cigar']
+    orientation = row['V4']
+    print(pseudo_cigar)
     new_mutations = {}
 
     if pseudo_cigar == ".":
@@ -45,7 +48,7 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
         row['AA_Ref/Alt'] = 'REF'
     else:
         refseq_len = len(ref_sequences[row['index']].seq)
-        changes = parse_pseudo_cigar(row['pseudo_cigar'], row['V4'], refseq_len)
+        changes = parse_pseudo_cigar(pseudo_cigar, orientation, refseq_len)
         codon = list(row['Reference_Codon'])
         # build the ASV codon using the reference codon and the changes listed in the cigar string
         for pos, operation, alt in changes:
@@ -139,8 +142,8 @@ def main(args):
     process_row_partial = partial(process_row, ref_sequences=ref_sequences)
 
     # Run in parallel
-    with Pool(args.n_cores) as pool:
-        results = pool.map(process_row_partial, [row for _, row in allele_data.iterrows()])
+    with ProcessPoolExecutor(max_workers=args.n_cores) as executor:
+        results = list(executor.map(process_row_partial, [row for _, row in allele_data.iterrows()]))
 
     # Create a table that identifies whether there are dna and/or codon difference in the ASVs
     # at the positions specified in the resistance marker table

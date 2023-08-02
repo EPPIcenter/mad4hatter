@@ -6,6 +6,9 @@
 
 process CUTADAPT {
 
+  tag "$meta.id"
+  label 'process_low'
+
     input:
     file fwd_primers
     file rev_primers
@@ -13,7 +16,6 @@ process CUTADAPT {
     val cutadapt_minlen
     val sequencer
     val allowed_errors
-    val cores
 
     output:
     path("*.SAMPLEsummary.txt"), emit: sample_summary
@@ -30,7 +32,7 @@ process CUTADAPT {
         -m ${cutadapt_minlen} \
         -s ${sequencer} \
         -e ${allowed_errors} \
-        -c ${cores} \
+        -c ${task.cpus} \
         -o demuliplexed_fastqs
     """
 }

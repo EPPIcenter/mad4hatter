@@ -5,6 +5,9 @@
 
 process COLLAPSE_CONCATENATED_READS {
 
+  tag "$meta.id"
+  label 'process_single'
+
   input:
   path clusters
 

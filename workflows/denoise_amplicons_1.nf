@@ -1,3 +1,9 @@
+/*
+ * WORKFLOW - DENOISE_AMPLICONS_1
+ * 
+ * This workflow uses DADA2 to denoise amplicons
+ */
+
 
 include { DADA2_ANALYSIS } from '../modules/local/dada2_analysis.nf'
 include { COLLAPSE_CONCATENATED_READS } from '../modules/local/collapse_concatenated_reads.nf'
