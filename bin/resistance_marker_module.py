@@ -20,7 +20,7 @@ def parse_pseudo_cigar(string, orientation, refseq_len):
     matches = pattern.findall(string)
     for match in matches:
         position, operation, base = match 
-        position = refseq_len - int(position) + 1 if orientation == "-" else int(position)
+        position = refseq_len - int(position) - 1 if orientation == "-" else int(position) - 1 # use base 0 indexing
         base = base.translate(transtab) if orientation == "-" else base
         tuples.append((position, None if operation == '' else operation, base))
     return tuples
@@ -50,10 +50,11 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
         changes = parse_pseudo_cigar(pseudo_cigar, orientation, refseq_len)
         codon = list(row['Reference_Codon'])
         # build the ASV codon using the reference codon and the changes listed in the cigar string
-        for pos, operation, alt in changes:
+        for pos, _, alt in changes:
             # make sure that the position is within the codon
-            if (pos >= row['Codon_Start']) and (pos <= row['Codon_End']):
-                codon[int(pos)-1] = alt # replace the reference base with the alternate base
+            if (pos >= row['Codon_Start']) and (pos < row['Codon_End']):
+                index = pos - row['Codon_Start']
+                codon[index] = alt # replace the reference base with the alternate base
                 # note: we expect substitutions in these regions
             else: 
                 # if the position is outside of the codon, then we need to add the mutation to the new_mutations dictionary
@@ -98,7 +99,7 @@ def process_row(row, ref_sequences):
     if row['V4'] == '-':
         refseq_len = len(ref_sequences[row['amplicon']].seq)
         refseq_rc = ref_sequences[row['amplicon']].seq.reverse_complement()
-        codon_start = refseq_len - (row['Codon_Start']) - 2
+        codon_start = refseq_len - (row['Codon_Start']) - 2 # 0-based indexing
         codon_end = refseq_len - (row['Codon_Start']) + 1
 
         row['Codon_Start'] = codon_start
