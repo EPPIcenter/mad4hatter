@@ -32,8 +32,15 @@ process QUALITY_REPORT {
   echo -e "SampleName\\tAmplicon\\tNumReads" > amplicon_coverage.txt
 
   # concatenate sample and amplicon coverage files form all samples
-  printf "%s\n" ${sample_coverage.join(' ')} | parallel --jobs ${task.cpus} add_sample_name_column {} >> sample_coverage.txt
-  printf "%s\n" ${amplicon_coverage.join(' ')} | parallel --jobs ${task.cpus} add_sample_name_column {} >> amplicon_coverage.txt
+  for file in ${sample_coverage.join(' ')}
+  do
+    add_sample_name_column \$file >> sample_coverage.txt
+  done
+
+  for file in ${amplicon_coverage.join(' ')}
+  do
+    add_sample_name_column \$file >> amplicon_coverage.txt
+  done
 
   test -d quality_report || mkdir quality_report
   Rscript ${projectDir}/bin/cutadapt_summaryplots.R amplicon_coverage.txt sample_coverage.txt ${amplicon_info} quality_report
