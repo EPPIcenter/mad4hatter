@@ -148,7 +148,7 @@ def main(args):
     # Create a table that identifies whether there are dna and/or codon difference in the ASVs
     # at the positions specified in the resistance marker table
     df_results = pd.DataFrame(results)
-    df_results = df_results.sort_values('sampleID',ascending=True)
+    df_results = df_results.sort_values(['Codon_ID', 'Gene', 'sampleID'] ,ascending=[True, True, True])
     df_results = df_results[['sampleID', 'Gene_ID', 'Gene', 'Codon_ID', 'Reference_Codon', 'Codon', 'Codon_Start', 'Codon_Ref/Alt', 'Reference_AA', 'AA', 'AA_Ref/Alt', 'reads', 'amplicon', 'pseudo_cigar', 'new_mutations']]
     df_results = df_results.rename(columns={'reads': 'Reads'})
     df_results.drop(['amplicon', 'pseudo_cigar', 'new_mutations'], axis=1).to_csv('resmarker_table.txt', sep='\t', index=False)
@@ -168,7 +168,8 @@ def main(args):
 
     # Select columns and rename them
     df_microhap = df_microhap[['sampleID', 'Gene_ID', 'Gene', 'Microhaplotype_Index', 'Reference_Microhaplotype', 'Microhaplotype', 'Microhaplotype_Ref/Alt', 'Reads']]
-
+    df_microhap = df_microhap.sort_values(['Microhaplotype_Index', 'Gene', 'sampleID'], ascending=[True, True, True])
+    
     # Summarize reads
     df_microhap_collapsed = df_microhap.groupby(['sampleID', 'Gene_ID', 'Gene', 'Microhaplotype_Index', 'Reference_Microhaplotype', 'Microhaplotype', 'Microhaplotype_Ref/Alt']).agg({
         'Reads': 'sum'
