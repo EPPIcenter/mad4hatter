@@ -25,13 +25,11 @@ build_pseudoCIGAR_string <- function(reference, query) {
   n_string <- str_locate_all(reference, pattern = "N+\\-+N*|N+")[[1]]
   n_vector <- unlist(mapply(seq, from = n_string[, "start"], to = n_string[, "end"]))
 
-  # Ignore these positions when builing cigar
-  df %<>% mutate(ignore = position %in% n_vector)
-  
-  # Apply the rules and create the cigar string
-  df <- df %>% 
+  # Indicate these positions are included in mask when building cigar
+  df %<>% 
+    mutate(masked = position %in% n_vector) %>%
     mutate(result = case_when(
-      ignore ~ "",
+      masked ~ paste0(n_string[, "start"], "N+", n_string[, "end"] - n_string[, "start"] + 1),
       ref_char != query_char & ref_char != "-" & query_char != "-" ~ paste0(position, query_char), 
       ref_char != query_char & ref_char == "-" & query_char != "-" & !position %in% ignore ~ paste0(position, "I=", query_char),
       ref_char != query_char & ref_char != "-" & query_char == "-" ~ paste0(position, "D=", ref_char),
