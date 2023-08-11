@@ -16,6 +16,10 @@ library(stringr)
 library(dplyr)
 library(magrittr)
 
+# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/40/bac9f2b95a3ae5b8fdedef03c7f7d8")
+# args <- list()
+# args$alignments <- "masked.alignments.txt"
+
 #' Compute Insertion Group
 #'
 #' @description Identify the group of insertion for given reference characters.
@@ -226,6 +230,12 @@ build_pseudoCIGAR_string <- function(reference, query) {
   ref_chars <- str_split(reference, pattern = "")[[1]]
   query_chars <- str_split(query, pattern = "")[[1]]
 
+  # Check for positions where both sequences have a "-"
+  dual_gaps <- ref_chars == "-" & query_chars == "-"
+  if (any(dual_gaps)) {
+    warning("Both reference and query sequences have '-' at the same position(s). This may indicate an issue with your data.")
+  }
+
   # Prepare a dataframe with position level annotations of whether
   # there is an insertion, a deletion, or whether the position is
   # in a masked region. Keep track of reference positions ('ref_position')
@@ -251,7 +261,7 @@ build_pseudoCIGAR_string <- function(reference, query) {
   # CIGAR computation
   df_cigar <- df %>%
     group_by(mask_group, insertion_group, deletion_group) %>%
-    summarise(
+    reframe(
       start_position = first(position),
       result = case_when(
         !is.na(first(mask_group)) ~ compute_mask_cigar(position, ref_position, ref_char, mask_group),  # Modified this line to add ref_char
