@@ -13,16 +13,46 @@ import json
 
 
 def parse_pseudo_cigar(string, orientation, refseq_len):
+    """
+    Parse a pseudo CIGAR string into a list of tuples (position, operation, value)
+
+    The pseudo CIGAR string is a string representation of the differences between a reference sequence and a query sequence. The string 
+    is composed of a series of operations and values. The operations are "I" (insertion), "D" (deletion), and "N" (mask). Substitutions
+    are also represented in the string as '[position][snp]'. For example, you could see "3C", where "3" is the position of the base
+    and "C" is the base in the query sequence. 
+     
+    :Example:
+    '2N+45I=ACT7G' # Mask beginning at position 2 and extends 4 bases, 'ACT' insertion at position 5, 'G' substitution at position 7
+
+    :param string: Pseudo CIGAR string
+    :param orientation: "+" or "-"
+    :param refseq_len: Length of the reference sequence
+
+    :return: List of tuples (position, operation, value)
+    """
+
     string = string.replace("=", "")  # Remove the "=" separator
     transtab = str.maketrans("TACG", "ATGC")
     tuples = []
-    pattern = re.compile(r'(\d+)([ID]?)([ACGT])')
+
+    pattern = re.compile(r'(\d+)([ID\+]?)\+?(\d+|[ACGTN]+)?')
     matches = pattern.findall(string)
     for match in matches:
-        position, operation, base = match 
+        position, operation, value = match 
         position = refseq_len - int(position) - 1 if orientation == "-" else int(position) - 1 # use base 0 indexing
-        base = base.translate(transtab) if orientation == "-" else base
-        tuples.append((position, None if operation == '' else operation, base))
+
+        # Handle mask
+        if operation == "+":  
+            mask_positions = [(position + i, "N", None) for i in range(int(value))]
+            tuples.extend(mask_positions)
+        else:     
+            value = value.translate(transtab) if orientation == "-" else value
+            tuples.append((position, None if operation == '' else operation, value))
+
+    # Added masking separately
+    pattern = re.compile(r'(\d+)N\+(\d+)')
+    matches = pattern.findall(string)
+
     return tuples
 
 
@@ -50,7 +80,14 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
         changes = parse_pseudo_cigar(pseudo_cigar, orientation, refseq_len)
         codon = list(row['Reference_Codon'])
         # build the ASV codon using the reference codon and the changes listed in the cigar string
-        for pos, _, alt in changes:
+
+        # we need to eventually use the operation informatin to make informed decisions on the codon in terms of frame shifts
+        for pos, op, alt in changes:
+
+            # ignore masks
+            if op != "+":
+                continue
+
             # make sure that the position is within the codon
             if (pos >= row['Codon_Start']) and (pos < row['Codon_End']):
                 index = pos - row['Codon_Start']
@@ -60,6 +97,7 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
                 # if the position is outside of the codon, then we need to add the mutation to the new_mutations dictionary
                 new_mutations[pos] = (alt, ref_sequences[row['amplicon']].seq[int(pos)-1])
             
+
         row['Codon'] = "".join(codon) # Collapse the bases into a 3 character string
         row['AA'] = translate(row['Codon']) # Use the Bio package to translate the codon to an amino acid
         row['Codon_Ref/Alt'] = 'ALT' if row['Codon'] != row['Reference_Codon'] else 'REF'

@@ -28,8 +28,8 @@ process QUALITY_REPORT {
   export -f add_sample_name_column
 
   # add headers for easier readability
-  echo -e "SampleName\\tX\\tNumReads" > sample_coverage.txt
-  echo -e "SampleName\\tAmplicon\\tNumReads" > amplicon_coverage.txt
+  echo -e "SampleID\\tX\\tNumReads" > sample_coverage.txt
+  echo -e "SampleID\\tAmplicon\\tNumReads" > amplicon_coverage.txt
 
   # concatenate sample and amplicon coverage files form all samples
   for file in ${sample_coverage.join(' ')}

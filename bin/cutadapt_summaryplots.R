@@ -19,39 +19,39 @@ outDIR=args[4]
 # outDIR="quality_report"
 
 df=read.table(summaryFILE,header=T)
-df$SampleName=as.factor(df$SampleName)
+df$SampleID=as.factor(df$SampleID)
 df$Amplicon=as.factor(df$Amplicon)
 df = df %>% 
-  mutate(SampleNumber=sapply(str_split(SampleName,'_S'),tail,1)) %>% 
-  mutate(SampleName=sapply(str_split(SampleName,'_S(\\d+)'),head,1)) %>% 
+  mutate(SampleNumber=sapply(str_split(SampleID,'_S'),tail,1)) %>% 
+  mutate(SampleID=sapply(str_split(SampleID,'_S(\\d+)'),head,1)) %>% 
   mutate(Pool=sapply(str_split(Amplicon,'-'),tail,1)) %>% 
-  arrange(SampleName) %>% 
+  arrange(SampleID) %>% 
   data.frame()
 
-samples = df %>% select(SampleName,SampleNumber) %>% distinct() %>% 
+samples = df %>% select(SampleID,SampleNumber) %>% distinct() %>% 
   arrange(SampleNumber)
 
-df$SampleName=factor(df$SampleName,levels=unique(samples$SampleName))
+df$SampleID=factor(df$SampleID,levels=unique(samples$SampleID))
 
 amplicon_stats=df %>% select(-Pool) %>% pivot_wider(names_from = Amplicon, values_from = NumReads) %>% data.frame()
 write.table(amplicon_stats, file=paste(outDIR,"/amplicon_stats.txt",sep=""), quote=F, sep ="\t", col.names=T, row.names=F)
 
-sample_amplicon_stats=df %>% group_by(SampleName,Pool) %>% dplyr::summarise(medianReads=median(NumReads)) %>% pivot_wider(names_from = Pool, values_from = medianReads) %>% data.frame()
-colnames(sample_amplicon_stats)=c("SampleName","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
+sample_amplicon_stats=df %>% group_by(SampleID,Pool) %>% dplyr::summarise(medianReads=median(NumReads)) %>% pivot_wider(names_from = Pool, values_from = medianReads) %>% data.frame()
+colnames(sample_amplicon_stats)=c("SampleID","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
 
-loci_stats = df %>% group_by(SampleName) %>% group_by(SampleName,Pool) %>% dplyr::summarise(n_loci=sum(NumReads >= 100)) %>% pivot_wider(names_from = Pool, values_from = n_loci) %>% data.frame()
-colnames(loci_stats)=c("SampleName","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
+loci_stats = df %>% group_by(SampleID) %>% group_by(SampleID,Pool) %>% dplyr::summarise(n_loci=sum(NumReads >= 100)) %>% pivot_wider(names_from = Pool, values_from = n_loci) %>% data.frame()
+colnames(loci_stats)=c("SampleID","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
 
 
 df1=read.delim(samplestatFILE,header=T)
 sample_stats=df1 %>% 
   pivot_wider(names_from = X, values_from = NumReads) %>%
   data.frame() %>%
-  mutate(SampleNumber=sapply(str_split(SampleName,'_S'),tail,1)) %>%
-  mutate(SampleName=sapply(str_split(SampleName,'_S(\\d+)'),head,1))
-sample_stats$SampleName=factor(sample_stats$SampleName,
-                              levels=unique(samples$SampleName)) 
-sample_stats=sample_stats[,c("SampleNumber","SampleName","Input","No.Dimers")]%>% 
+  mutate(SampleNumber=sapply(str_split(SampleID,'_S'),tail,1)) %>%
+  mutate(SampleID=sapply(str_split(SampleID,'_S(\\d+)'),head,1))
+sample_stats$SampleID=factor(sample_stats$SampleID,
+                              levels=unique(samples$SampleID)) 
+sample_stats=sample_stats[,c("SampleNumber","SampleID","Input","No.Dimers")]%>% 
   arrange(SampleNumber)
 
 colnames(sample_stats) = c("#","Sample","Input","No Dimers")
@@ -69,7 +69,7 @@ p1=ggplot(data=df, aes(x=NumReads+0.1)) +
   ggtitle("\nNumber of Reads/Amplicon") + 
   theme_bw() + 
   theme(plot.title = element_text(hjust = 0.5)) + 
-  facet_wrap(~SampleName,ncol=6) + 
+  facet_wrap(~SampleID,ncol=6) + 
   theme(plot.title = element_text(hjust = 0.5, size=25)) + 
   theme(strip.text.x = element_text(size = 25)) +
   theme(axis.text.x = element_text(size = 25)) + 
@@ -82,11 +82,11 @@ ggsave(file="quality_report/reads_histograms.pdf", width=40, height=60, dpi=300,
 
 
 #Boxplot#
-numsamples=length(unique(df$SampleName))
-samples_group1=unique(df$SampleName)[1:ceiling(numsamples/2)]
-samples_group2=unique(df$SampleName)[(ceiling(numsamples/2)+1):numsamples]
+numsamples=length(unique(df$SampleID))
+samples_group1=unique(df$SampleID)[1:ceiling(numsamples/2)]
+samples_group2=unique(df$SampleID)[(ceiling(numsamples/2)+1):numsamples]
 
-p2a=ggplot( data=df %>% dplyr::filter(SampleName %in% samples_group1),aes(x=SampleName, y=NumReads)) +
+p2a=ggplot( data=df %>% dplyr::filter(SampleID %in% samples_group1),aes(x=SampleID, y=NumReads)) +
     geom_boxplot(color="#993333",lwd=0.75) +
     theme_bw() + theme(plot.title = element_text(hjust = 0.5)) +
     theme(legend.position="none",plot.title = element_text(size=11)) +
@@ -94,7 +94,7 @@ p2a=ggplot( data=df %>% dplyr::filter(SampleName %in% samples_group1),aes(x=Samp
     ggtitle("Number of Reads/Amplicon") +
     xlab("") + facet_wrap(~Pool,ncol=1)
     
-p2b=ggplot( data=df %>% dplyr::filter(SampleName %in% samples_group2),aes(x=SampleName, y=NumReads)) +
+p2b=ggplot( data=df %>% dplyr::filter(SampleID %in% samples_group2),aes(x=SampleID, y=NumReads)) +
     geom_boxplot(color="#993333",lwd=0.75) +
     theme_bw() + theme(plot.title = element_text(hjust = 0.5)) +
     theme(legend.position="none",plot.title = element_text(size=11)) +
@@ -108,7 +108,7 @@ df2$NumReads[which(df$NumReads == 0)]=0.1
 p3=ggplot(df2) +   
   ggbeeswarm::geom_quasirandom(aes(x=1,y=NumReads,color = Pool),dodge.width = 0.5,size=3)+
   scale_y_log10()+
-  facet_wrap(~SampleName,ncol=6)+
+  facet_wrap(~SampleID,ncol=6)+
   theme_bw() +
   xlab("")+
   theme(axis.text.x = element_blank(),axis.ticks = element_blank())+
@@ -124,13 +124,13 @@ p3=ggplot(df2) +
 ggsave(file="quality_report/swarm_plots.pdf", width=60, height=160, dpi=300, limitsize=FALSE)
 
 #Length vs. NumReads#
-df1=df %>% left_join(ampdata,by = c("Amplicon" = "amplicon")) %>% select(SampleName,Amplicon,NumReads,ampInsert_length,Pool) %>% data.frame()
+df1=df %>% left_join(ampdata,by = c("Amplicon" = "amplicon")) %>% select(SampleID,Amplicon,NumReads,ampInsert_length,Pool) %>% data.frame()
 p4=ggplot(df1,aes(x=ampInsert_length,y=NumReads+0.1,color = Pool)) + ggtitle("Amplicon Length vs. NumReads") + 
   geom_point(alpha=0.9,size=2.5) + 
   scale_y_log10()+
   xlab("Amplicon Insert Length") + 
   theme_bw() + 
-  facet_wrap(~SampleName,ncol=6) + 
+  facet_wrap(~SampleID,ncol=6) + 
   theme(strip.text.x = element_text(size = 25))+
   theme(axis.text.x = element_text(size = 25)) + 
   theme(axis.text.y = element_text(size = 25)) + 
