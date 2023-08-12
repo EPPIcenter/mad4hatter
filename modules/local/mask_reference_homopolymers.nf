@@ -1,6 +1,6 @@
 process MASK_REFERENCE_HOMOPOLYMERS {
 
-  label 'process_low'  
+  label 'process_medium'  
 
   input:
   path refseq_fasta

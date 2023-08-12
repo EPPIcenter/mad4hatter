@@ -5,7 +5,7 @@
 
 process BUILD_RESISTANCE_TABLE {
 
-  label 'process_low'
+  label 'process_medium'
 
   publishDir(
     path: "${params.outDIR}/resistance_marker_module",

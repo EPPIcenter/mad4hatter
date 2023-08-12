@@ -1,7 +1,7 @@
 // Dada2 Postprocessing
 process MASK_SEQUENCES {
 
-  label 'process_low'
+  label 'process_medium'
 
   conda 'pandoc'
 

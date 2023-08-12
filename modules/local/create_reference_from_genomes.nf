@@ -6,7 +6,7 @@
 
 process CREATE_REFERENCE_FROM_GENOMES {
 
-  label 'process_single'
+  label 'process_medium'
 
   input:
   path genome
@@ -18,6 +18,10 @@ process CREATE_REFERENCE_FROM_GENOMES {
 
   script:
   """
-  Rscript ${projectDir}/bin/create_reference_from_genomes.R --ampliconFILE ${amplicon_info} --genome ${genome} --output ${refseq_fasta}
+  Rscript ${projectDir}/bin/create_reference_from_genomes.R \
+    --ampliconFILE ${amplicon_info} \
+    --genome ${genome} \
+    --output ${refseq_fasta} \
+    --ncores ${task.cpus}
   """
 }

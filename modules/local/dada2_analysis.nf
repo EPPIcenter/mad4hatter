@@ -5,7 +5,7 @@
 
 process DADA2_ANALYSIS {
 
-  label 'process_medium'
+  label 'process_high'
 
   input:
   path (demultiplexed_fastqs, stageAs: "demuliplexed_fastqs?")

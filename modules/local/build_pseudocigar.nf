@@ -5,7 +5,7 @@
 
 process BUILD_PSEUDOCIGAR {
 
-  label 'process_single'
+  label 'process_medium'
 
   input:
   path alignments
@@ -16,6 +16,7 @@ process BUILD_PSEUDOCIGAR {
   script:
   """
   Rscript ${projectDir}/bin/build_pseudocigar.R \
-    --alignments ${alignments}
+    --alignments ${alignments} \
+    --ncores ${task.cpus}
   """
 }

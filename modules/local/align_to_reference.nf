@@ -5,7 +5,7 @@
 
 process ALIGN_TO_REFERENCE {
 
-  label 'process_low'
+  label 'process_high'
 
   input:
   path clusters

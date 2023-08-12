@@ -4,21 +4,11 @@
 #' 
 #' @keywords pseudocigar
 
-library(argparse)
-
-parser <- ArgumentParser(description='Create the pseudoCIGAR string using masked or unmasked ASVs')
-parser$add_argument('--alignments', type="character", required=TRUE, help = "File containing aligned ASVs")
-
-args <- parser$parse_args()
-print(args)
-
 library(stringr)
 library(dplyr)
 library(magrittr)
-
-# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/40/bac9f2b95a3ae5b8fdedef03c7f7d8")
-# args <- list()
-# args$alignments <- "masked.alignments.txt"
+library(foreach)
+library(doMC)
 
 #' Compute Insertion Group
 #'
@@ -284,13 +274,34 @@ build_pseudoCIGAR_string <- function(reference, query) {
 
 
 # Main code to create the pseudocigar string
+library(argparse)
+
+parser <- ArgumentParser(description='Create the pseudoCIGAR string using masked or unmasked ASVs')
+parser$add_argument('--alignments', type="character", required=TRUE, help = "File containing aligned ASVs")
+parser$add_argument("--ncores", type="integer", default=1, help="Number of cores to use for parallel processing")
+
+args <- parser$parse_args()
+print(args)
 
 # Load in alignment data. This can be masked (with 'N's)or unmasked data.
-df.aln = read.csv(args$alignments, sep="\t", header=T)
+df.aln <- read.csv(args$alignments, sep="\t", header=TRUE)
 
-# Create the pseudoCIGAR string fror each alignment entry
-pseudo_cigar = df.aln %>%
-  dplyr::mutate(pseudo_cigar = mapply(build_pseudoCIGAR_string, refseq, hapseq))
+# Setup parallel backend if needed
+doMC::registerDoMC(args$ncores)
+
+# Create the pseudoCIGAR string for each alignment entry
+pseudo_cigar <- foreach(ii = 1:nrow(df.aln), .combine='bind_rows', .packages=c("stringr")) %dopar% {
+  row <- df.aln[ii, ]
+  tibble(
+    sampleID = row$sampleID,
+    refid = row$refid,
+    asv = row$asv,
+    pseudo_cigar=build_pseudoCIGAR_string(
+      row$refseq,
+      row$hapseq
+    )
+  )
+}
 
 # Write out the data frame
-write.table(pseudo_cigar,file="alignments.pseudocigar.txt",quote=F,sep="\t",col.names=T,row.names=F)
+write.table(pseudo_cigar,file="alignments.pseudocigar.txt",quote=FALSE,sep="\t",col.names=TRUE,row.names=FALSE)
