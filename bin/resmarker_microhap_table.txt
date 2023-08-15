@@ -1,4 +1,4 @@
-sampleID	Gene_ID	Gene	Microhaplotype_Index	Reference_Microhaplotype	Microhaplotype	Microhaplotype_Ref/Alt	Reads
+SampleID	GeneID	Gene	MicrohapIndex	RefMicrohap	Microhaplotype	MicrohapRefAlt	Reads
 N1928295_4_S22	0417200	dhfr	108/164	S/I	N/I	ALT	1337
 N1928295_4_S22	0417200	dhfr	16/51/59	A/N/C	A/I/R	ALT	1588
 N1928295_4_S22	0417200	dhfr	185	T	T	REF	527

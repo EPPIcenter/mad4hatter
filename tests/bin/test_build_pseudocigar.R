@@ -1,8 +1,201 @@
 library(testthat)
 
+############################
+## Test functions
+############################
+
+test_build_pseudoCIGAR_string <- function(build_pseudoCIGAR_string_func) {
+
+  test_that("PseudoCIGAR correctly represents the differences between reference and query", {
+    # Example setup
+    reference <- "ACT---GT"
+    query <- "ACTACTGT"
+    expected_output <- "4I=ACT"  # This is just a hypothetical expected output based on your given example
+
+    # Execution
+    result <- build_pseudoCIGAR_string_func(reference, query)
+
+    # Assertion
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR outputs a dot when reference and query are the same", {
+    # Example setup
+    reference <- "ACTGT"
+    query <- "ACTGT"
+    expected_output <- "."
+
+    # Execution
+    result <- build_pseudoCIGAR_string_func(reference, query)
+
+    # Assertion
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR errors out when reference and query are of different lengths", {
+    reference <- "ACTG"
+    query <- "ACTGT"
+
+    expect_error(build_pseudoCIGAR_string_func(reference, query),
+                 "The lengths of reference and query sequences must be the same.")
+  })
+
+  test_that("PseudoCIGAR handles single position deletion", {
+    reference <- "ACATGT"
+    query <- "ACTGT"
+    expected_output <- "3D=A"
+    expect_error(build_pseudoCIGAR_string_func(reference, query))
+  })
+
+  test_that("PseudoCIGAR handles multiple separate insertions and deletions", {
+    reference <- "AGCT--GT-CA--T"
+    query <- "A-CTAGGTGCAACT"
+    expected_output <- "2D=G5I=AG7I=G9I=AC"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles multiple separate insertions, masking and deletions", {
+    reference <- "AGCT--GT-CA--TGGGTTNNNNNGGGG"
+    query <- "A-CTAGGTGCAACT---TTAAAAAG--G"
+    expected_output <- "2D=G5I=AG7I=G9I=AC10D=GGG15+5N21D=GG"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles masked sequences without changes", {
+    reference <- "ACTNNT"
+    query <- "ACTGGT"
+    expected_output <- "4+2N"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles masked sequences with changes", {
+    reference <- "ACTNNNNT"
+    query <- "ACTG---T"
+    expected_output <- "4+4N"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles all insertions", {
+    reference <- "------"
+    query <- "ACTGNT"
+    expected_output <- "1I=ACTGNT"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles all deletions", {
+    reference <- "ACTGNNNNNTA"
+    query <- "----------A"
+    expected_output <- "1D=ACTG5+5N10D=T"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles this monster", {
+    reference <- "GGGAC--TGNNNNNTA"
+    query <- "GGG---------AA-A"
+    expect_warning(build_pseudoCIGAR_string_func(reference, query))
+  })
+
+  test_that("PseudoCIGAR handles this monster", {
+    reference <- "GGGACTGNNNNNTA"
+    query <- "GGG-------AA-A"
+    expected_output <- "4D=ACTG8+5N13D=T"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles deletions", {
+    reference <- "GGGCCCAAA"
+    query <- "GGG--C--A"
+    expected_output <- "4D=CC7D=AA"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles deletions around Ns", {
+    reference <- "GGNNNNNGG"
+    query <- "G-------G"
+    expected_output <- "2D=G3+5N8D=G"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles entirely masked reference with indels in middle", {
+    reference <- "NN--NN"
+    query <- "GGGGGG"
+    expected_output <- "1+4N"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+
+  test_that("PseudoCIGAR handles entirely masked reference with indels in middle and at end", {
+    reference <- "NN--NN--"
+    query <- "GGGGGGGG"
+    expected_output <- "1+4N"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles entirely masked reference with indels in middle and at end with base at end", {
+    reference <- "NN--NN--G"
+    query <- "GGGGGGGGG"
+    expected_output <- "1+4N"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles entirely masked reference with indels in middle and at end with insertion at end", {
+    reference <- "NN--NN--G-"
+    query <- "GGGGGGGGGT"
+    expected_output <- "1+4N6I=T"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+
+  test_that("PseudoCIGAR handles deletion at first position", {
+    reference <- "GGGGGG"
+    query <- "-GGGGG"
+    expected_output <- "1D=G"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR handles deletion at last position", {
+    reference <- "GGGGGG"
+    query <- "GGGGG-"
+    expected_output <- "6D=G"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR all mask", {
+    reference <- "NNNNNN"
+    query <- "GGGGG-"
+    expected_output <- "1+6N"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+
+  test_that("PseudoCIGAR mask on both ends", {
+    reference <- "NGGGGGN"
+    query <- "GGGGGGG"
+    expected_output <- "1+1N7+1N"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
+}
+
 # Load the necessary functions; adjust path if necessary
 library(stringr)
 library(dplyr)
+library(data.table)
 library(magrittr)
 
 #' Compute Insertion Group
@@ -215,6 +408,12 @@ build_pseudoCIGAR_string <- function(reference, query) {
   ref_chars <- str_split(reference, pattern = "")[[1]]
   query_chars <- str_split(query, pattern = "")[[1]]
 
+  # Check for positions where both sequences have a "-"
+  dual_gaps <- ref_chars == "-" & query_chars == "-"
+  if (any(dual_gaps)) {
+    warning("Both reference and query sequences have '-' at the same position(s). This may indicate an issue with your data.")
+  }
+
   # Prepare a dataframe with position level annotations of whether
   # there is an insertion, a deletion, or whether the position is
   # in a masked region. Keep track of reference positions ('ref_position')
@@ -240,7 +439,7 @@ build_pseudoCIGAR_string <- function(reference, query) {
   # CIGAR computation
   df_cigar <- df %>%
     group_by(mask_group, insertion_group, deletion_group) %>%
-    summarise(
+    reframe(
       start_position = first(position),
       result = case_when(
         !is.na(first(mask_group)) ~ compute_mask_cigar(position, ref_position, ref_char, mask_group),  # Modified this line to add ref_char
@@ -261,189 +460,202 @@ build_pseudoCIGAR_string <- function(reference, query) {
   return(cigar_str)
 }
 
+############################
+## data.table implementations
+############################
 
-test_build_pseudoCIGAR_string <- function() {
+# Compute Insertion Group using data.table
+compute_insertion_group_dt <- function(ref_chars, mask_group) {
+  runs <- rle(ref_chars)
+  is_insert <- runs$values == "-"
+  group_nums <- cumsum(is_insert)
+  group_nums[!is_insert] <- NA
+  result <- rep(group_nums, times = runs$lengths)
 
-  test_that("PseudoCIGAR correctly represents the differences between reference and query", {
-    # Example setup
-    reference <- "ACT---GT"
-    query <- "ACTACTGT"
-    expected_output <- "4I=ACT"  # This is just a hypothetical expected output based on your given example
+  if (!all(is.na(mask_group))) {
+    # Increment group number when mask is encountered
+    result[!is.na(mask_group)] <- result[!is.na(mask_group)] + max(result, na.rm = TRUE)
+  }
 
-    # Execution
-    result <- build_pseudoCIGAR_string(reference, query)
-
-    # Assertion
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR outputs a dot when reference and query are the same", {
-    # Example setup
-    reference <- "ACTGT"
-    query <- "ACTGT"
-    expected_output <- "."
-
-    # Execution
-    result <- build_pseudoCIGAR_string(reference, query)
-
-    # Assertion
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR errors out when reference and query are of different lengths", {
-    reference <- "ACTG"
-    query <- "ACTGT"
-
-    expect_error(build_pseudoCIGAR_string(reference, query),
-                 "The lengths of reference and query sequences must be the same.")
-  })
-
-  test_that("PseudoCIGAR handles single position deletion", {
-    reference <- "ACATGT"
-    query <- "ACTGT"
-    expected_output <- "3D=A"
-    expect_error(build_pseudoCIGAR_string(reference, query))
-  })
-
-  test_that("PseudoCIGAR handles multiple separate insertions and deletions", {
-    reference <- "AGCT--GT-CA--T"
-    query <- "A-CTAGGTGCAACT"
-    expected_output <- "2D=G5I=AG7I=G9I=AC"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles multiple separate insertions, masking and deletions", {
-    reference <- "AGCT--GT-CA--TGGGTTNNNNNGGGG"
-    query <- "A-CTAGGTGCAACT---TTAAAAAG--G"
-    expected_output <- "2D=G5I=AG7I=G9I=AC10D=GGG15+5N21D=GG"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles masked sequences without changes", {
-    reference <- "ACTN--NT"
-    query <- "ACTG--GT"
-    expected_output <- "4+2N"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles masked sequences with changes", {
-    reference <- "ACTNNNNT"
-    query <- "ACTG---T"
-    expected_output <- "4+4N"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles all insertions", {
-    reference <- "------"
-    query <- "ACTGNT"
-    expected_output <- "1I=ACTGNT"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles all deletions", {
-    reference <- "ACTGNNNNNTA"
-    query <- "----------A"
-    expected_output <- "1D=ACTG5+5N10D=T"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles this monster", {
-    reference <- "GGGAC--TGNNNNNTA"
-    query <- "GGG---------AA-A"
-    expected_output <- "4D=ACTG8+5N13D=T"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles deletions", {
-    reference <- "GGGCCCAAA"
-    query <- "GGG--C--A"
-    expected_output <- "4D=CC7D=AA"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles deletions around Ns", {
-    reference <- "GGNNNNNGG"
-    query <- "G-------G"
-    expected_output <- "2D=G3+5N8D=G"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles entirely masked reference with indels in middle", {
-    reference <- "NN--NN"
-    query <- "GGGGGG"
-    expected_output <- "1+4N"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-
-  test_that("PseudoCIGAR handles entirely masked reference with indels in middle and at end", {
-    reference <- "NN--NN--"
-    query <- "GGGGGGGG"
-    expected_output <- "1+4N"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles entirely masked reference with indels in middle and at end with base at end", {
-    reference <- "NN--NN--G"
-    query <- "GGGGGGGGG"
-    expected_output <- "1+4N"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles entirely masked reference with indels in middle and at end with insertion at end", {
-    reference <- "NN--NN--G-"
-    query <- "GGGGGGGGGT"
-    expected_output <- "1+4N6I=T"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-
-  test_that("PseudoCIGAR handles deletion at first position", {
-    reference <- "GGGGGG"
-    query <- "-GGGGG"
-    expected_output <- "1D=G"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR handles deletion at last position", {
-    reference <- "GGGGGG"
-    query <- "GGGGG-"
-    expected_output <- "6D=G"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR all mask", {
-    reference <- "NNNNNN"
-    query <- "GGGGG-"
-    expected_output <- "1+6N"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
-
-  test_that("PseudoCIGAR mask on both ends", {
-    reference <- "NGGGGGN"
-    query <- "GGGGGGG"
-    expected_output <- "1+1N7+1N"
-    result <- build_pseudoCIGAR_string(reference, query)
-    expect_equal(result, expected_output)
-  })
+  return(result)
 }
 
-# Run the test
-test_build_pseudoCIGAR_string()
+# Compute Deletion Group using data.table
+compute_deletion_group_dt <- function(query_chars, mask_group) {
+  runs <- rle(query_chars)
+  is_deletion <- runs$values == "-"
+  group_nums <- cumsum(is_deletion)
+  group_nums[!is_deletion] <- NA
+  result <- rep(group_nums, times = runs$lengths)
+
+  if (!all(is.na(mask_group))) {
+    # Increment group number when mask is encountered
+    result[!is.na(mask_group)] <- result[!is.na(mask_group)] + max(result, na.rm = TRUE)
+  }
+
+  return(result)
+}
+
+# Compute Mask Group
+compute_mask_group_dt <- function(ref_chars) {
+  ref_string <- paste0(ref_chars, collapse = "")
+  mask_regions <- str_locate_all(ref_string, pattern = "N+(-*N*)*")[[1]]
+
+  mask_groups <- rep(NA, length(ref_chars))
+  for (i in seq_along(mask_regions[, "start"])) {
+    mask_groups[mask_regions[i, "start"]:mask_regions[i, "end"]] <- mask_regions[i, "start"]
+  }
+
+  return(mask_groups)
+}
+
+
+# Compute Insertion CIGAR String
+compute_insertion_cigar_dt <- function(position, ref_position, query_char, insertion_group) {
+  dt <- data.table(position, ref_position, query_char, insertion_group)
+  dt[, .(
+    result = paste0(first(ref_position) + 1, "I=", paste0(query_char, collapse = ""))
+  ), by = insertion_group][, result]
+}
+
+# Compute Deletion CIGAR String
+compute_deletion_cigar_dt <- function(position, ref_position, ref_char, deletion_group) {
+  dt <- data.table(position, ref_position, ref_char, deletion_group)
+  dt[, .(
+    result = paste0(first(ref_position), "D=", paste0(ref_char, collapse = ""))
+  ), by = deletion_group][, result]
+}
+
+# Compute Mask CIGAR String
+compute_mask_cigar_dt <- function(position, ref_position, ref_chars, mask_group) {
+  dt <- data.table(position, ref_position, ref_chars, mask_group)
+  dt[, .(
+    result = paste0(first(ref_position), "+", .N - sum(ref_chars == "-"), "N")
+  ), by = mask_group][, result]
+}
+
+build_pseudoCIGAR_string_dt <- function(ref_chars, query_chars) {
+
+  # Compute mask groups
+  mask_group <- compute_mask_group_dt(ref_chars)
+
+  # Compute insertion and deletion groups
+  insertion_group <- compute_insertion_group_dt(ref_chars, mask_group)
+  deletion_group <- compute_deletion_group_dt(query_chars, mask_group)
+
+  # Use data.table to combine these vectors
+  dt <- data.table(
+    position = seq_along(ref_chars),
+    ref_position = seq_along(ref_chars) - cumsum(query_chars == "-"),
+    ref_char = ref_chars,
+    query_char = query_chars,
+    mask_group = mask_group,
+    insertion_group = insertion_group,
+    deletion_group = deletion_group
+  )
+
+  # print(insertion_group)
+  # print(deletion_group)
+  # print(mask_group)
+
+  print(dt)
+
+  # Calculate CIGAR strings
+  insertion_cigars <- dt[!is.na(insertion_group), {
+    .(cigar = compute_insertion_cigar_dt(position, ref_position, query_char, insertion_group))
+  }, by = insertion_group]
+
+  deletion_cigars <- dt[!is.na(deletion_group), {
+    .(cigar = compute_deletion_cigar_dt(position, ref_position, ref_char, deletion_group))
+  }, by = deletion_group]
+
+  mask_cigars <- dt[!is.na(mask_group), {
+    .(cigar = compute_mask_cigar_dt(position, ref_position, ref_char, mask_group))
+  }, by = mask_group]
+
+
+  print(insertion_cigars)
+  print(deletion_cigars)
+  print(mask_cigars)
+
+  # Combine all the unique CIGAR strings
+  combined_dt <- rbindlist(list(insertion_cigars, deletion_cigars, mask_cigars), fill=TRUE)
+
+  # Sort by position and paste together
+  combined_cigar <- combined_dt[order(combined_dt$position), .(cigar_string = paste0(cigar, collapse = ""))]
+
+  # Return the combined CIGAR string
+  return(combined_cigar$cigar_string[1])
+
+}
+
+test_build_pseudoCIGAR_string(build_pseudoCIGAR_string)
+test_build_pseudoCIGAR_string(build_pseudoCIGAR_string_dt)
+
+############################
+## Benchmarking
+############################
+
+library(data.table)
+library(doMC)
+library(foreach)
+library(microbenchmark)
+library(ggplot2)
+
+# Function to generate the pseudoCIGAR strings using a provided or default function
+generate_pseudoCIGAR <- function(df.aln, cigar_function) {
+  # Create the pseudoCIGAR string for each alignment entry
+  pseudo_cigar <- foreach(refseq=df.aln$refseq, hapseq=df.aln$hapseq, .combine='rbind', .packages=c("stringr")) %dopar% {
+    data.table(refseq=refseq, hapseq=hapseq, pseudo_cigar=cigar_function(refseq, hapseq))
+  }
+
+  filepath <- paste0(file.path("~", "Desktop", sprintf("%s.txt", deparse(substitute(cigar_function)))))
+  write.table(pseudo_cigar,file=filepath,quote=F,sep="\t",col.names=T,row.names=F)
+}
+
+# Define the number of cores you want to test
+cores_to_test <- c(1:8)
+
+# Initialize a data.table to store benchmark results for each core count
+benchmark_results <- data.table(Method = character(), Cores = numeric(), Time = numeric())
+
+# Loop over each core count, register that number of cores, and then benchmark
+for (cores in cores_to_test) {
+  # Register parallel backend
+  doMC::registerDoMC(cores = cores)
+
+  # Benchmark the functions using an anonymous function to pass the arguments
+  results <- microbenchmark(
+    original = {
+      generate_pseudoCIGAR(df.aln, cigar_function = build_pseudoCIGAR_string)
+    },
+    datatable_version = {
+      generate_pseudoCIGAR(df.aln, cigar_function = build_pseudoCIGAR_string_dt)
+    },
+    times = 1,
+    unit = "seconds"  # Convert to seconds
+  )
+
+  results <- summary(results)
+
+  # Add the results to the data.table
+  for (method in c("original", "datatable_version")) {
+    new_entry <- data.table(
+      Method = method,
+      Cores = cores,
+      Time = as.numeric(results[results$expr == method,]$median))
+    benchmark_results <- rbind(benchmark_results, new_entry)
+  }
+}
+
+# Plot using ggplot2
+ggplot(benchmark_results, aes(x = Cores, y = Time, color = Method)) +
+  geom_point() +
+  labs(title = "Benchmarking Results", x = "Number of Cores", y = "Execution Time (seconds)") +
+  theme_minimal()
+
+
+### Look at results
+generate_pseudoCIGAR(df.aln, cigar_function = build_pseudoCIGAR_string_dt)
+generate_pseudoCIGAR(df.aln, cigar_function = build_pseudoCIGAR_string)
 

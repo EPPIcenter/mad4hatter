@@ -1,4 +1,4 @@
-sampleID	Gene_ID	Gene	Codon_ID	Position	Alt	Ref	Reads
+SampleID	GeneID	Gene	CodonID	Position	Alt	Ref	Reads
 N1928295_4_S22	0810800	dhps	581	3	G	T	1705
 N1928295_4_S22	0417200	dhfr	59	109	T	A	1588
 N1928295_4_S22	0417200	dhfr	164	2	A	A	1337

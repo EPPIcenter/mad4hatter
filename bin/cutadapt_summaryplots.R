@@ -20,11 +20,11 @@ outDIR=args[4]
 
 df=read.table(summaryFILE,header=T)
 df$SampleID=as.factor(df$SampleID)
-df$Amplicon=as.factor(df$Amplicon)
+df$Locus=as.factor(df$Locus)
 df = df %>% 
   mutate(SampleNumber=sapply(str_split(SampleID,'_S'),tail,1)) %>% 
   mutate(SampleID=sapply(str_split(SampleID,'_S(\\d+)'),head,1)) %>% 
-  mutate(Pool=sapply(str_split(Amplicon,'-'),tail,1)) %>% 
+  mutate(Pool=sapply(str_split(Locus,'-'),tail,1)) %>% 
   arrange(SampleID) %>% 
   data.frame()
 
@@ -33,19 +33,19 @@ samples = df %>% select(SampleID,SampleNumber) %>% distinct() %>%
 
 df$SampleID=factor(df$SampleID,levels=unique(samples$SampleID))
 
-amplicon_stats=df %>% select(-Pool) %>% pivot_wider(names_from = Amplicon, values_from = NumReads) %>% data.frame()
+amplicon_stats=df %>% select(-Pool) %>% pivot_wider(names_from = Locus, values_from = Reads) %>% data.frame()
 write.table(amplicon_stats, file=paste(outDIR,"/amplicon_stats.txt",sep=""), quote=F, sep ="\t", col.names=T, row.names=F)
 
-sample_amplicon_stats=df %>% group_by(SampleID,Pool) %>% dplyr::summarise(medianReads=median(NumReads)) %>% pivot_wider(names_from = Pool, values_from = medianReads) %>% data.frame()
+sample_amplicon_stats=df %>% group_by(SampleID,Pool) %>% dplyr::summarise(medianReads=median(Reads)) %>% pivot_wider(names_from = Pool, values_from = medianReads) %>% data.frame()
 colnames(sample_amplicon_stats)=c("SampleID","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
 
-loci_stats = df %>% group_by(SampleID) %>% group_by(SampleID,Pool) %>% dplyr::summarise(n_loci=sum(NumReads >= 100)) %>% pivot_wider(names_from = Pool, values_from = n_loci) %>% data.frame()
+loci_stats = df %>% group_by(SampleID) %>% group_by(SampleID,Pool) %>% dplyr::summarise(n_loci=sum(Reads >= 100)) %>% pivot_wider(names_from = Pool, values_from = n_loci) %>% data.frame()
 colnames(loci_stats)=c("SampleID","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
 
 
 df1=read.delim(samplestatFILE,header=T)
 sample_stats=df1 %>% 
-  pivot_wider(names_from = X, values_from = NumReads) %>%
+  pivot_wider(names_from = X, values_from = Reads) %>%
   data.frame() %>%
   mutate(SampleNumber=sapply(str_split(SampleID,'_S'),tail,1)) %>%
   mutate(SampleID=sapply(str_split(SampleID,'_S(\\d+)'),head,1))
@@ -59,14 +59,14 @@ colnames(sample_stats) = c("#","Sample","Input","No Dimers")
 ampdata=read.delim(ampliconFILE,header=T)
 
 #Histogram#
-p1=ggplot(data=df, aes(x=NumReads+0.1)) +  
+p1=ggplot(data=df, aes(x=Reads+0.1)) +  
   geom_histogram( ) + 
   scale_y_continuous() +
   scale_x_log10()+
   guides(fill=FALSE) + 
   xlab("Read Count") + 
   ylab("Frequency") + 
-  ggtitle("\nNumber of Reads/Amplicon") + 
+  ggtitle("\nNumber of Reads/Locus") + 
   theme_bw() + 
   theme(plot.title = element_text(hjust = 0.5)) + 
   facet_wrap(~SampleID,ncol=6) + 
@@ -86,27 +86,27 @@ numsamples=length(unique(df$SampleID))
 samples_group1=unique(df$SampleID)[1:ceiling(numsamples/2)]
 samples_group2=unique(df$SampleID)[(ceiling(numsamples/2)+1):numsamples]
 
-p2a=ggplot( data=df %>% dplyr::filter(SampleID %in% samples_group1),aes(x=SampleID, y=NumReads)) +
+p2a=ggplot( data=df %>% dplyr::filter(SampleID %in% samples_group1),aes(x=SampleID, y=Reads)) +
     geom_boxplot(color="#993333",lwd=0.75) +
     theme_bw() + theme(plot.title = element_text(hjust = 0.5)) +
     theme(legend.position="none",plot.title = element_text(size=11)) +
     theme(axis.text.x = element_text(angle = 90)) +
-    ggtitle("Number of Reads/Amplicon") +
+    ggtitle("Number of Reads/Locus") +
     xlab("") + facet_wrap(~Pool,ncol=1)
     
-p2b=ggplot( data=df %>% dplyr::filter(SampleID %in% samples_group2),aes(x=SampleID, y=NumReads)) +
+p2b=ggplot( data=df %>% dplyr::filter(SampleID %in% samples_group2),aes(x=SampleID, y=Reads)) +
     geom_boxplot(color="#993333",lwd=0.75) +
     theme_bw() + theme(plot.title = element_text(hjust = 0.5)) +
     theme(legend.position="none",plot.title = element_text(size=11)) +
     theme(axis.text.x = element_text(angle = 90)) +
-    ggtitle("Number of Reads/Amplicon") +
+    ggtitle("Number of Reads/Locus") +
     xlab("") + facet_wrap(~Pool,ncol=1)  
     
    
 df2=df
-df2$NumReads[which(df$NumReads == 0)]=0.1  
+df2$Reads[which(df$Reads == 0)]=0.1  
 p3=ggplot(df2) +   
-  ggbeeswarm::geom_quasirandom(aes(x=1,y=NumReads,color = Pool),dodge.width = 0.5,size=3)+
+  ggbeeswarm::geom_quasirandom(aes(x=1,y=Reads,color = Pool),dodge.width = 0.5,size=3)+
   scale_y_log10()+
   facet_wrap(~SampleID,ncol=6)+
   theme_bw() +
@@ -123,12 +123,12 @@ p3=ggplot(df2) +
 
 ggsave(file="quality_report/swarm_plots.pdf", width=60, height=160, dpi=300, limitsize=FALSE)
 
-#Length vs. NumReads#
-df1=df %>% left_join(ampdata,by = c("Amplicon" = "amplicon")) %>% select(SampleID,Amplicon,NumReads,ampInsert_length,Pool) %>% data.frame()
-p4=ggplot(df1,aes(x=ampInsert_length,y=NumReads+0.1,color = Pool)) + ggtitle("Amplicon Length vs. NumReads") + 
+#Length vs. Reads#
+df1=df %>% left_join(ampdata,by = c("Locus" = "amplicon")) %>% select(SampleID,Locus,Reads,ampInsert_length,Pool) %>% data.frame()
+p4=ggplot(df1,aes(x=ampInsert_length,y=Reads+0.1,color = Pool)) + ggtitle("Locus Length vs. Reads") + 
   geom_point(alpha=0.9,size=2.5) + 
   scale_y_log10()+
-  xlab("Amplicon Insert Length") + 
+  xlab("Locus Insert Length") + 
   theme_bw() + 
   facet_wrap(~SampleID,ncol=6) + 
   theme(strip.text.x = element_text(size = 25))+

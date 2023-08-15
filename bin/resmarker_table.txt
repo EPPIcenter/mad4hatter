@@ -1,4 +1,4 @@
-sampleID	Gene_ID	Gene	Codon_ID	Reference_Codon	Codon	Codon_Start	Codon_Ref/Alt	Reference_AA	AA	AA_Ref/Alt	Reads
+SampleID	GeneID	Gene	CodonID	RefCodon	Codon	CodonStart	CodonRefAlt	RefAA	AA	AARefAlt	Reads
 N1928295_4_S22	1343700	k13	607	AAA	AAA	156	REF	K	K	REF	2387
 N1928295_4_S22	1343700	k13	574	CCT	CCT	162	REF	P	P	REF	1012
 N1928295_4_S22	1343700	k13	469	TGC	TGC	100	REF	C	C	REF	1476
