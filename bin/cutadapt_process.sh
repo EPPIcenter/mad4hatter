@@ -107,8 +107,8 @@ cutadapt \
 # Get the total number of reads with adapters
 total_pairs=$(jq '.read_counts.input' ${cutadapt_json})
 no_dimers=$(jq '.read_counts.filtered.discard_untrimmed' ${cutadapt_json})
-printf "%s\t%s\n" "Input" $total_pairs > ${sample_id}.SAMPLEsummary.txt
-printf "%s\t%s\n" "No Dimers" $no_dimers >> ${sample_id}.SAMPLEsummary.txt
+printf "%s\t%s\n" "Input" ${total_pairs} > ${sample_id}.SAMPLEsummary.txt
+printf "%s\t%s\n" "No Dimers" ${no_dimers} >> ${sample_id}.SAMPLEsummary.txt
 
 if [ "$sequencer" == "miseq" ]; then
     qualfilter="--trim-n -q 10"
@@ -135,5 +135,8 @@ cutadapt \
     ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
 
+amplicons=$(jq '.read_counts.output' ${cutadapt_json})
+printf "%s\t%s\n" "Amplicons" ${amplicons} >> ${sample_id}.SAMPLEsummary.txt
 
+# Get amplicons specific reads
 jq -r '.adapters_read1[] | [.name, .total_matches] | @tsv' ${cutadapt_json} > ${sample_id}.AMPLICONsummary.txt

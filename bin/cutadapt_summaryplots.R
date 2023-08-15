@@ -51,10 +51,10 @@ sample_stats=df1 %>%
   mutate(SampleID=sapply(str_split(SampleID,'_S(\\d+)'),head,1))
 sample_stats$SampleID=factor(sample_stats$SampleID,
                               levels=unique(samples$SampleID)) 
-sample_stats=sample_stats[,c("SampleNumber","SampleID","Input","No.Dimers")]%>% 
+sample_stats=sample_stats[,c("SampleNumber","SampleID","Input","No.Dimers", "Amplicons")]%>% 
   arrange(SampleNumber)
 
-colnames(sample_stats) = c("#","Sample","Input","No Dimers")
+colnames(sample_stats) = c("#","Sample","Input","No Dimers","Amplicons")
 
 ampdata=read.delim(ampliconFILE,header=T)
 
