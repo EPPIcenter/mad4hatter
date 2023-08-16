@@ -29,7 +29,7 @@ process QUALITY_REPORT {
 
   # add headers for easier readability
   echo -e "SampleID\\tX\\tReads" > sample_coverage.txt
-  echo -e "SampleID\\tLocus\\tReads" > amplicon_coverage.txt
+  echo -e "SampleID\\tLocus\\tReads\\tDenoised\\tFiltered" > amplicon_coverage.txt
 
   # concatenate sample and amplicon coverage files form all samples
   for file in ${sample_coverage.join(' ')}
