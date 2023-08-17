@@ -13,7 +13,7 @@ process ALIGN_TO_REFERENCE {
   path amplicon_info
   
   output:
-  path("alignments.txt"), emit: alignments_ch
+  path("alignments.txt"), emit: alignments
 
   script:
   

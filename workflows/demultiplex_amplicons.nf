@@ -19,12 +19,8 @@ workflow DEMULTIPLEX_AMPLICONS {
   )
 
   emit:
+  sample_summary_ch = CUTADAPT.out.sample_summary
+  amplicon_summary_ch = CUTADAPT.out.amplicon_summary
   demux_fastqs_ch = CUTADAPT.out.demultiplexed_fastqs
-
-  // Combine the coverage channels into a single channel
-  demux_coverage_ch = Channel.from([
-    ['demux_sample', CUTADAPT.out.sample_summary],
-    ['demux_amplicon', CUTADAPT.out.amplicon_summary]
-  ])
 }
 
