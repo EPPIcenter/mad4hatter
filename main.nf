@@ -71,13 +71,15 @@ workflow {
   // Finally create the final allele table
   BUILD_ALLELETABLE(
     DENOISE_AMPLICONS_1.out.denoise_ch,
-    DENOISE_AMPLICONS_2.out.results_ch,
+    DENOISE_AMPLICONS_2.out.results_ch
   )
 
   // Create the quality report now
   QUALITY_CONTROL(
     DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
-    DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch
+    DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
+    BUILD_ALLELETABLE.out.alleledata,
+    DENOISE_AMPLICONS_1.out.denoise_ch
   )
 
   // By default, run the resistance marker module in the main workflow

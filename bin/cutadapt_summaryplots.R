@@ -12,7 +12,7 @@ ampliconFILE=args[3]
 outDIR=args[4]
 
 ##FOR DEBUGGING
-# setwd("~/Documents/GitHub/mad4hatter/work/72/77991c4752423da849467a2134b87f")
+# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/1f/0ca34bcad8061f443b16cc0aefa1ea")
 # summaryFILE="amplicon_coverage.txt"
 # samplestatFILE="sample_coverage.txt"
 # ampliconFILE="v4_amplicon_info.tsv"
@@ -45,7 +45,7 @@ colnames(loci_stats)=c("SampleID","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Po
 
 df1=read.delim(samplestatFILE,header=T)
 sample_stats=df1 %>% 
-  pivot_wider(names_from = X, values_from = Reads) %>%
+  pivot_wider(names_from = Stage, values_from = Reads) %>%
   data.frame() %>%
   mutate(SampleNumber=sapply(str_split(SampleID,'_S'),tail,1)) %>%
   mutate(SampleID=sapply(str_split(SampleID,'_S(\\d+)'),head,1))

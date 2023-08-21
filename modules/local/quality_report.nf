@@ -18,31 +18,13 @@ process QUALITY_REPORT {
   file ('quality_report')
 
   shell:
-
   """
-  # create a function to add the sample name as a column
-  add_sample_name_column() {
-    awk -v fname=\$(basename "\$1" | sed -e 's/.SAMPLEsummary.txt//g' -e 's/.AMPLICONsummary.txt//g') -v OFS="\\t" '{print fname, \$0}' "\$1"
-  }
 
-  export -f add_sample_name_column
-
-  # add headers for easier readability
-  echo -e "SampleID\\tX\\tReads" > sample_coverage.txt
-  echo -e "SampleID\\tLocus\\tReads" > amplicon_coverage.txt
-
-  # concatenate sample and amplicon coverage files form all samples
-  for file in ${sample_coverage.join(' ')}
-  do
-    add_sample_name_column \$file >> sample_coverage.txt
-  done
-
-  for file in ${amplicon_coverage.join(' ')}
-  do
-    add_sample_name_column \$file >> amplicon_coverage.txt
-  done
+  # Rename input files to published versions
+  mv $sample_coverage sample_coverage.txt
+  mv $amplicon_coverage amplicon_coverage.txt
 
   test -d quality_report || mkdir quality_report
-  Rscript ${projectDir}/bin/cutadapt_summaryplots.R amplicon_coverage.txt sample_coverage.txt ${amplicon_info} quality_report
+  Rscript ${projectDir}/bin/cutadapt_summaryplots.R amplicon_coverage.txt sample_coverage.txt $amplicon_info quality_report
   """
 }
