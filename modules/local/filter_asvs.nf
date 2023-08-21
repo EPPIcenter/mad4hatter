@@ -17,8 +17,8 @@ process FILTER_ASVS {
     script:
     """
     bash filter_asv_process.sh \
-        -infile ${alignments} \
-        -outfile filtered.alignments.txt \
-        -threshold ${params.alignment_threshold}
+        -i ${alignments} \
+        -o filtered.alignments.txt \
+        -t ${params.alignment_threshold}
     """
 }
