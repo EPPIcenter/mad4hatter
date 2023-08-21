@@ -10,6 +10,7 @@ include { ALIGN_TO_REFERENCE } from '../modules/local/align_to_reference.nf'
 include { MASK_LOW_COMPLEXITY_REGIONS } from '../subworkflows/local/mask_low_complexity_regions.nf'
 include { PREPARE_REFERENCE_SEQUENCES } from '../subworkflows/local/prepare_reference_sequences.nf'
 include { BUILD_PSEUDOCIGAR } from '../modules/local/build_pseudocigar.nf'
+include { FILTER_ASVS } from '../modules/local/filter_asvs.nf'
 
 
 workflow DENOISE_AMPLICONS_2 {
@@ -29,10 +30,14 @@ workflow DENOISE_AMPLICONS_2 {
     params.amplicon_info
   )
 
+  FILTER_ASVS(
+    ALIGN_TO_REFERENCE.out.alignments
+  )
+
   if (params.masked_fasta == null && (params.mask_tandem_repeats || params.mask_homopolymers)) {
     MASK_LOW_COMPLEXITY_REGIONS(
       reference,
-      ALIGN_TO_REFERENCE.out.alignments
+      FILTER_ASVS.out.filtered_alignments_ch
     )
 
     BUILD_PSEUDOCIGAR(
@@ -41,7 +46,7 @@ workflow DENOISE_AMPLICONS_2 {
   } else {
     // Build the pseudocigar string from the unmasked alignments
     BUILD_PSEUDOCIGAR(
-      ALIGN_TO_REFERENCE.out.alignments
+      FILTER_ASVS.out.filtered_alignments_ch
     )
   }
 
