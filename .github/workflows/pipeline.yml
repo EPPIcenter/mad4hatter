@@ -1,0 +1,49 @@
+name: Run Nextflow Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository with LFS
+      uses: actions/checkout@v2
+      with:
+        lfs: true
+
+    - name: Install Nextflow
+      run: |
+        curl -s https://get.nextflow.io | bash
+        sudo mv nextflow /usr/local/bin/
+
+    - name: Check if Dockerfile has changed
+      id: dockerfile
+      run: |
+        if git diff --name-only ${{ github.sha }} ${{ github.event.before }} | grep 'Dockerfile'; then
+          echo "changed=true" >> $GITHUB_ENV
+        else
+          echo "changed=false" >> $GITHUB_ENV
+        fi
+
+    - name: Build Docker image (if changed)
+      if: steps.dockerfile.outputs.changed == 'true'
+      run: |
+        docker build -t eppicenter/mad4hatter:latest .
+
+    - name: Run Nextflow Pipeline
+      run: |
+        nextflow run main.nf --readDIR ${{ github.workspace }}/data/testdata --target v4 -profile docker --genome v1
+
+    - name: Push Docker image (if built)
+      if: env.changed == 'true'
+      run: |
+        docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+        docker push eppicenter/mad4hatter:latest
