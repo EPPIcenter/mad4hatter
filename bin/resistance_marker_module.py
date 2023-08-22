@@ -31,6 +31,9 @@ def parse_pseudo_cigar(string, orientation, refseq_len):
     :return: List of tuples (position, operation, value)
     """
 
+    if not isinstance(string, str):
+        raise TypeError(f"Expected a string for `parse_pseudo_cigar` but got {type(string)}. Value: {string}")
+
     string = string.replace("=", "")  # Remove the "=" separator
     transtab = str.maketrans("TACG", "ATGC")
     tuples = []
@@ -68,6 +71,13 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
     
     pseudo_cigar = row['pseudo_cigar']
     orientation = row['V4']
+
+    if not isinstance(pseudo_cigar, str):
+        raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(pseudo_cigar)}. Value: {pseudo_cigar}")
+
+    if not isinstance(orientation, str):
+        raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(orientation)}. Value: {orientation}")
+
     new_mutations = {}
 
     if pseudo_cigar == ".":
@@ -174,6 +184,9 @@ def main(args):
 
     # Join the allele table and resistance marker table on the locus
     allele_data = res_markers_info.set_index('amplicon').join(allele_data.set_index('locus'), how='left').reset_index()
+
+    # Filter any rows that have `NaN` in the sampleID column 
+    allele_data = allele_data.dropna(subset=['pseudo_cigar'])
 
     # Read in the reference sequences - this will be used for the reference codons
     ref_sequences = SeqIO.to_dict(SeqIO.parse(args.refseq_path, 'fasta'))
