@@ -1,4 +1,4 @@
-name: Run Nextflow Pipeline
+name: run-pipeline
 
 on:
   push:
@@ -14,20 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Setup Node.js environment (Node 16.x)
-      uses: actions/setup-node@v2
-      with:
-        node-version: '16.x'
-
     - name: Checkout repository with LFS
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         lfs: true
-
-    - name: Install Nextflow
-      run: |
-        curl -s https://get.nextflow.io | bash
-        sudo mv nextflow /usr/local/bin/
 
     - name: Check if Dockerfile has changed
       run: |
@@ -51,9 +41,24 @@ jobs:
       run: |
         docker pull eppicenter/mad4hatter:latest
 
+    - name: Setup Nextflow
+      uses: nf-core/setup-nextflow@v1
+
     - name: Run Nextflow Pipeline (Docker)
       run: |
-        nextflow -q run main.nf --readDIR ${{ github.workspace }}/data/testdata --target v4 -profile test,docker --genome v1 -c conf/test.config
+        nextflow -q run main.nf --readDIR ${GITHUB_WORKSPACE}/data/testdata --target v4 -profile test,docker --genome v1 -c conf/test.config
+
+    - name: Archive Work Directory
+      if: failure()  # Only archive if the workflow failed
+      run: |
+        tar -czf log-dir.tar.gz /home/runner/work/mad4hatter/mad4hatter/*.log
+
+    - name: Upload Work Directory
+      if: failure()  # Only upload if the workflow failed
+      uses: actions/upload-artifact@v2
+      with:
+        name: work-dir
+        path: work-dir.tar.gz
 
     - name: Push Docker image (if built)
       if: env.DOCKERFILE_CHANGED == 'true'
