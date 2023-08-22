@@ -38,9 +38,9 @@ jobs:
       run: |
         docker build -t eppicenter/mad4hatter:latest .
 
-    - name: Run Nextflow Pipeline
+    - name: Run Nextflow Pipeline (Docker)
       run: |
-        nextflow run main.nf --readDIR ${{ github.workspace }}/data/testdata --target v4 -profile docker --genome v1
+        nextflow run main.nf --readDIR ${{ github.workspace }}/data/testdata --target v4 -profile test,docker --genome v1 -c conf/test.config
 
     - name: Push Docker image (if built)
       if: env.changed == 'true'
