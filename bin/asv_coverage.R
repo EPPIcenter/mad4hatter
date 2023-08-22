@@ -32,7 +32,7 @@ clusters <- read.table(args$clusters, header = TRUE, sep = "\t")
 if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
 
   sample.coverage = read.table(args$sample_coverage, header = TRUE, sep = "\t")
-  print(head(sample.coverage))
+  print(str(sample.coverage))
   sample.coverage <- sample.coverage %>%
     pivot_wider(names_from = "X", values_from = "Reads")
 
@@ -49,6 +49,7 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
       group_by(sampleID) %>%
       summarise(OutputPostprocessing = sum(reads)), by = c("SampleID" = "sampleID")
     )  %>%
+    mutate(across(everything(), as.character)) %>%    
     pivot_longer(cols = c(Input, `No Dimers`, Amplicons, OutputDada2, OutputPostprocessing))
 
   qc.postproc %<>% dplyr::rename("Stage" = "name", "Reads" = "value")
@@ -59,7 +60,8 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
 
 if (!is.null(args$amplicon_coverage) && file.exists(args$amplicon_coverage)) {
   amplicon.coverage <- read.table(args$amplicon_coverage, header = TRUE, sep = "\t")
-  print(head(amplicon.coverage))
+
+  print(str(amplicon.coverage))
 
   qc.postproc <- amplicon.coverage  %>%
     left_join(clusters %>%
