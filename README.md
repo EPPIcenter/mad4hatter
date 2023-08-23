@@ -64,12 +64,16 @@ Below are parameters that you can set to control the postprocessing module.
 
 |Parameter|Description|
 |---|---|
-|refseq_fasta **or** genome|Path to reference sequences **or** path to genome (*one* is **required**). This is required in order to map DADA sequences to their respective amplicons and to identify off target sequences|
+|refseq_fasta **or** genome|Path to reference sequences **or** a specified genome target that is registered in the pipeline. Additionally you can specify a path to genome (*one* is **required**). This is required in order to map DADA sequences to their respective amplicons and to identify off target sequences|
 |add_mask|Whether to add a mask or not to the final sequences (default `true`)|
 |trf_min_score|Used by Tandem Repeat Finder. This will control the alignment score required to call a sequence a tandem repeat (default `25`)|
 |trf_max_period|Used by Tandem Repeat Finder. This will limit the range of the pattern size of a tandem repeat (default `3`)|
 
-Below is a continuation of the example above that shows how these parameters may be modified on the command line:
+Below is a continuation of the example above that shows how these parameters may be modified on the command line. Notice the `genome` parameter will accept an identifier or a path to a fasta. Details about the fasta associated with an identifier can be found in `conf/base.config`.
+
+```bash
+nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results -profile sge,apptainer --genome v1 --target v4 -config conf/custom.config --omega_a 1e-120 --band_size 16 --pool pseudo --trf_min_score 25 --trf_max_period 3
+```
 
 ```bash
 nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results -profile sge,apptainer --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --target v4 -config conf/custom.config --omega_a 1e-120 --band_size 16 --pool pseudo --trf_min_score 25 --trf_max_period 3

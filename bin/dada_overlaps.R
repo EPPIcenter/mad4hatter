@@ -14,9 +14,26 @@ parser$add_argument('--use-quals', type="character", default="false")
 parser$add_argument('--maxEE', type="integer", default=2)
 parser$add_argument('--self-consist', action='store_true')
 parser$add_argument('--omega-c', type='double', default=1e-40)
+parser$add_argument('--cores', type="integer", default=1)
+
 
 args <- parser$parse_args()
 print(args)
+
+# setwd("~/Documents/GitHub/mad4hatter/work/70/97ca171c7057f885c5372d6c2fdc6e")
+# args=list()
+# args$trimmed_path = list.files(pattern="trimmed_demuxed*",full.names = T)
+# args$dada2_rdada_output = "dada2.seqtab.RDS"
+# args$pool = "pseudo"
+# args$band_size = -1
+# args$omega_a = 1e-120
+# args$concat_non_overlaps = T
+# args$use_quals="false"
+# args$maxEE = 2
+# args$ampliconFILE = "v4_amplicon_info.tsv"
+# args$omega_c=1e-40
+# args$self_consist=T
+
 
 fnFs <- sort(list.files(path=args$trimmed_path, pattern="_R1.fastq.gz", recursive=T, full.names = TRUE))
 fnRs <- sort(list.files(path=args$trimmed_path, pattern="_R2.fastq.gz", recursive=T, full.names = TRUE))
@@ -60,8 +77,8 @@ pool=switch(
   "pseudo" = "pseudo"
 )
 
-dadaFs <- dada(derepFs, err=errF, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
-dadaRs <- dada(derepRs, err=errR, selfConsist=TRUE, multithread=TRUE, verbose=TRUE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+dadaFs <- dada(derepFs, err=errF, selfConsist=args$self_consist, multithread=args$cores, verbose=FALSE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
+dadaRs <- dada(derepRs, err=errR, selfConsist=args$self_consist, multithread=args$cores, verbose=FALSE, pool=pool, BAND_SIZE=args$band_size, OMEGA_A=args$omega_a)
 
 if(args$concat_non_overlaps){
   
@@ -172,12 +189,11 @@ for(i in seq(1,length(loci))){
 }
 
 allele.data = seqtab.nochim.df %>%
+  mutate(sampleID = str_remove_all(sampleID, pat = "_trimmed")) %>%
   left_join(allele.sequences %>% select(-locus),by=c("asv"="sequence")) %>%
-  group_by(sampleID,locus,allele) %>%
   group_by(sampleID,locus) %>%
   mutate(norm.reads.locus = reads/sum(reads))%>%
   mutate(n.alleles = n()) %>%
   ungroup()
 
 write.table(allele.data,file="dada2.clusters.txt",quote=F,sep="\t",col.names=T,row.names=F)
-saveRDS(allele.data, file = "dada2.clusters.RDS")

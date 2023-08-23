@@ -19,363 +19,73 @@ params.QC_only         = false
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
 params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
 params.scriptDIR       = "$projectDir/R_code"
-// pf3D7_index            = "$projectDir/resources/${params.target}/3D7_ampseq"
-// codontable             = "$projectDir/resources/${params.target}/codontable.txt"
 params.resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_${params.target}.txt"
-params.codontable      = "$projectDir/templates/codontable.txt"
 
 // Files
-
 cutadapt_minlen = params.cutadapt_minlen
-if ( params.sequencer == 'miseq' ) { qualfilter = '--trim-n -q 10' } else { qualfilter = '--nextseq-trim=20' }
 
 /*
 Create 'read_pairs' channel that emits for each read pair a
 tuple containing 3 elements: pair_id, R1, R2
 */
 
+// workflows
+include { DEMULTIPLEX_AMPLICONS } from './workflows/demultiplex_amplicons.nf'
+include { DENOISE_AMPLICONS_1 } from './workflows/denoise_amplicons_1.nf'
+include { DENOISE_AMPLICONS_2 } from './workflows/denoise_amplicons_2.nf'
+include { RESISTANCE_MARKER_MODULE } from './workflows/resistance_marker_module.nf'
+include { QUALITY_CONTROL} from './workflows/quality_control.nf'
+
+
+// modules
+include { BUILD_ALLELETABLE } from './modules/local/build_alleletable.nf'
+
+// main workflow
 workflow {
-  // declare variables upfront
-  read_pairs_ch = channel.fromFilePairs( params.reads, checkIfExists: true )
+  read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
+  DEMULTIPLEX_AMPLICONS(read_pairs)
 
-  // All workflows will produce a QC report (cutadapt needed by QC for length statistics)
-  CUTADAPT(read_pairs_ch, params.amplicon_info, params.cutadapt_minlen, qualfilter)
+  // if QC_only is set, generate the report and exit early
+  if (params.QC_only == true) {
 
-  QUALITY_CHECK(read_pairs_ch, CUTADAPT.out[1].collect(), params.amplicon_info)
+    // create a quality report with the raw data
+    QUALITY_CONTROL(
+      DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
+      DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch
+    )
 
-  amplicon_coverage = QUALITY_CHECK.out[0].collect().map{T->[T[1]]}
-  sample_coverage = QUALITY_CHECK.out[1].collect().map{T->[T[1]]}
-
-  if (params.QC_only == false) {
-    
-    DADA2_ANALYSIS(CUTADAPT.out[0].collect(), params.amplicon_info)
-
-
-    // Create reference sequences from genome
-    if (params.refseq_fasta == null) {
-
-      CREATE_REFERENCE_SEQUENCES(params.amplicon_info, params.genome, "${params.target}_refseq.fasta")
-
-      if (params.masked_fasta == null && params.add_mask) {
-        MASK_SEQUENCES(CREATE_REFERENCE_SEQUENCES.out[0], params.trf_min_score, params.trf_max_period)
-      } else {
-        MASK_SEQUENCES(CREATE_REFERENCE_SEQUENCES.out[0], 0, 0)
-      }
-
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, CREATE_REFERENCE_SEQUENCES.out[0], MASK_SEQUENCES.out[0], params.parallel, amplicon_coverage, sample_coverage, params.amplicon_info) // They're all the same. It would be good to output coverage for each sample and collapse into one file using collectFile(), but I could not get it to work.
-    
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], CREATE_REFERENCE_SEQUENCES.out[0], params.codontable, params.resmarkers_amplicon)
-
-    } else if (params.masked_fasta == null) {
-
-      if (params.add_mask) {
-        MASK_SEQUENCES(params.refseq_fasta , params.trf_min_score, params.trf_max_period)
-      } else {
-        MASK_SEQUENCES(params.refseq_fasta, 0, 0)
-      }
-
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, MASK_SEQUENCES.out[0], params.parallel, amplicon_coverage, sample_coverage, params.amplicon_info)
-
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon)
-
-    } else {
-
-      DADA2_POSTPROC(DADA2_ANALYSIS.out[0], params.homopolymer_threshold, params.refseq_fasta, params.masked_fasta, params.parallel, amplicon_coverage, sample_coverage, params.amplicon_info)
-
-      RESISTANCE_MARKERS(DADA2_POSTPROC.out[0], params.refseq_fasta, params.codontable, params.resmarkers_amplicon)
-
-    }
+    // exit here
+    return
   }
+
+  // Denoising (DADA specific)
+  DENOISE_AMPLICONS_1(
+    DEMULTIPLEX_AMPLICONS.out.demux_fastqs_ch
+  )
+
+  // Masking, collapsing ASVs
+  DENOISE_AMPLICONS_2(
+    DENOISE_AMPLICONS_1.out.denoise_ch
+  )
+
+  // Finally create the final allele table
+  BUILD_ALLELETABLE(
+    DENOISE_AMPLICONS_1.out.denoise_ch,
+    DENOISE_AMPLICONS_2.out.results_ch
+  )
+
+  // Create the quality report now
+  QUALITY_CONTROL(
+    DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
+    DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
+    BUILD_ALLELETABLE.out.alleledata,
+    DENOISE_AMPLICONS_1.out.denoise_ch
+  )
+
+  // By default, run the resistance marker module in the main workflow
+  RESISTANCE_MARKER_MODULE(
+    BUILD_ALLELETABLE.out.alleledata,
+    DENOISE_AMPLICONS_2.out.reference_ch
+  )
 }
 
-process MASK_SEQUENCES {
-
-          conda 'envs/trf-env.yml'
-
-          input:
-          path refseq_fasta
-          val min_score
-          val max_period
-
-          output:
-          path "*.mask"
-
-          script:
-          """
-          trf ${refseq_fasta} 2 7 7 80 10 ${min_score} ${max_period} -h -m
-          """
-}
-
-
-process CREATE_REFERENCE_SEQUENCES {
-
-          input:
-          path amplicon_info
-          path genome
-          val refseq_fasta
-
-          output:
-          path "*.fasta"
-
-          script:
-          """
-          Rscript ${params.scriptDIR}/create_refseq.R --ampliconFILE ${amplicon_info} --genome ${genome} --output ${refseq_fasta}
-          """
-
-}
-
-
-// cutadapt based quality filtering and QC
-// Filter to only reads with primer detected and trim poly-g
-process CUTADAPT {
-
-        conda 'envs/cutadapt-env.yml'
-
-        input:
-        tuple val(pair_id), path(reads)
-        path amplicon_info
-        val cutadapt_minlen
-        val qualfilter
-
-        output:
-        file('trimmed_demuxed')
-        file '*{AMPLICON,SAMPLE}summary.txt'
-
-        script:
-        """
-        #!/usr/bin/env bash
-        set -e
-
-        fwd_primers_file="fwd_primers.fasta"
-        rev_primers_file="rev_primers.fasta"
-
-        cat $amplicon_info | awk 'NR==1 {
-          for (i = 1; i <= NF; i++) {
-            if ( \$i == "amplicon" ) {amplicon=i}
-            if ( \$i == "fwd_primer" ) {fwd_primer=i}
-            if ( \$i == "rev_primer" ) {rev_primer=i}
-          }
-        } NR>=1 {
-          print \$amplicon, \$fwd_primer, \$rev_primer
-        }' > adapters.txt
-
-        # sanity check. there should be 3 fields.
-        nfields="\$(head -n 1 adapters.txt | awk '{print NF}')"
-        if [[ \$nfields != 3 ]]; then echo "ERROR: Must have '\'fwd_primer\' and \'rev_primer\' in vX_amplicon_info file!!!"; exit 1; fi
-
-        # note: assumes order (1) amplicon, (2) fwd_adpater, (3) rev_adapter
-
-        echo 'NR>1 { printf(">%s\\n^%s\\n", \$1, \$2) }' > modify.awk
-        cat adapters.txt | cut -d ' ' -f 1,2 > fwd.txt
-        cat adapters.txt | cut -d ' ' -f 1,3 > rev.txt
-
-        awk -f modify.awk fwd.txt > \$fwd_primers_file
-        awk -f modify.awk rev.txt > \$rev_primers_file
-
-        mkdir trimmed_demuxed
-        mkdir trimmed_demuxed_unknown
-        mkdir filtered_out
-        mkdir filtered_in
-
-        cutadapt \
-            --action=trim \
-            -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC \
-            -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT \
-            -e 0 \
-            --no-indels \
-            --minimum-length ${cutadapt_minlen} \
-            -o filtered_out/${pair_id}_dimer_R1.fastq.gz \
-            -p filtered_out/${pair_id}_dimer_R2.fastq.gz \
-            --untrimmed-output filtered_in/${pair_id}_filtered_R1.fastq.gz \
-            --untrimmed-paired-output filtered_in/${pair_id}_filtered_R2.fastq.gz \
-            ${reads[0]} \
-            ${reads[1]} 1> ${pair_id}.cutadapt1_summary.txt
-
-        grep -E "Total read pairs processed:" ${pair_id}.cutadapt1_summary.txt | paste -s -d";\n"  | sed 's/Total read pairs processed://' | sed 's/ //g' | sed 's/,//g' \
-           | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Input",\$1};' > ${pair_id}.SAMPLEsummary.txt
-
-        grep -E "Pairs discarded as untrimmed:" ${pair_id}.cutadapt1_summary.txt | paste -s -d";\n"  | sed 's/Pairs discarded as untrimmed://' | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' \
-           | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "No Dimers",\$1};' >> ${pair_id}.SAMPLEsummary.txt
-
-        cutadapt \
-            --action=trim \
-            -g file:\${fwd_primers_file} \
-            -G file:\${rev_primers_file} \
-            --pair-adapters \
-            -e 0 \
-            --no-indels \
-            ${qualfilter} \
-            --minimum-length ${cutadapt_minlen} \
-            -o trimmed_demuxed/{name}_${pair_id}_trimmed_R1.fastq.gz \
-            -p trimmed_demuxed/{name}_${pair_id}_trimmed_R2.fastq.gz \
-            --untrimmed-output trimmed_demuxed_unknown/${pair_id}_unknown_R1.fastq.gz \
-            --untrimmed-paired-output trimmed_demuxed_unknown/${pair_id}_unknown_R2.fastq.gz \
-            filtered_in/${pair_id}_filtered_R1.fastq.gz \
-            filtered_in/${pair_id}_filtered_R2.fastq.gz 1> ${pair_id}.cutadapt2_summary.txt
-
-        grep -E "Pairs written" ${pair_id}.cutadapt2_summary.txt | cut -f 2- -d ":" | sed -r 's/[(].*//' | sed 's/ //g' | sed 's/,//g' | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1, "Amplicons",\$1};' >> ${pair_id}.SAMPLEsummary.txt
-
-        grep -E "Adapter|Sequence" ${pair_id}.cutadapt2_summary.txt | paste -s -d";\n" | sed 's/=== //' | cut -f 1,5 -d ";" | grep First | cut -f 4,7 -d " " \
-           | awk -v var1=${pair_id} 'BEGIN{FS=" ";OFS="\t"}{print var1,\$1,\$2};' > ${pair_id}.trim.AMPLICONsummary.txt
-
-        if [ "\$(ls -A trimmed_demuxed/)" ]; then
-           for afile in trimmed_demuxed/*trimmed_R1.fastq.gz; do primer=`echo \$afile | cut -f 2- -d '/' | cut -f 1-3 -d '_'`;  samplename=${pair_id};  readcount=`zcat \$afile | awk 'NR % 4 ==1' | wc -l`; printf "%s\t%s\t%s\n" \$samplename \$primer \$readcount >> ${pair_id}.filt.AMPLICONsummary.txt; done
-           else
-           touch ${pair_id}.filt.AMPLICONsummary.txt
-        fi
-        """
-}
-
-// Quality checks on the cutadapt summary file
-process QUALITY_CHECK {
-
-        conda 'pandoc'
-
-        publishDir "${outDIR}",
-               saveAs: { filename -> "${filename}"
-               }
-
-        input:
-        tuple val(pair_id), path(reads) 
-        path summfile
-        path amplicon_info
-
-        output:
-        path "amplicon_coverage.txt"
-        path "sample_coverage.txt"
-        file('quality_report')
-
-        
-        script:
-        """
-        #!/usr/bin/env bash
-        set -e
-
-        echo $summfile | tr ' ' '\n' | grep 'filt.AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_filt.AMPLICONsummary.txt
-        echo $summfile | tr ' ' '\n' | grep 'trim.AMPLICONsummary.txt' | tr '\n' ' ' | xargs cat > ALL_trim.AMPLICONsummary.txt
-
-        echo "SampleName\t\tNumReads" > sample_coverage.txt
-        echo $summfile | tr ' ' '\n' | grep 'SAMPLEsummary.txt' | tr '\n' ' ' | xargs cat >> sample_coverage.txt
-
-        echo "SampleName\tAmplicon\tNumReads" > amplicon_coverage.txt
-        if [ -s ALL_filt.AMPLICONsummary.txt ]; then
-        awk 'NR == FNR { key[\$1,\$2] = \$3; next } { \$3 = ((\$1,\$2) in key) ? key[\$1,\$2] : 0 };1' OFS="\t"  ALL_filt.AMPLICONsummary.txt ALL_trim.AMPLICONsummary.txt >> amplicon_coverage.txt
-        else
-        awk 'BEGIN{FS=OFS="\t"} { print \$1,\$2,0; }'  ALL_trim.AMPLICONsummary.txt >> amplicon_coverage.txt
-        fi
-
-        test -d quality_report || mkdir quality_report
-        Rscript ${params.scriptDIR}/cutadapt_summaryplots.R amplicon_coverage.txt sample_coverage.txt ${amplicon_info} quality_report
-        """
-}
-
-// Dada2
-
-process DADA2_ANALYSIS {
-
-        publishDir "${outDIR}",
-               saveAs: { filename -> "${filename}"
-               }
-
-        input:
-        path 'trimmed_demuxed'
-        path amplicon_info
-
-        output:
-        path '*.{RDS,txt}'
-        
-        script:
-        """
-        Rscript ${params.scriptDIR}/dada_overlaps.R \
-          --trimmed-path ${trimmed_demuxed} \
-          --ampliconFILE ${amplicon_info} \
-          --pool ${params.pool} \
-          --band-size ${params.band_size} \
-          --omega-a ${params.omega_a} \
-          --maxEE ${params.maxEE} \
-          --concat-non-overlaps
-        """
-}
-
-// Dada2 Postprocessing
-process DADA2_POSTPROC {
-
-        conda 'pandoc'
-
-        publishDir "${outDIR}",
-               saveAs: { filename -> "${filename}"
-               }
-
-        input:
-        path rdatafile
-        val homopolymer_threshold
-        path refseq_fasta
-        path masked_fasta
-        val parallel
-        path amplicon_coverage
-        path sample_coverage
-        path amplicon_info
-
-        output:
-        path '*.{RDS,txt,csv,pdf}'
-
-        script:
-
-        if (parallel == true)
-          """
-          clusters_rds="\$(echo $rdatafile | tr ' ' '\n' | grep dada2.clusters.RDS)"
-
-          Rscript ${params.scriptDIR}/postdada_rearrange.R \
-            --homopolymer-threshold ${homopolymer_threshold} \
-            --refseq-fasta ${refseq_fasta} \
-            --masked-fasta ${masked_fasta} \
-            --n-cores ${params.n_cores} \
-            --parallel \
-            --sample-coverage ${sample_coverage} \
-            --amplicon-coverage ${amplicon_coverage} \
-            --amplicon-table ${amplicon_info} \
-            --clusters \${clusters_rds}
-
-          """
-        else
-          """
-          clusters_rds="\$(echo $rdatafile | tr ' ' '\n' | grep dada2.clusters.RDS)"
-
-          Rscript ${params.scriptDIR}/postdada_rearrange.R \
-            --homopolymer-threshold ${homopolymer_threshold} \
-            --refseq-fasta ${refseq_fasta} \
-            --masked-fasta ${masked_fasta} \
-            --sample-coverage ${sample_coverage} \
-            --amplicon-coverage ${amplicon_coverage} \
-            --amplicon-table ${amplicon_info} \
-            --clusters \${clusters_rds}
-
-          """
-}
-
-
-// Resistance markers
-process RESISTANCE_MARKERS {
-
-        conda 'envs/resmarker-env.yml'
-
-        publishDir "${params.outDIR}",
-               saveAs: {filename -> "${filename}"
-               }
-
- input:
-        path asvfile
-        path refseq_fasta
-        path codontable
-        path resmarkers_amplicon
-
- output:
-        path "resmarker_table.txt"
-        path "resmarker_microhap_table.txt"
-
-        script:
-        """
-        rdsfile2="\$(echo $asvfile | tr ' ' '\n' | grep allele_data.txt)"
-        Rscript ${params.scriptDIR}/resistance_marker_genotypes_bcftools_v4.R --alleledata_FILE \${rdsfile2} --codontable_FILE ${codontable} --res_markers_info_FILE ${resmarkers_amplicon} --refseq ${refseq_fasta}
-        """
-}

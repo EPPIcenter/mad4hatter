@@ -3,19 +3,22 @@ library(Biostrings)
 library(stringr)
 library(dplyr)
 library(argparse)
+library(foreach)
+library(doMC)
 
 parser <- ArgumentParser(description='Create reference sequences using amplicon table')
 parser$add_argument('--output', type="character", help='name of fasta to output', required = TRUE)
 parser$add_argument('--ampliconFILE', type="character", required = TRUE)
 parser$add_argument('--genome', type="character", required = TRUE)
+parser$add_argument('--ncores', type="integer", default=1)
 
 args <- parser$parse_args()
 
 amplicon_info <- read.table(args$ampliconFILE, header = TRUE)
 ref_sequences <- Biostrings::readDNAStringSet(args$genome)
-final_seqs <- NULL
 
-for (idx in 1:nrow(amplicon_info)) {
+doMC::registerDoMC(cores = args$ncores)
+final_seqs <- foreach (idx = 1:nrow(amplicon_info), .combine = "c") %dopar% {
   info <- amplicon_info[idx, ]
   split_info <- strsplit(info[["amplicon"]], "-")
   start <- info[["ampInsert_start"]]
@@ -28,7 +31,7 @@ for (idx in 1:nrow(amplicon_info)) {
   s <- ref_sequences[str_detect(names(ref_sequences), chr), ]
   if (length(s) == 0) {
     print(paste("skipping", chr))
-    next
+    return(NULL)
   }
 
   rs <- Biostrings::subseq(s, start = start + 1, end = end - 1)
@@ -38,7 +41,7 @@ for (idx in 1:nrow(amplicon_info)) {
                        info[["amplicon_end"]],
                        pool), collapse = "-")
 
-  final_seqs <- c(final_seqs, as.character(rs[1]))
+  as.character(rs[1])
 }
 
 set <- DNAStringSet(final_seqs)
