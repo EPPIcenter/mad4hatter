@@ -95,15 +95,19 @@ nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/res
 
 *Note: [apptainer](https://github.com/apptainer/apptainer/releases) is a prerequisite.*
 
-Apptainer should be used if you are using a computing cluster or grid. You will first need to build the apptainer image before you can use the image. 
-
-To build the image, run the command below:
+Apptainer should be used if you are using a computing cluster or grid. All dependencies needed to run the pipeline are contained within the apptainer image. The image can be created by pulling the docker image from dockerhub, which will create a `mad4hatter_latest.sif` image in your working directory.
 
 ```bash
-apptainer build mad4hatter.sif Apptainer
+apptainer pull docker://eppicenter/mad4hatter:latest
 ```
 
-And then include the `apptainer` profile on the command line. 
+As an alternative, you can build the image yourself by running the command below.
+
+```bash
+apptainer build mad4hatter_latest.sif Apptainer
+```
+
+Once you have the image, you must include the `apptainer` profile on the command line in order for it to be used.
 
 *Note: you should also include the job scheduler you will be using. In this case, `sge` is the job scheduler that will be used. Contact your system administrator if you are unsure about this setting.*
 
