@@ -508,6 +508,14 @@ test_build_pseudoCIGAR_string <- function(build_pseudoCIGAR_string_func) {
     result <- build_pseudoCIGAR_string_func(reference, query)
     expect_equal(result, expected_output)
   })
+
+  test_that("PseudoCIGAR has mulitple substitutions", {
+    reference <- "ACTCAGCGAATC"
+    query <- "ACTTGACGATTC"
+    expected_output <- "4T5G6A10T"
+    result <- build_pseudoCIGAR_string_func(reference, query)
+    expect_equal(result, expected_output)
+  })
 }
 
 test_build_pseudoCIGAR_string(build_pseudoCIGAR_string)
