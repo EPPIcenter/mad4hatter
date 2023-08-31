@@ -201,6 +201,18 @@ compute_mask_cigar <- function(position, ref_position, ref_chars, mask_group) {
   return(paste0(start_position_ref, "+", length_of_mask, "N"))
 }
 
+#' Compute Substitution Group
+#' 
+#' @description Identify the group of substitution for given query and reference characters.
+#' @param query_chars A vector of characters representing the query.
+#' @param ref_chars A vector of characters representing the reference.
+#' @param ref_position Position in the reference sequence.
+#' @param mask_group A vector of integers representing mask groups.
+#' @return A vector of integers representing substitution groups.
+compute_substitution_group <- function(query_chars, ref_chars, ref_position, mask_group) {
+  # ifelse(ref_chars != query_chars & ref_chars != "-" & query_chars != "-", ref_position, NA)
+  if_else(!is.na(mask_group) | ref_chars == query_chars | ref_chars == "-" | query_chars == "-", NA, ref_position)
+}
 
 
 #' Build PseudoCIGAR String
@@ -227,7 +239,7 @@ build_pseudoCIGAR_string <- function(reference, query) {
   }
 
   # Prepare a dataframe with position level annotations of whether
-  # there is an insertion, a deletion, or whether the position is
+  # there is an insertion, a deletion, a substitution, or whether the position is
   # in a masked region. Keep track of reference positions ('ref_position')
   # because all position reporting should be relative to the reference,
   # and we will need to keep track of this due to insertions in the ASV.
@@ -237,26 +249,28 @@ build_pseudoCIGAR_string <- function(reference, query) {
                query_char = query_chars,
                mask_group = compute_mask_group(ref_chars),
                insertion_group = compute_insertion_group(ref_chars, mask_group),
-               deletion_group = compute_deletion_group(query_chars, mask_group)) %>%
-    filter(!(is.na(mask_group) & is.na(insertion_group) & is.na(deletion_group)))
+               deletion_group = compute_deletion_group(query_chars, mask_group),
+               substitution_group = compute_substitution_group(query_chars, ref_chars, ref_position, mask_group)) %>%
+    filter(!(is.na(mask_group) & is.na(insertion_group) & is.na(deletion_group) & is.na(substitution_group)))
 
   # Filter out the masked positions for insertions and deletions
-
   df <- df %>%
     mutate(
       insertion_group = ifelse(!is.na(mask_group), NA, insertion_group),
-      deletion_group = ifelse(!is.na(mask_group), NA, deletion_group)
+      deletion_group = ifelse(!is.na(mask_group), NA, deletion_group),
+      substitution_group = ifelse(!is.na(mask_group), NA, substitution_group)
     )
 
   # CIGAR computation
   df_cigar <- df %>%
-    group_by(mask_group, insertion_group, deletion_group) %>%
+    group_by(mask_group, insertion_group, deletion_group, substitution_group) %>% # 
     reframe(
       start_position = first(position),
       result = case_when(
         !is.na(first(mask_group)) ~ compute_mask_cigar(position, ref_position, ref_char, mask_group),  # Modified this line to add ref_char
         !is.na(first(insertion_group)) & first(query_char) != "-" ~ compute_insertion_cigar(position, ref_position, query_char, insertion_group),
         !is.na(first(deletion_group)) & first(ref_char) != "-" ~ compute_deletion_cigar(position, ref_position, ref_char, deletion_group),
+        !is.na(first(substitution_group)) ~ paste0(first(ref_position), first(query_char)),
         TRUE ~ NA_character_
       )
     ) %>%
