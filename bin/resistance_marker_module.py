@@ -51,10 +51,6 @@ def parse_pseudo_cigar(string, orientation, refseq_len):
             value = value.translate(transtab) if orientation == "-" else value
             tuples.append((position, None if operation == '' else operation, value))
 
-    # Added masking separately
-    pattern = re.compile(r'(\d+)N\+(\d+)')
-    matches = pattern.findall(string)
-
     return tuples
 
 
