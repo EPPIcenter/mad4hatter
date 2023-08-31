@@ -46,15 +46,10 @@ def parse_pseudo_cigar(string, orientation, refseq_len):
 
         # Handle mask
         if operation == "+":  
-            mask_positions = [(position + i, "N", None) for i in range(int(value))]
-            tuples.extend(mask_positions)
+            pass # do nothing for now
         else:     
             value = value.translate(transtab) if orientation == "-" else value
             tuples.append((position, None if operation == '' else operation, value))
-
-    # Added masking separately
-    pattern = re.compile(r'(\d+)N\+(\d+)')
-    matches = pattern.findall(string)
 
     return tuples
 
@@ -95,7 +90,7 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
         for pos, op, alt in changes:
 
             # ignore masks
-            if op != "+":
+            if op == "+":
                 continue
 
             # make sure that the position is within the codon
