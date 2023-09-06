@@ -86,3 +86,37 @@ Where:
 * `mask_length` is the length of the mask
 
 Any mutations that were identified in this masking region will be superseded by the mask. In other words, a substitution or indel will not be reported in the PseudoCIGAR string if the position is within a masked range. 
+
+To interpret the masking, consider the following example:
+
+ASV = ACTTGATTGC
+PseudoCIGAR = 2+8N
+
+The masked version would be the following:
+
+`ANNNNNNNNC`
+
+where the mask begins at position 2 and extends 8 bases for 8 Ns in total, ending at position 9.
+
+
+### Parsing the PseudoCIGAR string
+
+The position coordinates in the PseudoCIGAR provide sufficient information to retain mapping information to the reference and precisely annotate any mutations. Consider the following example:
+
+ASV = "ACTTGATTGCACA"
+PseudoCIGAR = `4T5D=C8T10I=G12C`
+
+In this example we have 2 substitution, 1 deletion and 1 insertion. By using the PseudoCIGAR, we know that:
+
+* `T` is a SNP at position 4 
+* `C` was deleted at position 5 in our ASV
+* `T` is a SNP at position 8 in the reference (7 in the ASV)
+* `G` was inserted at position 10 of the reference (9 in the ASV)
+* `C` is a SNP at position 12 in the reference and in the ASV
+
+With this string, we can even recreate the original alignment information (used to create the string).
+
+```R
+reference <- "ACTCCGAAT-CAAA"
+query <- "ACTT-GATTGCACA"
+```
