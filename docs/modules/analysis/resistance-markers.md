@@ -7,30 +7,61 @@ parent: Analysis Modules
 
 # Resistance markers
 
-This module will identify variants that are known to provide antibiotic resistance to *Plasmodium falciparum* by using the previously generated `allele_data.txt` and `Mapping/*mpileup.txt` files, along with a codon table (`codontable.txt`) and resistance marker genomic coordinates (`resistance_markers_amplicon_v4.txt`).
+This module will identify variants that are known to provide antibiotic resistance to *Plasmodium falciparum* by using the **PseudoCIGAR** string found in `allele_data.txt`. This module identifies mutations found within the genomic coordinates of interest (`resistance_markers_amplicon_v4.txt`), and reports any new indels or SNPs occurred. 
 
 ## File Outputs
 
-A table with resistance markers as well as a table with natural haplotypes (resistance markers found in the same amplicon), both including read counts inside brackets.
+There are three files that output by this module:
 
-Whenever multiple variants for a given resistance marker are found in the same sample, they are separated by `_` and the reference variant is presented first followed by the alternate variants. This also applies to the read counts. Cells remain blank if no resistance marker was found.
+### resmarker_table.txt
 
-Nomenclature of resistance markers can be broken down into name of the gene and amino acid position of the marker. For instance, for `dhfr_16`, `dhfr` is the gene and `16` is the amino acid position.
+This file contains all codons that are found in the ASV as specified by the genomic coordinates in the provided resistance marker table. The file summarizes what the 3-base sequence was in the sample, what was expected, and whether there was a synonomous or non-synomous amino acid change.
 
-### resmarkers_summary.txt
+|Column|Description|
+|:--:|:--:|
+|SampleID|The sample being reported|
+|GeneID|A numeric identifier for the *P. falciparum* gene and gene position|
+|Gene|The name of the gene|
+|CodonID|The codon number|
+|RefCodon|The codon in the reference|
+|Codon|The codon in the ASV|
+|CodonStart|The codon start position|
+|CodonRefAlt|Can be 'REF' or 'ALT', depending on whether the ASV codon matches the reference codon ('ALT' if they do not match)|
+|RefAA|The amino acid coded by the `RefCodon`|
+|AA|The amino acid code by the `Codon`|
+|AARefAlt|Can be 'REF' or 'ALT', depending on whether the ASV amino acid matches the reference amino acid ('ALT' if they do not match)|
+|Reads|The number of reads that contain this `Codon`|
 
-|SampleName|dhfr_16|dhfr_51|dhfr_59|dhfr_108|dhfr_164|...|
-|---|---|---|---|---|---|---|
-|sample1|A [350]|I [350]|R [350]||I [314]|...|
-|sample2|A [1541]|I_N [49_1492]|R [1541]|N [1460]|I [1460]|...|
-|sample3|A [226]|I [226]|R [226]|N [249]|I [249]|...|
 
-### resmarkers_haplotype_summary.txt 
+### resmarker_microhap_table.txt
 
-|SampleName|dhfr_16/dhfr_51/dhfr_59|dhfr_108/dhfr_164|mdr1_1034/mdr1_1042|crt_72/crt_73/crt_74/crt_75/crt_76|...|
-|---|---|---|---|---|---|
-|Sample_A|A/I/R [949]|N/I [798]|S/N [1449]|C/V/M/N/K [859]|...|
-|Sample_B|A/I/R [348]|N/I [257]|S/N [399]|C/V/M/N/K [390]|...|
-|Sample_C||N/I [94]|S/N [269]|C/V/M/N/K [183]|...|
+This file provides the same information as the resistance marker table, but in less granular form and joined by haplotype.   
+
+|Column|Description|
+|:--:|:--:|
+|SampleID|The sample being reported|
+|GeneID|A numeric identifier for the *P. falciparum* gene and gene position|
+|Gene|The name of the gene|
+|MicrohapIndex|A collapsed verison of the 'CodonID' (see 'resmarker_table.txt'). This will contain all codon IDs that are included in the microhaplotype.|
+|RefMicrohap|A collapsed version of the 'Ref' column that reports all reference amino acids in order by `CodonID`|
+|Microhaplotype|A collapsed version of the 'Alt' column that reports all ASV amino acids in order by `CodonID`|
+|MicrohapRefAlt|Can be 'ALT' or 'REF', depending on whether the ASV microhaplotype matches the reference microhaplotype ('ALT' if they do not match).|
+|Reads|Number of reads that have the `Microhaplotype`.|
+
+### resmarker_new_mutations.txt
+
+This file contains DNA mutations that were not within the specified genomic coordinates. The indels and SNPs here are listed in this file to allow end users an opportunity to see other mutations found. They should be interpreted with some caution as they are simply reported and not filtered in any way. 
+
+
+|Column|Description|
+|:--:|:--:|
+|SampleID|The sample being reported|
+|GeneID|A numeric identifier for the *P. falciparum* gene and gene position|
+|Gene|The name of the gene|
+|CodonID|The codon number|
+|Position|The position in the reference sequence where the indel or SNP was found|
+|Alt|The DNA base found at the position in the ASV|
+|Ref|The DNA base found at the position in the reference sequence|
+|Reads|The number of reads that support the `Alt` base|
 
 [jekyll-organization]: https://github.com/EPPIcenter
