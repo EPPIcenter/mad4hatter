@@ -20,7 +20,7 @@ process CUTADAPT {
     output:
     path("*.SAMPLEsummary.txt"), emit: sample_summary
     path("*.AMPLICONsummary.txt"), emit: amplicon_summary
-    path('demuliplexed_fastqs'), emit: demultiplexed_fastqs
+    path(${pair_id}), emit: demultiplexed_fastqs
 
     script:
     """
@@ -33,6 +33,6 @@ process CUTADAPT {
         -s ${sequencer} \
         -e ${allowed_errors} \
         -c ${task.cpus} \
-        -o demuliplexed_fastqs
+        -o ${pair_id}
     """
 }
