@@ -172,7 +172,6 @@ def main(args):
 
     # Keep the data that we are interested in
     res_markers_info = res_markers_info[(res_markers_info['CodonStart'] > 0) & (res_markers_info['CodonStart'] < res_markers_info['ampInsert_length'])]
-    res_markers_info = res_markers_info.drop_duplicates(subset='V5', keep='first')
 
     # Filter allele data to only include drug resistance amplicons
     allele_data = allele_data[allele_data['locus'].str.endswith(('-1B', '-2'))]
