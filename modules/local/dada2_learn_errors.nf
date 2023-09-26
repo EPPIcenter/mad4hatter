@@ -10,6 +10,7 @@ process DADA2_LEARN_ERRORS {
     path filter_metadata
     val maxConsist
     val randomize
+    val nbases
 
     // Define output channels
     output:
@@ -30,6 +31,7 @@ process DADA2_LEARN_ERRORS {
         --ncores ${task.cpus} \
         --maxConsist ${maxConsist} \
         --dout error_model \
+        --nbases ${nbases} \
         ${randomize}
     """
 }

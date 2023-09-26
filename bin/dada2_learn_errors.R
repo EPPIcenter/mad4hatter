@@ -9,6 +9,7 @@ parser$add_argument('--ncores', type="numeric", required=TRUE, help="Number of t
 parser$add_argument('--maxConsist', type="numeric", default=10, help="Maximum number of iterations for model convergence")
 parser$add_argument('--rand', action='store_true', help="Randomize")
 parser$add_argument('--dout', type="character", required=TRUE, help="Output directory")
+parser$add_argument('--nbases', type="numeric", default=1e+08, help="Number of bases to use for learning error model")
 
 args <- parser$parse_args()
 print(args)
@@ -18,7 +19,7 @@ if (!dir.exists(args$dout)) {
 }
 
 # Learn errors for 1 or Merged using all loaded files
-error_model <- learnErrors(args$filt_1, multithread=args$ncores, MAX_CONSIST=args$maxConsist, randomize=args$rand)
+error_model <- learnErrors(args$filt_1, multithread=args$ncores, MAX_CONSIST=args$maxConsist, randomize=args$rand, nbases = args$nbases)
 
 # If Reverse reads are not provided, save the error model as err_model.RDS
 if (is.null(args$filt_2)) {
@@ -29,6 +30,6 @@ if (is.null(args$filt_2)) {
 
 if (!is.null(args$filt_2)) {
     # Learn errors for 2 using all loaded files
-    error_model <- learnErrors(args$filt_2, multithread=args$ncores, MAX_CONSIST=args$maxConsist, randomize=args$rand)
+    error_model <- learnErrors(args$filt_2, multithread=args$ncores, MAX_CONSIST=args$maxConsist, randomize=args$rand, nbases = args$nbases)
     saveRDS(error_model, file.path(args$dout, "err_R_model.RDS"))
 }

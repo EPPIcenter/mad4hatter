@@ -50,7 +50,8 @@ workflow DENOISE_AMPLICONS_1 {
     DADA2_PREPROCESSING.out.filtRs.collect(),
     DADA2_PREPROCESSING.out.filter_metadata.collect(),
     params.maxConsist,
-    params.randomize
+    params.randomize,
+    params.nbases
   )
 
   

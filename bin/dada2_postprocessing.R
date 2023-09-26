@@ -8,6 +8,7 @@ parser$add_argument('--bimera-removal-method', type="character", required=TRUE, 
 parser$add_argument('--amplicon-file', type="character", required=TRUE, help="Path to the amplicon file")
 parser$add_argument('--ncores', type="numeric", default=1, help="Number of threads to use")
 parser$add_argument('--verbose', action='store_true', help="Add verbosity")
+parser$add_argument('--dout', type="character", required=FALSE, help="Output directory")
 
 args <- parser$parse_args()
 print(args)
@@ -60,4 +61,14 @@ allele.data = seqtab.nochim.df %>%
   mutate(n.alleles = n()) %>%
   ungroup()
 
-write.table(allele.data,file="dada2.clusters.txt",quote=F,sep="\t",col.names=T,row.names=F)
+output_dir <- if(is.null(args$dout)) {
+  "."
+} else {
+  args$dout
+}
+
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive=TRUE)
+}
+
+write.table(allele.data,file=file.path(output_dir, "dada2.clusters.txt") ,quote=F,sep="\t",col.names=T,row.names=F)

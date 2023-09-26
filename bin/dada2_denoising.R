@@ -2,9 +2,9 @@ library(dada2)
 library(tidyverse)
 library(argparse)
 
-parser <- ArgumentParser(description='DADA2 Denoising')
-parser$add_argument('--derep-1', type="character", required=TRUE, nargs="+", help="Path to RDS file containing dereplicated forward sequences")
-parser$add_argument('--derep-2', type="character", required=TRUE, nargs="+", help="Path to RDS file containing dereplicated reverse sequences")
+parser <- ArgumentParser(description='DADA2 Denoising of Amplicon Sequences from a Single Sample')
+parser$add_argument('--derep-1', type="character", required=TRUE, nargs="+", help="Paths to RDS files containing dereplicated forward sequences")
+parser$add_argument('--derep-2', type="character", required=TRUE, nargs="+", help="Paths to RDS files containing dereplicated reverse sequences")
 parser$add_argument('--error-model-1', type="character", required=TRUE, help="Path to the forward error model RDS file")
 parser$add_argument('--error-model-2', type="character", required=TRUE, help="Path to the reverse error model RDS file")
 parser$add_argument('--ncores', type="numeric", required=TRUE, help="Number of threads to use")
@@ -18,37 +18,11 @@ parser$add_argument('--self-consist', action='store_true')
 parser$add_argument('--omega-c', type='double', default=1e-40)
 parser$add_argument('--ampliconFILE', type="character", required=TRUE, help="Path to amplicon info file")
 parser$add_argument('--verbose', action="store_true", help="Verbose")
+parser$add_argument('--dout', type="character", required=FALSE, help="Output directory")
 
 args <- parser$parse_args()
 print(args)
 
-# Load error models
-err_model_F <- readRDS(args$error_model_1)
-err_model_R <- readRDS(args$error_model_2)
-
-# Function to gather derep objects from a list of files
-gather_dereps <- function(paths) {
-    all_dereps <- list()
-    for(path in paths) {
-        derep <- readRDS(path)
-        # Extract the sample name using a regex pattern
-        sample_name <- sub("(.*)_trimmed.*", "\\1", basename(path))
-        all_dereps[[sample_name]] <- derep
-    }
-    all_dereps
-}
-
-# Gather all derep objects
-derepFs <- gather_dereps(args$derep_1)
-derepRs <- gather_dereps(args$derep_2)
-
-# DADA2 denoising
-dadaFs <- dada(derepFs, err=err_model_F, multithread=args$ncores)
-dadaRs <- dada(derepRs, err=err_model_R, multithread=args$ncores)
-
-# Save the DADA2 denoised data
-save(dadaFs, file="dada_denoised_F.RData")
-save(dadaRs, file="dada_denoised_R.RData")
 
 # Filter samples based on the provided condition
 filter_samples <- function(samples, condition) {
@@ -96,8 +70,54 @@ perform_merging <- function(dadaFs_selected, derepFs_selected, dadaRs_selected, 
              maxMismatch = 1)
 }
 
+#############
+### Main ####
+#############
+
+# Load error models
+err_model_F <- readRDS(args$error_model_1)
+err_model_R <- readRDS(args$error_model_2)
+
+# Function to gather derep objects from a list of files
+gather_dereps <- function(paths) {
+    all_dereps <- list()
+    for(path in paths) {
+        derep <- readRDS(path)
+        # Extract the sample name using a regex pattern
+        sample_name <- sub("(.*)_trimmed.*", "\\1", basename(path))
+        all_dereps[[sample_name]] <- derep
+    }
+    all_dereps
+}
+
+# Gather all derep objects
+derepFs <- gather_dereps(args$derep_1)
+derepRs <- gather_dereps(args$derep_2)
+
+# DADA2 denoising
+dadaFs <- dada(derepFs, err=err_model_F, multithread=args$ncores)
+dadaRs <- dada(derepRs, err=err_model_R, multithread=args$ncores)
+
+# Save the DADA2 denoised data
+save(dadaFs, file="dada_denoised_F.RData")
+save(dadaRs, file="dada_denoised_R.RData")
+
 amplicon_data <- read.table(args$ampliconFILE, header=T)
 loci_list <- amplicon_data$amplicon
+
+sample_name <- get_sample_name(names(derepFs)[1], loci_list)  # extract sample name
+
+# Setup output directory (if asked)
+output_dir <- if (is.null(args$dout)) {
+  "."
+} else {
+  args$dout
+}
+
+# If the output directory does not exit, create it
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive=TRUE)
+}
 
 if (args$just_concatenate) {
   amplicon.info = data.frame(
@@ -120,17 +140,13 @@ if (args$just_concatenate) {
 
   mergers <- merge_with_concatenation(dadaFs, derepFs, dadaRs, derepRs, amplicon.info)
   
-  sample_name <- get_sample_name(names(derepFs)[1], loci_list)  # extract sample name
-  saveRDS(mergers, file = paste0(sample_name, "_merged.RDS"))
+  saveRDS(mergers, file = file.path(output_dir, paste0(sample_name, "_merged.RDS")))
 } else {
   # Perform normal merging
   mergers <- perform_merging(dadaFs, derepFs, dadaRs, derepRs, justConcatenate=FALSE)
   
-  sample_name <- get_sample_name(names(derepFs)[1], loci_list)  # extract sample name
-  saveRDS(mergers, file = paste0(sample_name, "_merged.RDS"))
+  saveRDS(mergers, file = file.path(output_dir, paste0(sample_name, "_merged.RDS")))
 }
 
 seqtab <- makeSequenceTable(mergers)
-
-sample_name <- get_sample_name(names(derepFs)[1], loci_list)  # extract sample name
-saveRDS(seqtab, file = paste0(sample_name, "_seqtab.RDS"))
+saveRDS(seqtab, file = file.path(output_dir, paste0(sample_name, "_seqtab.RDS")))
