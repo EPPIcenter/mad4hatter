@@ -16,8 +16,30 @@
 # that remain after filtering.
 ################################################################################
 
-library(argparse)
-library(dada2)
+library(logger)
+load_library <- function(library_name) {
+  output <- capture.output({
+    suppressWarnings({
+      library(library_name, character.only = TRUE)
+    })
+  }, type = "message")
+  
+  # Separate warnings from messages
+  warnings <- warnings()
+  
+  # Log messages
+  if(length(output) > 0) {
+    log_info(paste("Message from", library_name, ":", paste(output, collapse = "; ")))
+  }
+  
+  # Log warnings
+  if(length(warnings) > 0) {
+    log_warn(paste("Warning from", library_name, ":", paste(warnings, collapse = "; ")))
+  }
+}
+
+load_library("argparse")
+load_library("dada2")
 
 # Argument Parsing and Setup
 parser <- ArgumentParser(description='Filter Errors')
@@ -39,9 +61,14 @@ parser$add_argument('--trimRight_R2', type="numeric", required=TRUE, help="Trim 
 parser$add_argument('--trimLeft_R2', type="numeric", required=TRUE, help="Trim Left")
 parser$add_argument('--truncQ_R2', type="numeric", required=TRUE, help="Truncate quality")
 parser$add_argument('--maxEE_R2', type="numeric", required=TRUE, help="Maximum expected error")
+parser$add_argument('--log-level', type="character", default = "INFO", help = "Log level. Default is INFO.")
 
 args <- parser$parse_args()
-print(args)
+args_string <- paste(sapply(names(args), function(name) {
+  paste(name, ":", args[[name]])
+}), collapse = ", ")
+
+log_debug(paste("Arguments parsed successfully:", args_string))
 
 # Extract directory names to create corresponding output directories
 dir_names <- basename(args$trimmed_path)

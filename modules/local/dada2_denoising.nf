@@ -43,6 +43,7 @@ process DADA2_DENOISING {
         --maxEE ${maxEE} \
         --omega-c ${omega_c} \
         --ampliconFILE ${ampliconFILE} \
+        --log-level ${params.logLevel} \
         ${verbose} \
         ${concatenate} \
         ${self_consist}

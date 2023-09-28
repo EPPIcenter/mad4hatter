@@ -24,6 +24,7 @@ process DADA2_POSTPROCESSING {
         --amplicon-file ${amplicon_file} \
         --ncores ${task.cpus} \
         --bimera-removal-method ${bimera_removal_method} \
+        --log-level ${params.logLevel} \
         ${verbose}
     """
 }

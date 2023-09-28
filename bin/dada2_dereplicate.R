@@ -1,5 +1,27 @@
-library(argparse)
-library(dada2)
+library(logger)
+load_library <- function(library_name) {
+  output <- capture.output({
+    suppressWarnings({
+      library(library_name, character.only = TRUE)
+    })
+  }, type = "message")
+  
+  # Separate warnings from messages
+  warnings <- warnings()
+  
+  # Log messages
+  if(length(output) > 0) {
+    log_info(paste("Message from", library_name, ":", paste(output, collapse = "; ")))
+  }
+  
+  # Log warnings
+  if(length(warnings) > 0) {
+    log_warn(paste("Warning from", library_name, ":", paste(warnings, collapse = "; ")))
+  }
+}
+
+load_library("argparse")
+load_library("dada2")
 
 # Argument Parsing and Setup
 parser <- ArgumentParser(description='Perform Dereplication')
@@ -9,9 +31,17 @@ parser$add_argument('--filter-metadata', type="character", required=TRUE, help="
 parser$add_argument('--dout', type="character", required=TRUE, help="Output directory")
 parser$add_argument('--ncores', type="numeric", required=TRUE, help="Number of threads to use")
 parser$add_argument('--verbose', action="store_true", help="Verbose")
+parser$add_argument('--log-level', type="character", default = "INFO", help = "Log level. Default is INFO.")
 
 args <- parser$parse_args()
-print(args)
+# Set up logging
+log_threshold(args$log_level)
+log_appender(appender_console)
+args_string <- paste(sapply(names(args), function(name) {
+  paste(name, ":", args[[name]])
+}), collapse = ", ")
+
+log_debug(paste("Arguments parsed successfully:", args_string))
 
 # Load filter metadata
 filter_metadata <- readRDS(args$filter_metadata)

@@ -24,6 +24,7 @@ process DADA2_DEREPLICATE {
         --filter-metadata ${filter_metadata} \
         --dout dereps \
         --ncores ${task.cpus} \
+        --log-level ${params.logLevel} \
         ${verbose}
     """
 }

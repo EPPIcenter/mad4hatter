@@ -51,6 +51,7 @@ process DADA2_PREPROCESSING {
       --trimRight_R2 ${trimRight_R2} \
       --trimLeft_R2 ${trimLeft_R2} \
       --matchIDs ${matchIDs} \
+      --log-level ${params.logLevel} \
       ${verbose}
     """
 }

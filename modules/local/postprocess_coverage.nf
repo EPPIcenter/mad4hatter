@@ -23,6 +23,7 @@ process POSTPROCESS_COVERAGE {
     --alleledata $alleledata \
     --clusters $clusters \
     --sample-coverage $sample_coverage \
-    --amplicon-coverage $amplicon_coverage
+    --amplicon-coverage $amplicon_coverage \
+    --log-level ${params.logLevel} 
   """
 }

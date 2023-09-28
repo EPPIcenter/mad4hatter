@@ -1,6 +1,28 @@
-library(dada2)
-library(tidyverse)
-library(argparse)
+library(logger)
+load_library <- function(library_name) {
+  output <- capture.output({
+    suppressWarnings({
+      library(library_name, character.only = TRUE)
+    })
+  }, type = "message")
+  
+  # Separate warnings from messages
+  warnings <- warnings()
+  
+  # Log messages
+  if(length(output) > 0) {
+    log_info(paste("Message from", library_name, ":", paste(output, collapse = "; ")))
+  }
+  
+  # Log warnings
+  if(length(warnings) > 0) {
+    log_warn(paste("Warning from", library_name, ":", paste(warnings, collapse = "; ")))
+  }
+}
+
+load_library("dada2")
+load_library("tidyverse")
+load_library("argparse")
 
 parser <- ArgumentParser(description='DADA2 Denoising of Amplicon Sequences from a Single Sample')
 parser$add_argument('--derep-1', type="character", required=TRUE, nargs="+", help="Paths to RDS files containing dereplicated forward sequences")
@@ -19,14 +41,22 @@ parser$add_argument('--omega-c', type='double', default=1e-40)
 parser$add_argument('--ampliconFILE', type="character", required=TRUE, help="Path to amplicon info file")
 parser$add_argument('--verbose', action="store_true", help="Verbose")
 parser$add_argument('--dout', type="character", required=FALSE, help="Output directory")
+parser$add_argument('--log-level', type="character", default = "INFO", help = "Log level. Default is INFO.")
 
 args <- parser$parse_args()
-print(args)
+# Set up logging
+log_threshold(args$log_level)
+args_string <- paste(sapply(names(args), function(name) {
+  paste(name, ":", args[[name]])
+}), collapse = ", ")
 
+log_debug(paste("Arguments parsed successfully:", args_string))
 
 # Filter samples based on the provided condition
 filter_samples <- function(samples, condition) {
-  samples[names(samples) %in% rownames(condition)]
+  filtered_samples <- samples[names(samples) %in% rownames(condition)]
+  log_debug(paste("Filtered samples:", toString(names(filtered_samples))))
+  return(filtered_samples)
 }
 
 get_sample_name <- function(filename, loci_list) {
@@ -35,15 +65,22 @@ get_sample_name <- function(filename, loci_list) {
   
   # Remove everything past '_trimmed'
   sample_name <- strsplit(no_locus_filename, "_trimmed")[[1]][1]
+
+  log_debug(paste("Extracted sample name:", sample_name, "from filename:", filename))
   
   return(sample_name)
 }
 
 merge_with_concatenation <- function(dadaFs, derepFs, dadaRs, derepRs, amplicon_info) {
+  log_debug("Performing sample filtering based on overlap conditions")
   # Perform filtering
   overlap_condition <- amplicon_info %>% filter((ampInsert_length + 10) < sum.mean.length.reads)
+  log_debug(paste("Number of samples with overlap condition:", nrow(overlap_condition)))
+
   no_overlap_condition <- amplicon_info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads)
+  log_debug(paste("Number of samples with no overlap condition:", nrow(no_overlap_condition)))
   
+  log_debug("Merging samples with overlap condition")
   # Merge for overlap and no overlap conditions
   mergers.overlap <- perform_merging(filter_samples(dadaFs, overlap_condition),
                                      filter_samples(derepFs, overlap_condition),
@@ -51,6 +88,7 @@ merge_with_concatenation <- function(dadaFs, derepFs, dadaRs, derepRs, amplicon_
                                      filter_samples(derepRs, overlap_condition),
                                      justConcatenate=FALSE)
 
+  log_debug("Merging samples with no overlap condition")
   mergers.no.overlap <- perform_merging(filter_samples(dadaFs, no_overlap_condition),
                                         filter_samples(derepFs, no_overlap_condition),
                                         filter_samples(dadaRs, no_overlap_condition),
@@ -58,21 +96,31 @@ merge_with_concatenation <- function(dadaFs, derepFs, dadaRs, derepRs, amplicon_
                                         justConcatenate=TRUE)
 
   # Combine the results
-  c(mergers.overlap, mergers.no.overlap)[names(dadaFs)]
+  combined_results <- c(mergers.overlap, mergers.no.overlap)[names(dadaFs)]
+  log_debug(paste("Total merged samples:", length(combined_results)))
+
+  return(combined_results)
 }
 
 perform_merging <- function(dadaFs_selected, derepFs_selected, dadaRs_selected, derepRs_selected, justConcatenate) {
-  mergePairs(dadaFs_selected, derepFs_selected, dadaRs_selected, derepRs_selected, 
+  log_debug("Performing merging")
+  merged_pairs <- mergePairs(dadaFs_selected, derepFs_selected, dadaRs_selected, derepRs_selected, 
              verbose = TRUE, 
              justConcatenate = justConcatenate, 
              trimOverhang = TRUE,
              minOverlap = 10,
              maxMismatch = 1)
+  log_debug(paste("Number of merged pairs:", length(merged_pairs)))
+  log_debug("Merging complete")
+  return(merged_pairs)
 }
 
 #############
 ### Main ####
 #############
+
+log_info(paste("Loading R1 error model from:", args$error_model_1))
+log_info(paste("Loading R2 error model from:", args$error_model_2))
 
 # Load error models
 err_model_F <- readRDS(args$error_model_1)
@@ -90,22 +138,30 @@ gather_dereps <- function(paths) {
     all_dereps
 }
 
+log_info("Gathering derep objects")
 # Gather all derep objects
 derepFs <- gather_dereps(args$derep_1)
 derepRs <- gather_dereps(args$derep_2)
 
 # DADA2 denoising
+log_info("Starting DADA2 denoising")
+log_info("Denoising forward reads")
 dadaFs <- dada(derepFs, err=err_model_F, multithread=args$ncores)
+log_info("Denoising reverse reads")
 dadaRs <- dada(derepRs, err=err_model_R, multithread=args$ncores)
+log_info("DADA2 denoising completed")
 
 # Save the DADA2 denoised data
+log_info("Saving DADA2 denoised data")
 save(dadaFs, file="dada_denoised_F.RData")
 save(dadaRs, file="dada_denoised_R.RData")
 
+log_info("Reading amplicon data")
 amplicon_data <- read.table(args$ampliconFILE, header=T)
 loci_list <- amplicon_data$amplicon
 
 sample_name <- get_sample_name(names(derepFs)[1], loci_list)  # extract sample name
+log_debug(paste("Extracted sample name:", sample_name))
 
 # Setup output directory (if asked)
 output_dir <- if (is.null(args$dout)) {
@@ -114,15 +170,21 @@ output_dir <- if (is.null(args$dout)) {
   args$dout
 }
 
+log_info(paste("Output directory:", output_dir))
+
 # If the output directory does not exit, create it
 if (!dir.exists(output_dir)) {
+  log_info(paste("Creating output directory:", output_dir))
   dir.create(output_dir, recursive=TRUE)
 }
 
 if (args$just_concatenate) {
+  log_info("Performing merging with concatenation")
   amplicon.info = data.frame(
     names = sapply(strsplit(names(dadaFs),"_trimmed"),"[",1)
   )
+
+  log_debug(paste("Initial number of names in amplicon.info:", nrow(amplicon.info)))
 
   # Create amplicon info
   amplicon.info <- amplicon.info %>%
@@ -136,17 +198,21 @@ if (args$just_concatenate) {
         sapply(sapply(unlist(lapply(dadaRs,"[","sequence"),recursive = F),nchar),mean)
     )
 
+  log_debug(paste("Number of amplicons after inner join:", nrow(amplicon.info)))
+
   rownames(amplicon.info) = names(dadaFs)
+  log_debug("Assigned rownames to amplicon.info based on names from dadaFs")
 
   mergers <- merge_with_concatenation(dadaFs, derepFs, dadaRs, derepRs, amplicon.info)
   
-  saveRDS(mergers, file = file.path(output_dir, paste0(sample_name, "_merged.RDS")))
 } else {
   # Perform normal merging
+  log_info("Performing normal merging without concatenation")
   mergers <- perform_merging(dadaFs, derepFs, dadaRs, derepRs, justConcatenate=FALSE)
   
-  saveRDS(mergers, file = file.path(output_dir, paste0(sample_name, "_merged.RDS")))
 }
-
+log_info("Saving merged data and sequence table")
+saveRDS(mergers, file = file.path(output_dir, paste0(sample_name, "_merged.RDS")))
 seqtab <- makeSequenceTable(mergers)
 saveRDS(seqtab, file = file.path(output_dir, paste0(sample_name, "_seqtab.RDS")))
+log_info("Processing completed")

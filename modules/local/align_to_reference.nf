@@ -22,6 +22,7 @@ process ALIGN_TO_REFERENCE {
     --clusters ${clusters} \
     --refseq-fasta ${refseq_fasta} \
     --amplicon-table ${amplicon_info} \
-    --n-cores ${task.cpus}
+    --n-cores ${task.cpus} \
+    --log-level ${params.logLevel} \
   """
 }

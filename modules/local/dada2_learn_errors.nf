@@ -32,6 +32,7 @@ process DADA2_LEARN_ERRORS {
         --maxConsist ${maxConsist} \
         --dout error_model \
         --nbases ${nbases} \
+        --log-level ${params.logLevel} \
         ${randomize}
     """
 }
