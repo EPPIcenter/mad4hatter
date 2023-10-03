@@ -1,8 +1,30 @@
-library(tidyverse)
-library(gridExtra)
-library(ggbeeswarm)
-library(rmarkdown)
-library(knitr)
+library(logger)
+load_library <- function(library_name) {
+  output <- capture.output({
+    suppressWarnings({
+      library(library_name, character.only = TRUE)
+    })
+  }, type = "message")
+  
+  # Separate warnings from messages
+  warnings <- warnings()
+  
+  # Log messages
+  if(length(output) > 0) {
+    log_info(paste("Message from", library_name, ":", paste(output, collapse = "; ")))
+  }
+  
+  # Log warnings
+  if(length(warnings) > 0) {
+    log_warn(paste("Warning from", library_name, ":", paste(warnings, collapse = "; ")))
+  }
+}
+
+load_library("tidyverse")
+load_library("gridExtra")
+load_library("ggbeeswarm")
+load_library("rmarkdown")
+load_library("knitr")
 
 args = commandArgs(trailingOnly=T)
 

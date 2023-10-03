@@ -13,7 +13,7 @@ RUN R -e 'install.packages("remotes")'
 
 # R packages
 RUN Rscript -e 'install.packages("remotes", version = "2.4.2")'
-RUN Rscript -e 'remotes::install_cran(c("ggbeeswarm", "gridExtra", "rmarkdown", "foreach", "doMC", "argparse"), upgrade = "never", version = c("0.6.1", "2.3", "2.17", "1.5.2", "1.3.8", "2.1.6"))'
+RUN Rscript -e 'remotes::install_cran(c("ggbeeswarm", "gridExtra", "rmarkdown", "foreach", "doMC", "argparse", "logger", "lobstr"), upgrade = "never", version = c("0.6.1", "2.3", "2.17", "1.5.2", "1.3.8", "2.1.6", "0.2.2", "1.1.2"))'
 
 # Bioconductor packages
 RUN Rscript -e 'if (!require("BiocManager", quietly = TRUE)) { install.packages("BiocManager"); }; BiocManager::install(version = "3.17");'

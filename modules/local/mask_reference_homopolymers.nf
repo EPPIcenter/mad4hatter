@@ -13,7 +13,8 @@ process MASK_REFERENCE_HOMOPOLYMERS {
   """
   Rscript ${projectDir}/bin/mask_homopolymers.R \
     --refseq-fasta ${refseq_fasta} \
-    --homopolymer_threshold ${homopolymer_threshold}
+    --homopolymer_threshold ${homopolymer_threshold} \
+    --log-level ${params.logLevel}
 
   """
 }

@@ -1,0 +1,141 @@
+#!/usr/bin/env Rscript
+################################################################################
+# Script for Filtering Errors in Demultiplexed Amplicon Data
+#
+# This script is designed to process multiple samples that have been 
+# demultiplexed using cutadapt. The script applies the DADA2 error filtering 
+# process to each demultiplexed amplicon file.
+#
+# The primary goal is to improve the quality of the reads by removing those that 
+# are likely erroneous. This is achieved by setting various thresholds for expected
+# number of errors and length. 
+#
+# The final output is a "filtered" directory for each sample, containing the 
+# filtered demultiplexed amplicons. There will also be a single metadata file 
+# that provides a summary of the number of reads that were input and the number 
+# that remain after filtering.
+################################################################################
+
+library(logger)
+log_threshold(WARN)
+log_appender(appender_console)
+
+load_library <- function(library_name) {
+  output <- capture.output({
+    suppressWarnings({
+      library(library_name, character.only = TRUE)
+    })
+  }, type = "message")
+  
+  # Separate warnings from messages
+  warnings <- warnings()
+  
+  # Log messages
+  if(length(output) > 0) {
+    log_info(paste("Message from", library_name, ":", paste(output, collapse = "; ")))
+  }
+  
+  # Log warnings
+  if(length(warnings) > 0) {
+    log_warn(paste("Warning from", library_name, ":", paste(warnings, collapse = "; ")))
+  }
+}
+
+load_library("lobstr")
+# Define profiling function
+profile_function <- function(func, ...) {
+  # Record the memory size of the arguments
+  mem_args <- lobstr::obj_size(...)
+
+  # Record start time and memory
+  time_start <- proc.time()[["elapsed"]]
+  mem_start <- lobstr::mem_used()
+
+  # Evaluate the function
+  result <- func(...)
+
+  # Record end time and memory
+  time_end <- proc.time()[["elapsed"]]
+  mem_end <- lobstr::mem_used()
+
+  # Return results
+  list(result = result,
+      mem_args = mem_args,
+      mem_diff = (mem_end - mem_start) - mem_args,
+      duration = time_end - time_start)
+}
+
+load_library("argparse")
+load_library("dada2")
+
+# Argument Parsing and Setup
+parser <- ArgumentParser(description='Filter Errors')
+parser$add_argument('--trimmed-path', nargs='+', type="character", required=TRUE, help="Path to trimmed fastq files")
+parser$add_argument('--minLen', type="numeric", required=TRUE, help="Minimum length")
+parser$add_argument('--maxN', type="numeric", required=TRUE, help="Maximum N")
+parser$add_argument('--rm-phix', type="logical", required=TRUE, help="Remove PhiX")
+parser$add_argument('--compress', type="logical", required=TRUE, help="Compress")
+parser$add_argument('--ncores', type="numeric", required=TRUE, help="Number of threads to use")
+parser$add_argument('--matchIDs', type="logical", required=TRUE, help="Match IDs")
+parser$add_argument('--verbose', action="store_true", help="Verbose")
+
+parser$add_argument('--trimRight_R1', type="numeric", required=TRUE, help="Trim Right")
+parser$add_argument('--trimLeft_R1', type="numeric", required=TRUE, help="Trim Left")
+parser$add_argument('--truncQ_R1', type="numeric", required=TRUE, help="Truncate quality")
+parser$add_argument('--maxEE_R1', type="numeric", required=TRUE, help="Maximum expected error")
+
+parser$add_argument('--trimRight_R2', type="numeric", required=TRUE, help="Trim Right")
+parser$add_argument('--trimLeft_R2', type="numeric", required=TRUE, help="Trim Left")
+parser$add_argument('--truncQ_R2', type="numeric", required=TRUE, help="Truncate quality")
+parser$add_argument('--maxEE_R2', type="numeric", required=TRUE, help="Maximum expected error")
+parser$add_argument('--log-level', type="character", default = "INFO", help = "Log level. Default is INFO.")
+
+args <- parser$parse_args()
+log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
+log_threshold(log_level_arg)
+
+args_string <- paste(sapply(names(args), function(name) {
+  paste(name, ":", args[[name]])
+}), collapse = ", ")
+
+log_debug(paste("Arguments parsed successfully:", args_string))
+
+# Extract directory names to create corresponding output directories
+dir_names <- basename(args$trimmed_path)
+output_paths <- sprintf("filtered_%s", dir_names)
+
+# Create output directories
+lapply(output_paths, function(x) dir.create(x, recursive=TRUE, showWarnings=FALSE))
+
+# List Files and create filter paths in a vectorized manner
+fnFs_list <- lapply(args$trimmed_path, function(tp) sort(list.files(path=tp, pattern="_R1.fastq.gz", recursive=TRUE, full.names = TRUE)))
+fnRs_list <- lapply(args$trimmed_path, function(tp) sort(list.files(path=tp, pattern="_R2.fastq.gz", recursive=TRUE, full.names = TRUE)))
+
+sample_names_list <- lapply(fnFs_list, function(fnFs) sapply(strsplit(basename(fnFs), "_R1"), `[`, 1))
+
+filtFs_list <- mapply(function(op, sn) paste0(op, "/", sn, "_F_filt.fastq.gz"), output_paths, sample_names_list, SIMPLIFY = FALSE)
+filtRs_list <- mapply(function(op, sn) paste0(op, "/", sn, "_R_filt.fastq.gz"), output_paths, sample_names_list, SIMPLIFY = FALSE)
+
+for (i in seq_along(sample_names_list)) {
+  # Wrapper to profile mapply
+  profiling_results <- profile_function(function() {
+      mapply(function(fnFs, fnRs, filtFs, filtRs) {
+          filterAndTrim(
+              fnFs, filtFs, fnRs, filtRs,
+              maxN=args$maxN, maxEE=c(args$maxEE_R1, args$maxEE_R2), truncQ=c(args$truncQ_R1, args$truncQ_R2),
+              rm.phix=args$rm_phix, compress=args$compress, multithread=args$ncores, 
+              trimRight=c(args$trimRight_R1, args$trimRight_R2), trimLeft=c(args$trimLeft_R1, args$trimLeft_R2), minLen=args$minLen, matchIDs=args$matchIDs
+          )
+      }, fnFs_list[[i]], fnRs_list[[i]], filtFs_list[[i]], filtRs_list[[i]], SIMPLIFY = FALSE)
+  })
+
+  log_info(paste("Sample [", sample_names_list[[i]][1], "] filterAndTrim duration: ", profiling_results$duration, " seconds"))
+  log_info(paste("Sample [", sample_names_list[[i]][1], "] filterAndTrim memory usage: ", profiling_results$mem_diff, " bytes"))
+
+  # Save filtered data and filter metadata for the current sample
+  output_filename <- file.path(output_paths[i], sprintf("%s_filter_metadata.RDS", sample_names_list[[i]][1]))
+  saveRDS(profiling_results$result, file=output_filename)
+}
+
+
+
