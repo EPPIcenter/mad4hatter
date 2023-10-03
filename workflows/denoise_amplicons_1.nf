@@ -40,8 +40,7 @@ workflow DENOISE_AMPLICONS_1 {
   DADA2_DEREPLICATE(
     DADA2_PREPROCESSING.out.filtFs,
     DADA2_PREPROCESSING.out.filtRs,
-    DADA2_PREPROCESSING.out.filter_metadata,
-    params.verbose
+    DADA2_PREPROCESSING.out.filter_metadata
   )
 
   // Step 2: Learn Errors
@@ -69,7 +68,6 @@ workflow DENOISE_AMPLICONS_1 {
     params.maxEE,
     params.self_consist,
     params.omega_c,
-    params.verbose,
     params.amplicon_info
   )
 
@@ -77,7 +75,6 @@ workflow DENOISE_AMPLICONS_1 {
   DADA2_POSTPROCESSING(
     DADA2_DENOISING.out.seqtab.collect(),
     params.amplicon_info,
-    params.verbose,
     params.bimera_removal_method
   )
 

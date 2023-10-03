@@ -8,7 +8,6 @@ process DADA2_DEREPLICATE {
     path filtFs_path
     path filtRs_path
     path filter_metadata
-    val verbose
 
     // Define output channels
     output:

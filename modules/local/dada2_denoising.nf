@@ -17,7 +17,6 @@ process DADA2_DENOISING {
     val maxEE
     val self_consist
     val omega_c
-    val verbose
     path ampliconFILE
     
     // Define output channels

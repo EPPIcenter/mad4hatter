@@ -8,7 +8,6 @@ process DADA2_POSTPROCESSING {
     input:
     path seqtab_paths
     path amplicon_file
-    val verbose
     val bimera_removal_method
 
     // Define output channels
