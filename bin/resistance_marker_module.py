@@ -172,7 +172,6 @@ def main(args):
 
     # Keep the data that we are interested in
     res_markers_info = res_markers_info[(res_markers_info['CodonStart'] > 0) & (res_markers_info['CodonStart'] < res_markers_info['ampInsert_length'])]
-    res_markers_info = res_markers_info.drop_duplicates(subset='V5', keep='first')
 
     # Filter allele data to only include drug resistance amplicons
     allele_data = allele_data[allele_data['locus'].str.endswith(('-1B', '-2'))]
@@ -182,6 +181,9 @@ def main(args):
 
     # Filter any rows that have `NaN` in the sampleID column 
     allele_data = allele_data.dropna(subset=['pseudo_cigar'])
+
+    # Ensure reads is integer
+    allele_data['reads'] = allele_data['reads'].astype(int)
 
     # Read in the reference sequences - this will be used for the reference codons
     ref_sequences = SeqIO.to_dict(SeqIO.parse(args.refseq_path, 'fasta'))
@@ -200,7 +202,15 @@ def main(args):
 
     df_results = df_results.sort_values(['CodonID', 'Gene', 'SampleID'] ,ascending=[False, False, False])
     df_results = df_results[['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'amplicon', 'PseudoCIGAR', 'new_mutations']]
-    df_results.drop(['amplicon', 'PseudoCIGAR', 'new_mutations'], axis=1).to_csv('resmarker_table.txt', sep='\t', index=False)
+    df_resmarker = df_results.drop(['amplicon', 'PseudoCIGAR', 'new_mutations'], axis=1)
+
+    # Summarize reads
+    df_resmarker = df_resmarker.groupby(['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']).agg({
+        'Reads': 'sum'
+    }).reset_index()
+
+    # Output resmarker table
+    df_resmarker.to_csv('resmarker_table.txt', sep='\t', index=False)
 
 
     # Group data and create microhaplotypes
