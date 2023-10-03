@@ -1,4 +1,6 @@
 library(logger)
+log_threshold(WARN)
+
 load_library <- function(library_name) {
   output <- capture.output({
     suppressWarnings({
@@ -20,6 +22,47 @@ load_library <- function(library_name) {
   }
 }
 
+load_library("lobstr")
+# Define profiling function
+profile_function <- function(func, ...) {
+  # Record the memory size of the arguments
+  mem_args <- lobstr::obj_size(...)
+
+  # Variable to store messages
+  messages_captured <- character(0)
+
+  # Record start time and memory
+  time_start <- proc.time()[["elapsed"]]
+  mem_start <- lobstr::mem_used()
+
+  # Evaluate the function while capturing its output and messages
+  output_captured <- capture.output({
+      withCallingHandlers({
+          result <- func(...)
+      }, message = function(m) {
+          # Capture just the content of the message
+          messages_captured <<- c(messages_captured, conditionMessage(m))
+      })
+  })
+
+  # Record end time and memory
+  time_end <- proc.time()[["elapsed"]]
+  mem_end <- lobstr::mem_used()
+
+  # Combine standard output and messages
+  all_captured <- c(output_captured, messages_captured)
+
+  # Return results including captured output and messages
+  list(
+      result = result, 
+      output = all_captured,
+      mem_args = mem_args,
+      mem_diff = (mem_end - mem_start) - mem_args,
+      duration = time_end - time_start
+  )
+}
+
+
 load_library("dada2")
 load_library("tidyverse")
 load_library("argparse")
@@ -39,13 +82,14 @@ parser$add_argument('--maxEE', type="integer", default=2)
 parser$add_argument('--self-consist', action='store_true')
 parser$add_argument('--omega-c', type='double', default=1e-40)
 parser$add_argument('--ampliconFILE', type="character", required=TRUE, help="Path to amplicon info file")
-parser$add_argument('--verbose', action="store_true", help="Verbose")
 parser$add_argument('--dout', type="character", required=FALSE, help="Output directory")
 parser$add_argument('--log-level', type="character", default = "INFO", help = "Log level. Default is INFO.")
 
 args <- parser$parse_args()
 # Set up logging
-log_threshold(args$log_level)
+log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
+log_threshold(log_level_arg)
+
 args_string <- paste(sapply(names(args), function(name) {
   paste(name, ":", args[[name]])
 }), collapse = ", ")
@@ -145,11 +189,23 @@ derepRs <- gather_dereps(args$derep_2)
 
 # DADA2 denoising
 log_info("Starting DADA2 denoising")
-log_info("Denoising forward reads")
-dadaFs <- dada(derepFs, err=err_model_F, multithread=args$ncores)
-log_info("Denoising reverse reads")
-dadaRs <- dada(derepRs, err=err_model_R, multithread=args$ncores)
-log_info("DADA2 denoising completed")
+# Profile DADA2 denoising
+profiling_denoising <- profile_function(function(...) {
+    log_info("Denoising forward reads")
+    dadaFs <- dada(derepFs, err=err_model_F, multithread=args$ncores)
+    log_info("Denoising reverse reads")
+    dadaRs <- dada(derepRs, err=err_model_R, multithread=args$ncores)
+    list(dadaFs, dadaRs)
+})
+dadaFs <- profiling_denoising$result[[1]]
+dadaRs <- profiling_denoising$result[[2]]
+log_info(paste("Time taken for DADA2 denoising:", profiling_denoising$duration, "seconds"))
+log_info(paste("Memory change during DADA2 denoising:", profiling_denoising$mem_diff, "bytes"))
+# Log the captured output
+if(length(profiling_denoising$output) > 0) {
+    log_info("Output from dada:\n{paste(profiling_denoising$output, collapse = '\n')}")
+}
+
 
 # Save the DADA2 denoised data
 log_info("Saving DADA2 denoised data")
@@ -203,14 +259,28 @@ if (args$just_concatenate) {
   rownames(amplicon.info) = names(dadaFs)
   log_debug("Assigned rownames to amplicon.info based on names from dadaFs")
 
-  mergers <- merge_with_concatenation(dadaFs, derepFs, dadaRs, derepRs, amplicon.info)
-  
+  # Profile the merge_with_concatenation function
+  profiling_merge <- profile_function(merge_with_concatenation, dadaFs, derepFs, dadaRs, derepRs, amplicon.info)
+  mergers <- profiling_merge$result
+  log_info("Time taken for merging with concatenation: {profiling_merge$duration}")
+
+  # Log the captured output
+  if(length(profiling_merge$output) > 0) {
+    log_info("Output from merge_with_concatenation:\n{paste(profiling_merge$output, collapse = '\n')}")
+  }
+
 } else {
-  # Perform normal merging
-  log_info("Performing normal merging without concatenation")
-  mergers <- perform_merging(dadaFs, derepFs, dadaRs, derepRs, justConcatenate=FALSE)
-  
+   # Profile the perform_merging function
+  profiling_merge <- profile_function(perform_merging, dadaFs, derepFs, dadaRs, derepRs, justConcatenate=FALSE)
+  mergers <- profiling_merge$result
+  log_info("Time taken for normal merging: {profiling_merge$duration}")
+
+  # Log the captured output
+  if(length(profiling_merge$output) > 0) {
+    log_info("Output from perform_merging:\n{paste(profiling_merge$output, collapse = '\n')}")
+  }
 }
+
 log_info("Saving merged data and sequence table")
 saveRDS(mergers, file = file.path(output_dir, paste0(sample_name, "_merged.RDS")))
 seqtab <- makeSequenceTable(mergers)

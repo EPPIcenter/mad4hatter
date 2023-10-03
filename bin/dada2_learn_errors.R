@@ -1,4 +1,7 @@
 library(logger)
+log_threshold(WARN)
+log_appender(appender_console)
+
 load_library <- function(library_name) {
   output <- capture.output({
     suppressWarnings({
@@ -20,6 +23,30 @@ load_library <- function(library_name) {
   }
 }
 
+load_library("lobstr")
+# Define profiling function
+profile_function <- function(func, ...) {
+  # Record the memory size of the arguments
+  mem_args <- lobstr::obj_size(...)
+
+  # Record start time and memory
+  time_start <- proc.time()[["elapsed"]]
+  mem_start <- lobstr::mem_used()
+
+  # Evaluate the function
+  result <- func(...)
+
+  # Record end time and memory
+  time_end <- proc.time()[["elapsed"]]
+  mem_end <- lobstr::mem_used()
+
+  # Return results
+  list(result = result,
+      mem_args = mem_args,
+      mem_diff = (mem_end - mem_start) - mem_args, 
+      duration = time_end - time_start)
+}
+
 load_library("argparse")
 load_library("dada2")
 
@@ -36,8 +63,8 @@ parser$add_argument('--log-level', type="character", default = "INFO", help = "L
 
 args <- parser$parse_args()
 # Set up logging
-log_threshold(args$log_level)
-log_appender(appender_console)
+log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
+log_threshold(log_level_arg)
 args_string <- paste(sapply(names(args), function(name) {
   paste(name, ":", args[[name]])
 }), collapse = ", ")
@@ -49,17 +76,24 @@ if (!dir.exists(args$dout)) {
 }
 
 # Learn errors for 1 or Merged using all loaded files
-error_model <- learnErrors(args$filt_1, multithread=args$ncores, MAX_CONSIST=args$maxConsist, randomize=args$rand, nbases = args$nbases)
+profiling_result_F <- profile_function(learnErrors, args$filt_1, multithread=args$ncores, MAX_CONSIST=args$maxConsist, randomize=args$rand, nbases = args$nbases)
+
+log_info("Time taken for learning errors on forward reads: {profiling_result_F$duration}")
+log_info("Memory change during learning errors on forward reads: {profiling_result_F$mem_diff}")
+
+error_model <- profiling_result_F$result
 
 # If Reverse reads are not provided, save the error model as err_model.RDS
-if (is.null(args$filt_2)) {
-    saveRDS(error_model, file.path(args$dout, "err_model.RDS"))
-} else {
-    saveRDS(error_model, file.path(args$dout, "err_F_model.RDS"))
-}
+output_file <- if (is.null(args$filt_2)) "err_model.RDS" else "err_F_model.RDS"
+saveRDS(error_model, file.path(args$dout, output_file))
 
 if (!is.null(args$filt_2)) {
-    # Learn errors for 2 using all loaded files
-    error_model <- learnErrors(args$filt_2, multithread=args$ncores, MAX_CONSIST=args$maxConsist, randomize=args$rand, nbases = args$nbases)
+    # Profile learnErrors for 2 using all loaded files
+    profiling_result_R <- profile_function(learnErrors, args$filt_2, multithread=args$ncores, MAX_CONSIST=args$maxConsist, randomize=args$rand, nbases = args$nbases)
+    
+    log_info("Time taken for learning errors on reverse reads: {profiling_result_R$duration}")
+    log_info("Memory change during learning errors on reverse reads: {profiling_result_R$mem_diff}")
+    
+    error_model <- profiling_result_R$result
     saveRDS(error_model, file.path(args$dout, "err_R_model.RDS"))
 }

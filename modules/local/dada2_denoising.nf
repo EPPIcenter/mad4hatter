@@ -26,7 +26,6 @@ process DADA2_DENOISING {
 
     script:
     def concatenate = just_concatenate ? '--just-concatenate' : ''
-    def verbose = verbose ? '--verbose' : ''
     def self_consist = self_consist ? '--self-consist' : ''
 
     """
@@ -44,7 +43,6 @@ process DADA2_DENOISING {
         --omega-c ${omega_c} \
         --ampliconFILE ${ampliconFILE} \
         --log-level ${params.logLevel} \
-        ${verbose} \
         ${concatenate} \
         ${self_consist}
     """

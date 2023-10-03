@@ -1,4 +1,7 @@
 library(logger)
+log_threshold(WARN)
+log_appender(appender_console)
+
 load_library <- function(library_name) {
   output <- capture.output({
     suppressWarnings({
@@ -20,6 +23,31 @@ load_library <- function(library_name) {
   }
 }
 
+load_library("lobstr")
+# Define profiling function
+profile_function <- function(func, ...) {
+  # Record the memory size of the arguments
+  mem_args <- lobstr::obj_size(...)
+
+  # Record start time and memory
+  time_start <- proc.time()[["elapsed"]]
+  mem_start <- lobstr::mem_used()
+
+  # Evaluate the function
+  result <- func(...)
+
+  # Record end time and memory
+  time_end <- proc.time()[["elapsed"]]
+  mem_end <- lobstr::mem_used()
+
+  # Return results
+  list(result = result, 
+      mem_args = mem_args,
+      mem_diff = (mem_end - mem_start) - mem_args, 
+      duration = time_end - time_start)
+}
+
+
 # Example of usage
 load_library("dplyr")
 load_library("Biostrings")
@@ -37,7 +65,6 @@ args <- parser$parse_args()
 
 log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
 log_threshold(log_level_arg)
-log_appender(appender_console)
 args_string <- paste(sapply(names(args), function(name) {
   paste(name, ":", args[[name]])
 }), collapse = ", ")
@@ -55,15 +82,6 @@ load_library("tibble")
 load_library("ggplot2")
 load_library("Biostrings")
 load_library("magrittr")
-
-## FOR DEUBGING
-# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/48/4bb9040a0aa3b2febe32ce38f4e3bd")
-# args=list()
-# args$clusters="clusters.concatenated.collapsed.txt"
-# args$refseq_fasta="v4_reference.fasta"
-# args$parallel=TRUE
-# args$n_cores=2
-# args$amplicon_table="v4_amplicon_table.tsv"
 
 clusters=read.table(args$clusters, header=T)
 log_info("Clusters read from: {args$clusters}")
@@ -88,25 +106,31 @@ log_info("Substitution matrix initialized: match = {match}, mismatch = {mismatch
 
 #########  IMPORTANT: NON PF SEQUENCES NEED TO BE INCLUDED IN REFERENCE!
 
-# This object contains the aligned ASV sequences
-df_aln <- foreach(seq1 = 1:nrow(clusters), .combine = "bind_rows") %dopar% {
-  log_debug("Processing sequence {seq1} of {nrow(clusters)}")
-  # the alignment is performed only with the reference sequence for the corresponding locus as we have this information from the demultiplexing step
-  refseq.seq1 = ref_sequences[clusters$locus[seq1]] #commenting out next lines as I concatenated all genomes
-  aln <- pairwiseAlignment(refseq.seq1, str_remove_all(clusters$asv[seq1],"N"), substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
-  patt <- c(alignedPattern(aln), alignedSubject(aln))
-  ind <- sum(str_count(as.character(patt),"-"))
-  data.frame(
-    sampleID = clusters$sampleID[seq1],
-    asv = clusters$asv[seq1],
-    hapseq = as.character(patt)[2],
-    refseq = as.character(patt)[1],
-    refid = clusters$locus[seq1],
-    score = score(aln),
-    indels = ind
-  )
-}
+# Profile the loop that performs sequence alignment
+alignment_profiling <- profile_function(function(clusters, ref_sequences) {
+    foreach(seq1 = 1:nrow(clusters), .combine = "bind_rows") %dopar% {
+    log_debug("Processing sequence {seq1} of {nrow(clusters)}")
+    refseq.seq1 = ref_sequences[clusters$locus[seq1]]
+    aln <- pairwiseAlignment(refseq.seq1, str_remove_all(clusters$asv[seq1],"N"), substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
+    patt <- c(alignedPattern(aln), alignedSubject(aln))
+    ind <- sum(str_count(as.character(patt),"-"))
+    data.frame(
+      sampleID = clusters$sampleID[seq1],
+      asv = clusters$asv[seq1],
+      hapseq = as.character(patt)[2],
+      refseq = as.character(patt)[1],
+      refid = clusters$locus[seq1],
+      score = score(aln),
+      indels = ind
+    )
+  }
+}, clusters, ref_sequences)
 
+# Log the memory difference from the alignment profiling
+log_info("Memory used for alignment: {alignment_profiling$mem_diff}")
+
+# Extract the alignment results
+df_aln <- alignment_profiling$result
 
 write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
 log_info("Alignments written to alignments.txt")

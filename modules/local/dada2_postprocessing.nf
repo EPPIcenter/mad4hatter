@@ -17,14 +17,12 @@ process DADA2_POSTPROCESSING {
 
     script:
     def seqtab_paths = seqtab_paths.join(' ')
-    def verbose = verbose ? '--verbose' : ''
     """
     Rscript ${projectDir}/bin/dada2_postprocessing.R \
         --seqtab-paths ${seqtab_paths} \
         --amplicon-file ${amplicon_file} \
         --ncores ${task.cpus} \
         --bimera-removal-method ${bimera_removal_method} \
-        --log-level ${params.logLevel} \
-        ${verbose}
+        --log-level ${params.logLevel}
     """
 }

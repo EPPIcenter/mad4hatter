@@ -1,4 +1,7 @@
 library(logger)
+log_threshold(WARN)
+log_appender(appender_console)
+
 load_library <- function(library_name) {
   output <- capture.output({
     suppressWarnings({
@@ -20,6 +23,46 @@ load_library <- function(library_name) {
   }
 }
 
+load_library("lobstr")
+# Define profiling function
+profile_function <- function(func, ...) {
+  # Record the memory size of the arguments
+  mem_args <- lobstr::obj_size(...)
+
+  # Variable to store messages
+  messages_captured <- character(0)
+
+  # Record start time and memory
+  time_start <- proc.time()[["elapsed"]]
+  mem_start <- lobstr::mem_used()
+
+  # Evaluate the function while capturing its output and messages
+  output_captured <- capture.output({
+      withCallingHandlers({
+          result <- func(...)
+      }, message = function(m) {
+          # Capture just the content of the message
+          messages_captured <<- c(messages_captured, conditionMessage(m))
+      })
+  })
+
+  # Record end time and memory
+  time_end <- proc.time()[["elapsed"]]
+  mem_end <- lobstr::mem_used()
+
+  # Combine standard output and messages
+  all_captured <- c(output_captured, messages_captured)
+
+  # Return results including captured output and messages
+  list(
+      result = result, 
+      output = all_captured,
+      mem_args = mem_args,
+      mem_diff = (mem_end - mem_start) - mem_args, 
+      duration = time_end - time_start
+  )
+}
+
 load_library("dada2")
 load_library("tidyverse")
 load_library("argparse")
@@ -29,25 +72,50 @@ parser$add_argument('--seqtab-paths', nargs='+', type="character", required=TRUE
 parser$add_argument('--bimera-removal-method', type="character", required=TRUE, help="Method to remove bimeras")
 parser$add_argument('--amplicon-file', type="character", required=TRUE, help="Path to the amplicon file")
 parser$add_argument('--ncores', type="numeric", default=1, help="Number of threads to use")
-parser$add_argument('--verbose', action='store_true', help="Add verbosity")
 parser$add_argument('--dout', type="character", required=FALSE, help="Output directory")
 parser$add_argument('--log-level', type="character", default = "INFO", help = "Log level. Default is INFO.")
 
 args <- parser$parse_args()
 # Set up logging
-log_threshold(args$log_level)
-log_appender(appender_console)
+log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
+log_threshold(log_level_arg)
+
 args_string <- paste(sapply(names(args), function(name) {
   paste(name, ":", args[[name]])
 }), collapse = ", ")
 
 log_debug(paste("Arguments parsed successfully:", args_string))
 
-# Make a combined sequence table from sample specific sequence tables (RDS files)
-seqtab_combined <- mergeSequenceTables(tables=args$seqtab_paths)
+# Profile and capture output for mergeSequenceTables
+merge_profile <- profile_function(function(tables) {
+    mergeSequenceTables(tables=tables)
+}, args$seqtab_paths)
 
-# Remove Bimeras - TODO parameterzie method
-seqtab.nochim <- removeBimeraDenovo(seqtab_combined, method=args$bimera_removal_method, multithread=args$ncores, verbose=args$verbose)
+# Log profiling results
+log_info("mergeSequenceTables duration: {merge_profile$duration}")
+log_info("Memory change during mergeSequenceTables: {merge_profile$mem_diff}")
+log_info("Memory used by arguments to mergeSequenceTables: {merge_profile$mem_args}")
+
+# Use the result from the profiled function
+seqtab_combined <- merge_profile$result
+log_info("{length(args$seqtab_paths)} sequence tables merged.")
+
+# Profile and capture output for removeBimeraDenovo
+bimera_profile <- profile_function(function(seqtab_combined) {
+    removeBimeraDenovo(seqtab_combined, method=args$bimera_removal_method, multithread=args$ncores, verbose=TRUE)
+}, seqtab_combined)
+
+# Log profiling results
+log_info("removeBimeraDenovo duration: {bimera_profile$duration} seconds")
+log_info("Memory change during removeBimeraDenovo: {bimera_profile$mem_diff}")
+
+# Use the result from the profiled function
+seqtab.nochim <- bimera_profile$result
+
+# Log the captured output
+if(length(bimera_profile$output) > 0) {
+    log_info("Output from removeBimeraDenovo:\n{paste(bimera_profile$output, collapse = '\n')}")
+}
 
 ### Create clusters output file with quality control
 seqtab.nochim.df = as.data.frame(seqtab.nochim)

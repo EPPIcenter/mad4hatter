@@ -17,6 +17,9 @@
 ################################################################################
 
 library(logger)
+log_threshold(WARN)
+log_appender(appender_console)
+
 load_library <- function(library_name) {
   output <- capture.output({
     suppressWarnings({
@@ -36,6 +39,30 @@ load_library <- function(library_name) {
   if(length(warnings) > 0) {
     log_warn(paste("Warning from", library_name, ":", paste(warnings, collapse = "; ")))
   }
+}
+
+load_library("lobstr")
+# Define profiling function
+profile_function <- function(func, ...) {
+  # Record the memory size of the arguments
+  mem_args <- lobstr::obj_size(...)
+
+  # Record start time and memory
+  time_start <- proc.time()[["elapsed"]]
+  mem_start <- lobstr::mem_used()
+
+  # Evaluate the function
+  result <- func(...)
+
+  # Record end time and memory
+  time_end <- proc.time()[["elapsed"]]
+  mem_end <- lobstr::mem_used()
+
+  # Return results
+  list(result = result,
+      mem_args = mem_args,
+      mem_diff = (mem_end - mem_start) - mem_args,
+      duration = time_end - time_start)
 }
 
 load_library("argparse")
@@ -64,6 +91,9 @@ parser$add_argument('--maxEE_R2', type="numeric", required=TRUE, help="Maximum e
 parser$add_argument('--log-level', type="character", default = "INFO", help = "Log level. Default is INFO.")
 
 args <- parser$parse_args()
+log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
+log_threshold(log_level_arg)
+
 args_string <- paste(sapply(names(args), function(name) {
   paste(name, ":", args[[name]])
 }), collapse = ", ")
@@ -86,20 +116,26 @@ sample_names_list <- lapply(fnFs_list, function(fnFs) sapply(strsplit(basename(f
 filtFs_list <- mapply(function(op, sn) paste0(op, "/", sn, "_F_filt.fastq.gz"), output_paths, sample_names_list, SIMPLIFY = FALSE)
 filtRs_list <- mapply(function(op, sn) paste0(op, "/", sn, "_R_filt.fastq.gz"), output_paths, sample_names_list, SIMPLIFY = FALSE)
 
-# Perform Filtering and save filter metadata
-filter_metadata_list <- mapply(function(fnFs, fnRs, filtFs, filtRs) {
-  filterAndTrim(
-        fnFs, filtFs, fnRs, filtRs,
-        maxN=args$maxN, maxEE=c(args$maxEE_R1, args$maxEE_R2), truncQ=c(args$truncQ_R1, args$truncQ_R2),
-        rm.phix=args$rm_phix, compress=args$compress, multithread=args$ncores, 
-        trimRight=c(args$trimRight_R1, args$trimRight_R2), trimLeft=c(args$trimLeft_R1, args$trimLeft_R2), minLen=args$minLen, matchIDs=args$matchIDs
-    )
-}, fnFs_list, fnRs_list, filtFs_list, filtRs_list, SIMPLIFY = FALSE)
+for (i in seq_along(sample_names_list)) {
+  # Wrapper to profile mapply
+  profiling_results <- profile_function(function() {
+      mapply(function(fnFs, fnRs, filtFs, filtRs) {
+          filterAndTrim(
+              fnFs, filtFs, fnRs, filtRs,
+              maxN=args$maxN, maxEE=c(args$maxEE_R1, args$maxEE_R2), truncQ=c(args$truncQ_R1, args$truncQ_R2),
+              rm.phix=args$rm_phix, compress=args$compress, multithread=args$ncores, 
+              trimRight=c(args$trimRight_R1, args$trimRight_R2), trimLeft=c(args$trimLeft_R1, args$trimLeft_R2), minLen=args$minLen, matchIDs=args$matchIDs
+          )
+      }, fnFs_list[[i]], fnRs_list[[i]], filtFs_list[[i]], filtRs_list[[i]], SIMPLIFY = FALSE)
+  })
 
-# Save filtered data and filter metadata
-# Adjusted to save as "<sample_baseName>filter_metadata.RDS"
-mapply(function(metadata, output) {
-    output_filename <- file.path(output, sprintf("%s_filter_metadata.RDS", basename(output)))
-    saveRDS(metadata, file=output_filename)
-}, filter_metadata_list, output_paths)
+  log_info(paste("Sample [", sample_names_list[[i]][1], "] filterAndTrim duration: ", profiling_results$duration, " seconds"))
+  log_info(paste("Sample [", sample_names_list[[i]][1], "] filterAndTrim memory usage: ", profiling_results$mem_diff, " bytes"))
+
+  # Save filtered data and filter metadata for the current sample
+  output_filename <- file.path(output_paths[i], sprintf("%s_filter_metadata.RDS", sample_names_list[[i]][1]))
+  saveRDS(profiling_results$result, file=output_filename)
+}
+
+
 

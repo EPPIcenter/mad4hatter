@@ -31,9 +31,7 @@ process DADA2_PREPROCESSING {
     path("filtered_${trimmed_path.baseName}/*_filter_metadata.RDS"), emit: filter_metadata
 
     // Main script to run
-    script:
-    def verbose = params.verbose ? "--verbose" : ""
-    
+    script:  
     """
     Rscript ${projectDir}/bin/dada2_preprocessing.R \
       --trimmed-path ${trimmed_path} \
@@ -51,7 +49,6 @@ process DADA2_PREPROCESSING {
       --trimRight_R2 ${trimRight_R2} \
       --trimLeft_R2 ${trimLeft_R2} \
       --matchIDs ${matchIDs} \
-      --log-level ${params.logLevel} \
-      ${verbose}
+      --log-level ${params.logLevel}
     """
 }

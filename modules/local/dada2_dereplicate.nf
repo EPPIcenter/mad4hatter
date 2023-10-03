@@ -16,7 +16,6 @@ process DADA2_DEREPLICATE {
     path("dereps/*_R_*_dereped.RDS"), emit: dereps_R
 
     script:
-    def verbose = params.verbose ? '--verbose' : ''
     """
     Rscript ${projectDir}/bin/dada2_dereplicate.R \
         --filtFs-path ${filtFs_path} \
@@ -24,7 +23,6 @@ process DADA2_DEREPLICATE {
         --filter-metadata ${filter_metadata} \
         --dout dereps \
         --ncores ${task.cpus} \
-        --log-level ${params.logLevel} \
-        ${verbose}
+        --log-level ${params.logLevel}
     """
 }

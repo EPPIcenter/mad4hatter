@@ -1,4 +1,7 @@
 library(logger)
+log_threshold(WARN)
+log_appender(appender_console)
+
 load_library <- function(library_name) {
   output <- capture.output({
     suppressWarnings({
@@ -37,8 +40,9 @@ parser$add_argument('--log-level', type="character", default = "INFO", help = "L
 
 args <- parser$parse_args()
 # Set up logging
-log_threshold(args$log_level)
-log_appender(appender_console)
+log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
+log_threshold(log_level_arg)
+
 args_string <- paste(sapply(names(args), function(name) {
   paste(name, ":", args[[name]])
 }), collapse = ", ")

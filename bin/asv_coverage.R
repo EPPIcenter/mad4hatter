@@ -1,4 +1,7 @@
 library(logger)
+log_threshold(WARN)
+log_appender(appender_console)
+
 load_library <- function(library_name) {
   output <- capture.output({
     suppressWarnings({
@@ -39,24 +42,12 @@ args <- parser$parse_args()
 
 log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
 log_threshold(log_level_arg)
-log_appender(appender_console)
 
 args_string <- paste(sapply(names(args), function(name) {
   paste(name, ":", args[[name]])
 }), collapse = ", ")
 
 log_debug(paste("Arguments parsed successfully:", args_string))
-
-# setwd("~/Documents/GitHub/mad4hatter/work/e5/5b7adbb493c245f310327e0c87a340")
-
-# args=list()
-# args$alleledata="allele_data.txt"
-# args$clusters="clusters.concatenated.collapsed.txt"
-# args$sample_coverage="sample_coverage.txt"
-# args$amplicon_coverage="amplicon_coverage.txt"
-# args$sample_coverage_out="sample_coverage_postprocessed.txt"
-# args$amplicon_coverage_out="amplicon_coverage_postprocessed.txt"
-
 log_info("Reading allele data from {args$alleledata}")
 allele.data <- read.table(args$alleledata, header = TRUE, sep = "\t")
 
