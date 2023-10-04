@@ -10,6 +10,7 @@ from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 import numpy as np
 import json
+import logging
 
 
 def parse_pseudo_cigar(string, orientation, refseq_len):
@@ -31,27 +32,39 @@ def parse_pseudo_cigar(string, orientation, refseq_len):
     :return: List of tuples (position, operation, value)
     """
 
+    logging.debug(f"Entering `parse_pseudo_cigar` with string={string}, orientation={orientation}, refseq_len={refseq_len}")
+
     if not isinstance(string, str):
+        logging.error(f"Expected a string for `parse_pseudo_cigar` but got {type(string)}. Value: {string}")
         raise TypeError(f"Expected a string for `parse_pseudo_cigar` but got {type(string)}. Value: {string}")
 
     string = string.replace("=", "")  # Remove the "=" separator
+    logging.debug(f"Removed '=' separator. Modified string={string}")
+
     transtab = str.maketrans("TACG", "ATGC")
     tuples = []
 
     pattern = re.compile(r'(\d+)([ID\+]?)\+?(\d+|[ACGTN]+)?')
     matches = pattern.findall(string)
+    logging.debug(f"Pattern found {len(matches)} matches in the string")
+
     for match in matches:
         position, operation, value = match 
-        position = refseq_len - int(position) - 1 if orientation == "-" else int(position) - 1 # use base 0 indexing
+        position = refseq_len - int(position) if orientation == "-" else int(position) - 1 # use base 0 indexing
+        logging.debug(f"Processing match: original position={match[0]}, adjusted position={position}, operation={operation}, value={value}")
 
         # Handle mask
         if operation == "+":  
+            logging.debug("Operation is a mask. No changes applied.")
             pass # do nothing for now
         else:     
             value = value.translate(transtab) if orientation == "-" else value
             tuples.append((position, None if operation == '' else operation, value))
+            logging.debug(f"Added tuple to result: {(position, None if operation == '' else operation, value)}")
 
+    logging.debug(f"Exiting `parse_pseudo_cigar` with {len(tuples)} tuples generated")
     return tuples
+
 
 
 def calculate_aa_changes(row, ref_sequences) -> dict:
@@ -63,9 +76,11 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
     :return: row 
 	
     """
+    logging.debug(f"------ Start of `calculate_aa_changes` for row {row['amplicon']} ------")
     
     pseudo_cigar = row['pseudo_cigar']
     orientation = row['V4']
+    logging.debug(f"Processing pseudo_cigar: {pseudo_cigar}, orientation: {orientation}")
 
     if not isinstance(pseudo_cigar, str):
         raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(pseudo_cigar)}. Value: {pseudo_cigar}")
@@ -83,11 +98,14 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
     else:
         refseq_len = len(ref_sequences[row['amplicon']].seq)
         changes = parse_pseudo_cigar(pseudo_cigar, orientation, refseq_len)
+        logging.debug(f"Parsed changes: {changes}")
+
         codon = list(row['RefCodon'])
         # build the ASV codon using the reference codon and the changes listed in the cigar string
 
         # we need to eventually use the operation informatin to make informed decisions on the codon in terms of frame shifts
         for pos, op, alt in changes:
+            logging.debug(f"Processing change: pos={pos}, op={op}, alt={alt}")
 
             # ignore masks
             if op == "+":
@@ -95,23 +113,26 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
 
             # make sure that the position is within the codon
             if (pos >= row['CodonStart']) and (pos < row['CodonEnd']):
+                previous_codon = codon
                 index = pos - row['CodonStart']
-                codon[index] = alt # replace the reference base with the alternate base
-                # note: we expect substitutions in these regions
-            else: 
-                # if the position is outside of the codon, then we need to add the mutation to the new_mutations dictionary
+                codon[index] = alt
+                logging.debug(f"Changing codon position {index} to {alt}. Previous codon: {''.join(previous_codon)}, current codon: {''.join(codon)}")
+            else:
                 new_mutations[pos] = (alt, ref_sequences[row['amplicon']].seq[int(pos)-1])
-            
+                logging.debug(f"Position {pos} outside of codon. Adding to new_mutations.")
 
-        row['Codon'] = "".join(codon) # Collapse the bases into a 3 character string
-        row['AA'] = translate(row['Codon']) # Use the Bio package to translate the codon to an amino acid
+        row['Codon'] = "".join(codon)
+        row['AA'] = translate(row['Codon'])
         row['CodonRefAlt'] = 'ALT' if row['Codon'] != row['RefCodon'] else 'REF'
         row['AARefAlt'] = 'ALT' if row['AA'] != translate(row['RefCodon']) else 'REF'
+        logging.debug(f"Final codon: {row['Codon']}, Final AA: {row['AA']}")
 
 
     # Add new mutations to the row
     row['new_mutations'] = json.dumps(new_mutations)
+    logging.debug(f"New mutations added to row: {row['new_mutations']}")
     
+    logging.debug(f"------ End of `calculate_aa_changes` for row {row['amplicon']} ------")
     return row
 
 
@@ -125,6 +146,7 @@ def extract_info_from_V5(v5_string) -> tuple:
     Example: extract_info_from_V5("PF3D7_0709000-crt-73") -> ("0709000", "crt", "73")
 	
     """
+    logging.debug(f"Entering `extract_info_from_V5` with v5_string={v5_string}")
     split_string = v5_string.split('-')
     gene_id = split_string[0].split('_')[-1]
     gene = split_string[1]
@@ -133,6 +155,7 @@ def extract_info_from_V5(v5_string) -> tuple:
 
 
 def process_row(row, ref_sequences):
+    logging.debug(f"Entering `process_row` with sampleID={row['sampleID']}, pseudocigar={row['pseudo_cigar']}, reads={row['reads']}")
     gene_id, gene, codon_id = extract_info_from_V5(row['V5'])
     row['GeneID'] = gene_id
     row['Gene'] = gene
@@ -264,10 +287,24 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Process some input files.")
+    
     parser.add_argument("--allele_data_path", required=True, help="Path to allele_data.txt")
     parser.add_argument("--res_markers_info_path", required=True, help="Path to resistance marker table")
     parser.add_argument("--refseq_path", required=True, help="Path to reference sequences [fasta]")
     parser.add_argument("--n-cores", type=int, default=1, help="Number of cores to use")
+    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set the logging level")
+    parser.add_argument("--log-file", type=str, help="Write logs to a file instead of the console")
+
     args = parser.parse_args()
+
+    numeric_level = getattr(logging, args.log_level.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Invalid log level: {args.log_level}")
+
+    if args.log_file:
+        logging.basicConfig(filename=args.log_file, level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s")
+    else:
+        logging.basicConfig(level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s")
+
     main(args)
