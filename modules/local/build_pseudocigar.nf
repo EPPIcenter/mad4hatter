@@ -17,7 +17,6 @@ process BUILD_PSEUDOCIGAR {
   """
   Rscript ${projectDir}/bin/build_pseudocigar.R \
     --alignments ${alignments} \
-    --ncores ${task.cpus} \
-    --log-level ${params.logLevel}
+    --ncores ${task.cpus}
   """
 }

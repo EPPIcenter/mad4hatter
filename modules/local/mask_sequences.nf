@@ -18,7 +18,6 @@ process MASK_SEQUENCES {
   Rscript ${projectDir}/bin/mask_sequences.R \
     --masks ${masks.join(' ')} \
     --alignments ${alignments} \
-    --log-level ${params.logLevel} \
     --n-cores ${task.cpus}
 
   """

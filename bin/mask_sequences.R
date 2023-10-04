@@ -1,36 +1,12 @@
-library(logger)
-log_threshold(WARN)
-log_appender(appender_console)
-
-load_library <- function(library_name) {
-  output <- capture.output({
-    suppressWarnings({
-      library(library_name, character.only = TRUE)
-    })
-  }, type = "message")
-  
-  # Separate warnings from messages
-  warnings <- warnings()
-  
-  # Log messages
-  if(length(output) > 0) {
-    log_info(paste("Message from", library_name, ":", paste(output, collapse = "; ")))
-  }
-  
-  # Log warnings
-  if(length(warnings) > 0) {
-    log_warn(paste("Warning from", library_name, ":", paste(warnings, collapse = "; ")))
-  }
-}
 # Import necessary libraries
-load_library("argparse")
-load_library("Biostrings")
-load_library("dplyr")
-load_library("purrr")
-load_library("doMC")
-load_library("parallel")
-load_library("stringr")
-load_library("magrittr")
+library(argparse)
+library(Biostrings)
+library(dplyr)
+library(purrr)
+library(doMC)
+library(parallel)
+library(stringr)
+library(magrittr)
 
 # ---------------------------
 # DEFINE ARGUMENT PARSER
@@ -44,20 +20,12 @@ parser$add_argument("--alignments", type = "character", required = TRUE,
                     help = "RDS Clusters from DADA2. Main output from DADA module.")
 parser$add_argument("--masks", type = "character", nargs = "+")
 parser$add_argument("--parallel", action = "store_true")
-parser$add_argument("--log-level", type = "character", default = "INFO", 
-                    help = "Log level. Default is INFO.")
 parser$add_argument("--n-cores", type = "integer", default = -1, 
                     help = "Number of cores to use. Ignored if running parallel flag is unset.")
 
 # Parse the arguments
 args <- parser$parse_args()
-args_string <- paste(sapply(names(args), function(name) {
-  paste(name, ":", args[[name]])
-}), collapse = ", ")
-
-log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
-log_threshold(log_level_arg)
-log_debug(paste("Arguments parsed successfully:", args_string))
+print(args)
 
 # Read alignment data
 df_aln <- read.table(args$alignments, header = TRUE)
