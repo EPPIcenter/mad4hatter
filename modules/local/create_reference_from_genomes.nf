@@ -22,7 +22,6 @@ process CREATE_REFERENCE_FROM_GENOMES {
     --ampliconFILE ${amplicon_info} \
     --genome ${genome} \
     --output ${refseq_fasta} \
-    --ncores ${task.cpus} \
-    --log-level ${params.logLevel}
+    --ncores ${task.cpus}
   """
 }

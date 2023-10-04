@@ -1,49 +1,13 @@
-library(logger)
-log_threshold(WARN)
-log_appender(appender_console)
-
-load_library <- function(library_name) {
-  output <- capture.output({
-    suppressWarnings({
-      library(library_name, character.only = TRUE)
-    })
-  }, type = "message")
-  
-  # Separate warnings from messages
-  warnings <- warnings()
-  
-  # Log messages
-  if(length(output) > 0) {
-    log_info(paste("Message from", library_name, ":", paste(output, collapse = "; ")))
-  }
-  
-  # Log warnings
-  if(length(warnings) > 0) {
-    log_warn(paste("Warning from", library_name, ":", paste(warnings, collapse = "; ")))
-  }
-}
-
-load_library("argparse")
-load_library("dplyr")
-load_library("magrittr")
-load_library("stringr")
+library(argparse)
 
 parser <- ArgumentParser(description='Handles denoising of sequences formed by joining reads through concatenation by DADA2')
 parser$add_argument('--clusters', type="character", required=TRUE, help="RDS Clusters from DADA2. This is the main output from the DADA module.")
-parser$add_argument('--log-level', type="character", default = "INFO", help = "Log level. Default is INFO.")
 
 args <- parser$parse_args()
 
-# Set the logging threshold 
-log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
-log_threshold(log_level_arg)
-
-# Log the arguments parsed
-args_string <- paste(sapply(names(args), function(name) {
-  paste(name, ":", args[[name]])
-}), collapse = ", ")
-
-log_debug(paste("Arguments parsed successfully:", args_string))
+library(dplyr)
+library(magrittr)
+library(stringr)
 
 ## FOR DEBUGGING
 # args=list()

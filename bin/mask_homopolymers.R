@@ -1,51 +1,18 @@
-library(logger)
-log_threshold(WARN)
-log_appender(appender_console)
-
-load_library <- function(library_name) {
-  output <- capture.output({
-    suppressWarnings({
-      library(library_name, character.only = TRUE)
-    })
-  }, type = "message")
-  
-  # Separate warnings from messages
-  warnings <- warnings()
-  
-  # Log messages
-  if(length(output) > 0) {
-    log_info(paste("Message from", library_name, ":", paste(output, collapse = "; ")))
-  }
-  
-  # Log warnings
-  if(length(warnings) > 0) {
-    log_warn(paste("Warning from", library_name, ":", paste(warnings, collapse = "; ")))
-  }
-}
-
-load_library("argparse")
+library(argparse)
 
 parser <- ArgumentParser(description='Mask homopolymers in a fasta')
 parser$add_argument('--refseq-fasta', type="character", required=TRUE)
 parser$add_argument('--homopolymer_threshold', type="integer", default = 5)
 parser$add_argument('--fout', type="character", default="refseq.homopolymer.fasta.mask")
 parser$add_argument('--n-cores', type="integer", default=4)
-parser$add_argument('--log-level', type="character", default = "INFO", help = "Log level. Default is INFO.")
 
 args <- parser$parse_args()
-log_level_arg <- match.arg(args$log_level, c("DEBUG", "INFO", "WARN", "ERROR", "FATAL"))
-log_threshold(log_level_arg)
+print(args)
 
-args_string <- paste(sapply(names(args), function(name) {
-  paste(name, ":", args[[name]])
-}), collapse = ", ")
-
-log_debug(paste("Arguments parsed successfully:", args_string))
-
-load_library("BSgenome")
-load_library("Biostrings")
-load_library("BiocParallel")
-load_library("dplyr")
+library(BSgenome)
+library(Biostrings)
+library(BiocParallel)
+library(dplyr)
 
 # Define a function to process each sequence
 homomask_sequence <- function(sequence) {
