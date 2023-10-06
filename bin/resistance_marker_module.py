@@ -1,521 +1,304 @@
-suppressPackageStartupMessages(library(dplyr))
-library(optparse)
-library(tidyr)
-library(ggplot2)
-suppressPackageStartupMessages(library(gridExtra))
+#!/usr/bin/env python
+# coding: utf-8
 
-# Define and parse command-line arguments
-option_list <- list(
-  make_option(c("--allele_table"), type = "character", help = "Path to the allele table", default ="230224_M07977_0007_000000000-KJGH6_alignment2_RESULTS_v0.1.8/allele_data.txt"), #QUITAR DEFAULT Y PONER default = NULL, 
-  make_option(c("--microhaps_table"), type = "character", help = "Path to the resmarkers microhap table", default = "230224_M07977_0007_000000000-KJGH6_alignment2_RESULTS_v0.1.8/resmarker_module_FIXED/resmarker_microhap_table.txt"), #QUITAR DEFAULT Y PONER default = NULL, 
-  make_option(c("--resmarkers_table"), type = "character", help = "Path to the resmarkers table", default = "230224_M07977_0007_000000000-KJGH6_alignment2_RESULTS_v0.1.8/resmarker_module_FIXED/resmarker_table.txt"), #QUITAR DEFAULT Y PONER default = NULL, 
-  make_option(c("--CFilteringMethod"), type = "character", default = "global_max", help = "Contaminants filtering method: global_max, global_q95, amp_max, amp_q95"),
-  make_option(c("--MAF"), type = "numeric", default = 0, help = "Minimum allele frequency; default 0"),
-  make_option(c("--exclude_file"), type = "character", default = NULL, help = "Path to the file containing sampleIDs to exclude"),
-  make_option(c("--use_case_amps"), type = "character", default = NULL, help = "Path to the file amplicons of your use case"),
-  make_option(c("--outdir"), type = "character", default = "filtered_results", help = "Path to output directory")
-)
-
-opt_parser <- OptionParser(option_list = option_list)
-opt <- parse_args(opt_parser)
-
-allele_table <- opt$allele_table
-microhaps_table <- opt$microhaps_table
-CFilteringMethod <- opt$CFilteringMethod
-MAF <- opt$MAF
-exclude_file<- opt$exclude_file
-use_case_amps<- opt$use_case_amps
-resmarkers_table<- opt$resmarkers_table
-outdir<- opt$outdir
-
-# Create outdir if it doesn't already exist
-if (!file.exists(outdir)) {
-  dir.create(outdir)
-}
-
-#import allele table
-allele.data<-read.csv(allele_table, sep ="\t")
-base_filename <- basename(allele_table)
-filename <- tools::file_path_sans_ext(base_filename)
-
-amp_cats<-read.csv("resources/amplicon_categories.csv", header =T)
-
-# calculate initial read counts and allele freqs
-allele.data <- allele.data %>%
-  group_by(sampleID,locus) %>%
-  mutate(norm.reads.locus = reads/sum(reads)) %>%
-  mutate(n.alleles = n())
-
-#add categories to allele.data
-allele.data <- merge(allele.data, amp_cats[, c("locus.pool", "Category")], by.x = "locus", by.y = "locus.pool")
-
-## 0) Exclude samples based on sampleIDs provided in a text file if the 'exclude' argument is provided
-if (!is.null(exclude_file)) {
-  remove_samples <- read.csv(exclude_file, sep = "\t", header = FALSE)
-  allele.data <- subset(allele.data, !(sampleID %in% remove_samples$V1))
-} 
+import pandas as pd
+from Bio import SeqIO
+from Bio.Seq import translate
+import argparse
+import re
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+import numpy as np
+import json
+import logging
 
 
-# 1) calculate contaminants filtering thresholds from negative controls
-if (any(grepl("(?i).*Neg", allele.data$sampleID))) {
-  
-  neg_controls_index <- grepl("(?i).*Neg", allele.data$sampleID)
-  neg_controls <- allele.data[neg_controls_index, ]
-  
-  #PLOT MAX READS PER CONTROL
-  summarized_data <- neg_controls %>%
-    group_by(sampleID) %>%
-    summarize(max_reads = max(reads))
-  
-  neg_plot<-ggplot(summarized_data, aes(x = sampleID, y = max_reads)) +
-    geom_bar(stat = "identity") +
-    labs(x = "SampleID", y = "Reads") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  
-  ggsave(paste0(outdir, "/", filename, "_", "max_reads_per_neg_control.png"), neg_plot, width = 8, height = 8, dpi = 300, bg = "white")
-  
-  
-  NEG_threshold_max <- max(neg_controls$reads) # max threshold across amplicons
-  NEG_threshold_q95 <- quantile(neg_controls$reads, 0.95) # q95 threshold across amplicons
-  
-  all.loci<-unique(allele.data$locus)
-  
-  NEG_thresholds_max <- aggregate(reads ~ locus, data = neg_controls, FUN = function(x) max(x)) # max thresholds for each amplicon
-  missing_loci <- setdiff(all.loci, NEG_thresholds_max$locus)
-  missing_data <- data.frame(locus = missing_loci, reads = 0)
-  NEG_thresholds_max <- rbind(NEG_thresholds_max, missing_data)
-  
-  NEG_thresholds_q95 <- aggregate(reads ~ locus, data = neg_controls, FUN = function(x) quantile(x, probs = 0.95)) # q95 thresholds for each amplicon
-  missing_loci <- setdiff(all.loci, NEG_thresholds_q95$locus)
-  missing_data <- data.frame(locus = missing_loci, reads = 0)
-  NEG_thresholds_q95 <- rbind(NEG_thresholds_q95, missing_data)
-  
-  
-  #PLOT MAX READS PER AMPLICON
-  
-  # Order the rows in ascending order by the 'reads' column and exclude reads without contaminants
-  NEG_thresholds_max_ordered <- NEG_thresholds_max[order(NEG_thresholds_max$reads), ]
-  
-  # Assuming that you have a common column 'locus' in both dataframes
-  NEG_thresholds_max_ordered$Category <- neg_controls$Category[match(NEG_thresholds_max_ordered$locus, neg_controls$locus)]
-  NEG_thresholds_max_ordered<-NEG_thresholds_max_ordered[!is.na(NEG_thresholds_max_ordered$Category), ]
-  
-  #keep order in plot 
-  NEG_thresholds_max_ordered$locus <- factor(NEG_thresholds_max_ordered$locus, levels = NEG_thresholds_max_ordered$locus)
-  
-  # Create the ggplot with reordered levels and fill by Category
-  neg_plot_amps <- ggplot(NEG_thresholds_max_ordered, aes(x = locus, y = reads, fill = Category)) +
-    geom_bar(stat = "identity") +
-    labs(x = "Amplicon", y = "Reads in Neg controls") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 6))
-  
-  ggsave(paste0(outdir, "/", filename, "_", "max_reads_per_amplicon_in_neg_controls.png"), neg_plot_amps, width = 22, height = 10, dpi = 300, bg = "white")
-  
-} else {
-  
-  print("No negative controls found. Skipping contaminants filter.")
-  
-  neg_controls <- NULL
-  
-  NEG_threshold_max <- 0
-  NEG_threshold_q95 <- 0
-  NEG_thresholds_max <- 0
-  NEG_thresholds_q95 <- 0
-}
+def parse_pseudo_cigar(string, orientation, refseq_len):
+    """
+    Parse a pseudo CIGAR string into a list of tuples (position, operation, value)
+    The pseudo CIGAR string is a string representation of the differences between a reference sequence and a query sequence. The string 
+    is composed of a series of operations and values. The operations are "I" (insertion), "D" (deletion), and "N" (mask). Substitutions
+    are also represented in the string as '[position][snp]'. For example, you could see "3C", where "3" is the position of the base
+    and "C" is the base in the query sequence. 
+     
+    :Example:
+    '2N+45I=ACT7G' # Mask beginning at position 2 and extends 4 bases, 'ACT' insertion at position 5, 'G' substitution at position 7
+    :param string: Pseudo CIGAR string
+    :param orientation: "+" or "-"
+    :param refseq_len: Length of the reference sequence
+    :return: List of tuples (position, operation, value)
+    """
 
-#1) identify false positives
-pos_controls_before_index <- grepl("(?i)3D7", allele.data$sampleID) & !grepl("(?i)(Dd2|HB3|PM)", allele.data$sampleID)
-pos_controls_before <- allele.data[pos_controls_before_index, ]
-multiple_alleles_before<-pos_controls_before[pos_controls_before$n.alleles > 1,] # all alleles from 3D7 samples must be 1 (single copy), more than that can be considered false positives
+    logging.debug(f"Entering `parse_pseudo_cigar` with string={string}, orientation={orientation}, refseq_len={refseq_len}")
 
-false_positives_initial <- suppressWarnings({
-  multiple_alleles_before %>%
-    group_by(sampleID, locus) %>%
-    filter(norm.reads.locus != max(norm.reads.locus))}) # remove the most frequent allele of each amplicon from each sample and keep the others as false positives for filtering
+    if not isinstance(string, str):
+        logging.error(f"Expected a string for `parse_pseudo_cigar` but got {type(string)}. Value: {string}")
+        raise TypeError(f"Expected a string for `parse_pseudo_cigar` but got {type(string)}. Value: {string}")
 
-#print(paste("There were", dim(allele.data)[1]-dim(false_positives_initial)[1], "alleles and", dim(false_positives_initial)[1], "false positive alleles across", length(unique(false_positives_initial$locus)), "amplicons from", length(unique(pos_controls_before$sampleID)), "`3D7 (monoclonal, single copy)` positive controls before applying any filter"))
+    string = string.replace("=", "")  # Remove the "=" separator
+    logging.debug(f"Removed '=' separator. Modified string={string}")
 
-initial_alleles<-dim(allele.data)[1]-dim(false_positives_initial)[1]
-initial_false_positives_div<-sum(false_positives_initial$Category == "Diversity")
-initial_false_positives_res<-sum(false_positives_initial$Category == "Resistance")
-initial_false_positives_imm<-sum(false_positives_initial$Category == "Immune")
-initial_false_positives_diag<-sum(false_positives_initial$Category == "Diagnostic")
-initial_amplicons_w_false_positives<-length(unique(false_positives_initial$locus))
-initial_controls_w_false_positives<-length(unique(false_positives_initial$sampleID))
+    transtab = str.maketrans("TACG", "ATGC")
+    tuples = []
 
-initial_alleles_positive<-unique(false_positives_initial$asv)
-initial_alleles_negative<-unique(neg_controls$asv)
-initial_shared_contaminants_alleles<-length(intersect(initial_alleles_positive, initial_alleles_negative))
+    pattern = re.compile(r'(\d+)([ID\+]?)\+?(\d+|[ACGTN]+)?')
+    matches = pattern.findall(string)
+    logging.debug(f"Pattern found {len(matches)} matches in the string")
 
-initial_amps_positive<-unique(false_positives_initial$locus)
-initial_amps_negative<-unique(neg_controls$locus)
-initial_shared_contaminants_amps<-length(intersect(initial_amps_positive, initial_amps_negative))
+    for match in matches:
+        position, operation, value = match 
+        position = refseq_len - int(position) if orientation == "-" else int(position) - 1 # use base 0 indexing
+        logging.debug(f"Processing match: original position={match[0]}, adjusted position={position}, operation={operation}, value={value}")
 
+        # Handle mask
+        if operation == "+":  
+            logging.debug("Operation is a mask. No changes applied.")
+            pass # do nothing for now
+        else:     
+            value = value.translate(transtab) if orientation == "-" else value
+            tuples.append((position, None if operation == '' else operation, value))
+            logging.debug(f"Added tuple to result: {(position, None if operation == '' else operation, value)}")
 
-#### CONTAMINATS FILTER ####
-CFilteringMethod_ <- CFilteringMethod #for exports
-
-# apply contaminants filter set by user
-if (CFilteringMethod == "global_max"){
-  CFilteringMethod <- NEG_threshold_max
-  print(paste("Contaminant threshold is:", CFilteringMethod_, NEG_threshold_max))
-}else if (CFilteringMethod == "global_q95"){
-  CFilteringMethod <- NEG_threshold_q95
-  print(paste("Contaminant threshold is:", CFilteringMethod_, NEG_threshold_q95))
-}else if (CFilteringMethod == "amp_max"){
-  CFilteringMethod <- NEG_thresholds_max
-  print(paste("Contaminant threshold is:", CFilteringMethod_)); print(NEG_thresholds_max)
-}else{
-  CFilteringMethod <- NEG_thresholds_q95
-  print(paste("Contaminant threshold is:", CFilteringMethod_)); print(NEG_thresholds_q95)
-}
-
-if (is.null(CFilteringMethod)) {
-  print("No negative controls found. Skipping contaminants filter.")
-  filtered_allele.data <- allele.data
-} else {
-  if (class(CFilteringMethod) =="data.frame") {
-    allele.data_2 <- merge(allele.data, CFilteringMethod, by = "locus", suffixes = c("", ".NEG_threshold"))
-    filtered_allele.data <- allele.data[allele.data_2$reads > allele.data_2$reads.NEG_threshold, ]
-    filtered_allele.data <- filtered_allele.data[, !(names(filtered_allele.data) %in% c("norm.reads.locus", "n.alleles"))] #remove old allele freqs and counts
-  } else {
-    filtered_allele.data <- allele.data[allele.data$reads > CFilteringMethod, ]
-    filtered_allele.data <- filtered_allele.data[, !(names(filtered_allele.data) %in% c("norm.reads.locus", "n.alleles"))] #remove old allele freqs and counts
-  }
-}
-
-# recalculate allele freqs for each sample based on remaining read counts & allele counts based on remaining alleles
-filtered_allele.data <- filtered_allele.data %>%
-  group_by(sampleID,locus) %>%
-  mutate(norm.reads.locus = reads/sum(reads))%>%
-  mutate(n.alleles = n())
-
-# identify positive controls and false positive alleles from 3D7 (single copy) positive controls (step not needed)
-pos_controls_index <- grepl("(?i)3D7", filtered_allele.data$sampleID) & !grepl("(?i)(Dd2|HB3|PM)", filtered_allele.data$sampleID)
-pos_controls <- filtered_allele.data[pos_controls_index, ]
-multiple_alleles<-pos_controls[pos_controls$n.alleles > 1,] # all alleles from 3D7 samples must be 1 (single copy), more than that can be considered false positives
-
-false_positives_1 <- suppressWarnings({
-  multiple_alleles %>%
-    group_by(sampleID, locus) %>%
-    filter(norm.reads.locus != max(norm.reads.locus))}) # remove the most frequent allele of each amplicon from each sample and keep the others as false positives for filtering
-
-#print(paste("There were", dim(filtered_allele.data)[1]-dim(false_positives_1)[1], "alleles and", dim(false_positives_1)[1], "false positive alleles across", length(unique(false_positives_1$locus)), "amplicons from", length(unique(false_positives_1$sampleID)), "`3D7 (monoclonal, single copy)` positive controls after applying the contaminants filter"))
-
-contaminants_filter_alleles<-dim(filtered_allele.data)[1]-dim(false_positives_1)[1]
-contaminants_filter_false_positives_div<-sum(false_positives_1$Category == "Diversity")
-contaminants_filter_false_positives_res<-sum(false_positives_1$Category == "Resistance")
-contaminants_filter_false_positives_imm<-sum(false_positives_1$Category == "Immune")
-contaminants_filter_false_positives_diag<-sum(false_positives_1$Category == "Diagnostic")
-contaminants_filter_amplicons_w_false_positives<-length(unique(false_positives_1$locus))
-contaminants_filter_controls_w_false_positives<-length(unique(false_positives_1$sampleID))
-
-contaminants_filter_alleles_positive<-unique(false_positives_1$asv)
-contaminants_filter_alleles_negative<-unique(neg_controls$asv)
-contaminants_filter_shared_contaminants_alleles<-length(intersect(contaminants_filter_alleles_positive, contaminants_filter_alleles_negative))
-
-contaminants_filter_amps_positive<-unique(false_positives_1$locus)
-contaminants_filter_amps_negative<-unique(neg_controls$locus)
-contaminants_filter_shared_contaminants_amps<-length(intersect(contaminants_filter_amps_positive, contaminants_filter_amps_negative))
-
-
-#### MAF FILTER ####
-
-# apply MAF filter to remove potential false positives
-filtered_allele.data <- filtered_allele.data[filtered_allele.data$norm.reads.locus > MAF, ]
-filtered_allele.data <- filtered_allele.data[, !(names(filtered_allele.data) %in% c("n.alleles"))] #remove old allele counts
-
-# recalculate allele counts based on remaining alleles
-filtered_allele.data <- filtered_allele.data %>%
-  group_by(sampleID,locus) %>%
-  #   mutate(norm.reads.locus = reads/sum(reads))%>%
-  mutate(n.alleles = n())
-
-# identify positive controls and false positive alleles from 3D7 (single copy) positive controls identify false positives (step not needed)
-pos_controls_index <- grepl("(?i)3D7", filtered_allele.data$sampleID) & !grepl("(?i)(Dd2|HB3|PM)", filtered_allele.data$sampleID)
-pos_controls <- filtered_allele.data[pos_controls_index, ]
-multiple_alleles<-pos_controls[pos_controls$n.alleles > 1,] # all alleles from 3D7 samples must be 1 (single copy), more than that can be considered false positives
-
-false_positives_2 <- suppressWarnings({
-  multiple_alleles %>%
-    group_by(sampleID, locus) %>%
-    filter(norm.reads.locus != max(norm.reads.locus))}) # remove the most frequent allele of each amplicon from each sample and keep the others as false positives for filtering
-
-#print(paste("There are", dim(filtered_allele.data)[1]-dim(false_positives_2)[1], "alleles and", dim(false_positives_2)[1], "false positive alleles across", length(unique(false_positives_2$locus)), "amplicons from", length(unique(false_positives_2$sampleID)), "`3D7 (monoclonal, single copy)` positive controls after applying the contaminats and MAF filters"))
-
-frequency_filter_alleles<-dim(filtered_allele.data)[1]-dim(false_positives_2)[1]
-frequency_filter_false_positives_div<-sum(false_positives_2$Category == "Diversity")
-frequency_filter_false_positives_res<-sum(false_positives_2$Category == "Resistance")
-frequency_filter_false_positives_imm<-sum(false_positives_2$Category == "Immune")
-frequency_filter_false_positives_diag<-sum(false_positives_2$Category == "Diagnostic")
-frequency_filter_amplicons_w_false_positives<-length(unique(false_positives_2$locus))
-frequency_filter_controls_w_false_positives<-length(unique(false_positives_2$sampleID))
-
-frequency_filter_alleles_positive<-unique(false_positives_2$asv)
-frequency_filter_alleles_negative<-unique(neg_controls$asv)
-frequency_filter_shared_contaminants_alleles<-length(intersect(frequency_filter_alleles_positive, frequency_filter_alleles_negative))
-
-frequency_filter_amps_positive<-unique(false_positives_2$locus)
-frequency_filter_amps_negative<-unique(neg_controls$locus)
-frequency_filter_shared_contaminants_amps<-length(intersect(frequency_filter_amps_positive, frequency_filter_amps_negative))
-
-
-#### REPORT ####
-
-report <- data.frame(
-  initial = numeric(8),
-  contaminants_filter = numeric(8),
-  frequency_filter = numeric(8),
-  row.names = c(
-    "total_alleles",
-    "false_positive_diversity_alleles",
-    "false_positive_resistance_alleles",
-    "false_positive_diagnostic_alleles",
-    "false_positive_immunity_alleles",
-    "amplicons_w_false_positive_alleles",
-    "positive_controls_w_false_positives_alleles",
-    "shared_contaminant_alleles"
-  ),
-  check.names = FALSE
-)
-
-report$initial <- c(initial_alleles, initial_false_positives_div, initial_false_positives_res, initial_false_positives_diag, initial_false_positives_imm, initial_amplicons_w_false_positives, initial_controls_w_false_positives, initial_shared_contaminants_alleles)
-report$contaminants_filter <- c(contaminants_filter_alleles, contaminants_filter_false_positives_div, contaminants_filter_false_positives_res, contaminants_filter_false_positives_diag, contaminants_filter_false_positives_imm, contaminants_filter_amplicons_w_false_positives, contaminants_filter_controls_w_false_positives, contaminants_filter_shared_contaminants_alleles)
-report$frequency_filter <- c(frequency_filter_alleles, frequency_filter_false_positives_div, frequency_filter_false_positives_res, frequency_filter_false_positives_diag, frequency_filter_false_positives_imm, frequency_filter_amplicons_w_false_positives, frequency_filter_controls_w_false_positives, frequency_filter_shared_contaminants_alleles)
-report<-cbind(rownames(report), report)
-colnames(report)[1] <- ""
-colnames(report)[3]<-paste0("contaminants_filter_", CFilteringMethod_)
-colnames(report)[4]<-paste0("frequency_filter_", MAF)
-
-filtered_allele.data <- filtered_allele.data[, c(2, 1, 3:ncol(filtered_allele.data))]
-
-write.table(filtered_allele.data,file=paste0(outdir, "/", filename, "_", CFilteringMethod_, "_", as.character(MAF), "_filtered.csv"),quote=F,sep=",",col.names=T,row.names=F)
-
-
-## VISUALIZATION ##
-
-report_2 <- report[1:5,]
-colnames(report_2)[1]<-"alleles"
-report_2$alleles<-c("total_alleles", "diversity", "resistance", "diagnostic", "immunity")
-
-plot_data <- gather(report_2, key = "Category", value = "Value", -alleles)
-
-# Define the desired order of columns for the x-axis
-desired_order <- c(unique(plot_data$Category)[1], unique(plot_data$Category)[2], unique(plot_data$Category)[3])
-
-# Reorder the rows based on the desired order of columns
-plot_data$Category <- factor(plot_data$Category, levels = desired_order)
-
-plot_total <- ggplot(plot_data[plot_data$alleles == "total_alleles", ], aes(x = Category, y = Value, group = 1)) +
-  geom_line(linewidth = 1.5) +
-  labs(title = "",
-       x = "",
-       y = "Total Alleles") +
-  theme_minimal() +
-  scale_y_continuous(limits = c(0, max(plot_data$Value) * 1.02))+  # Set the lower limit to 0
-  theme(axis.text.x = element_text(angle = -10, hjust = 0.33))
-
-plot_rest <- ggplot(plot_data[plot_data$alleles != "total_alleles", ], aes(x = Category, y = Value, group = alleles, color = alleles)) +
-  geom_line(linewidth = 1.5) +
-  labs(title = "",
-       x = "",
-       y = "False Positive Alleles") +
-  theme_minimal()+
-  scale_y_continuous(limits = c(0, max(plot_data[plot_data$alleles != "total_alleles", ][,3]) + 1)) +
-  theme(legend.title=element_blank())+
-  theme(axis.text.x = element_text(angle = -10, hjust = 0.33))
-
-
-### MICROHAPS FILTERING ###
-if (!is.null(microhaps_table)){
-  microhaps<-read.csv(microhaps_table, sep ="\t")
-  microhaps$microhap<- paste(microhaps$Gene, microhaps$MicrohapIndex, sep = "_") #resmarker column
-  
-  ## contaminants filtering
-  if (is.null(neg_controls)) {
-    print("No negative controls found. Skipping contaminants filter for microhaps")
-    microhaps_filtered <- microhaps
-  } else {
-    if (class(CFilteringMethod) =="data.frame") {
-      amp_res_eq<-read.csv("resources/amplicons_resmarkers_equivalence.csv") 
-      
-      colnames(CFilteringMethod)[2]<-"Reads"
-      
-      CFilteringMethod_2 <- merge(CFilteringMethod, amp_res_eq[, c("resmarker", "locus")], by = "locus", all.x = TRUE) #add locus
-      CFilteringMethod_2<-CFilteringMethod_2[!is.na(CFilteringMethod_2$resmarker),] #keep resmarkers only
-      
-      CFilteringMethod_3<-CFilteringMethod_2 %>% #CFilteringMethod_3 is needed for resmarkers_table.txt filtering. EASY!
-        group_by(resmarker) %>%
-        filter(Reads == max(Reads))
-      
-      CFilteringMethod_4 <- CFilteringMethod_3 %>%
-        separate(resmarker, into = c("gene", "position"), sep = "_")
-      
-      # Loop through rows of CFilteringMethod_4 and add NEG_thresholds to each row
-      microhaps$NEG_threshold <- NA
-      
-      for (i in 1:nrow(CFilteringMethod_4)) {
-        # Check if both 'gene' and 'position' are found in 'microhap' cell
-        match_rows <- grepl(CFilteringMethod_4$gene[i], microhaps$microhap) &
-          grepl(CFilteringMethod_4$position[i], microhaps$microhap)
-        
-        # Fill 'NEG_threshold' with 'Reads' where there's a match
-        microhaps$NEG_threshold[match_rows] <- CFilteringMethod_4$Reads[i]
-      }
-      
-      microhaps_filtered <- microhaps[microhaps$Reads > microhaps$NEG_threshold, ]
-      
-    } else {
-      microhaps_filtered <- microhaps[microhaps$Reads > CFilteringMethod, ] #single threshold for all amplicons
-    }
-  }
-  
-  # calculate allele counts and allele freqs
-  microhaps_filtered <- microhaps_filtered %>%
-    group_by(SampleID,microhap) %>%
-    mutate(norm.reads.locus = Reads/sum(Reads)) %>%
-    mutate(n.alleles = n())
-  
-  #frequency filtering
-  microhaps_filtered <- microhaps_filtered[microhaps_filtered$norm.reads.locus > MAF, ]
-  microhaps_filtered <- microhaps_filtered[, !(names(microhaps_filtered) %in% c("n.alleles"))] #remove old allele counts
-  
-  # recalculate allele counts based on remaining alleles
-  microhaps_filtered <- microhaps_filtered %>%
-    group_by(SampleID,microhap) %>%
-    #   mutate(norm.reads.locus = reads/sum(reads))%>%
-    mutate(n.alleles = n())
-  
-  # EXPORT
-  base_filename2 <- basename(microhaps_table)
-  filename2 <- tools::file_path_sans_ext(base_filename2)
-  
-  microhaps_filtered <- microhaps_filtered[, !names(microhaps_filtered) %in% c("microhap", "NEG_threshold")]
-  
-  write.table(microhaps_filtered,file=paste0(outdir, "/", filename2, "_", CFilteringMethod_, "_", as.character(MAF), "_filtered.csv"),quote=F,sep=",",col.names=T,row.names=F)
-}  
-
-### RESMARKERS FILTERING ####
-if (!is.null(resmarkers_table)){
-  resmarkers<-read.csv(resmarkers_table, sep ="\t")
-  resmarkers$resmarker<- paste(resmarkers$Gene, resmarkers$CodonID, sep = "_") #resmarker column
-  
-  ## contaminants filtering
-  if (is.null(neg_controls)) {
-    print("No negative controls found. Skipping contaminants filter for resmarkers.")
-    resmarkers_filtered <- resmarkers
-  } else {
-    if (class(CFilteringMethod) =="data.frame") {
-      
-      # Loop through rows of CFilteringMethod_4 and add NEG_thresholds to each row
-      resmarkers$NEG_threshold <- NA
-      resmarkers$locus<-NA
-      
-      for (i in 1:nrow(CFilteringMethod_3)) {
-        # Check if both 'gene' and 'position' are found in 'microhap' cell
-        match_rows <- grepl(CFilteringMethod_3$resmarker[i], resmarkers$resmarker)
-        
-        # Fill 'NEG_threshold' with 'Reads' and 'locus' woth amplicon name where there's a match
-        resmarkers$NEG_threshold[match_rows] <- CFilteringMethod_3$Reads[i]
-        resmarkers$locus[match_rows] <- CFilteringMethod_3$locus[i]
-      }
-      
-      resmarkers_filtered <- resmarkers[resmarkers$Reads > resmarkers$NEG_threshold, ]
-      
-    } else {
-      resmarkers_filtered <- resmarkers[resmarkers$Reads > CFilteringMethod, ] #single threshold for all amplicons
-      
-      #add locus column
-      amp_res_eq<-read.csv("resources/amplicons_resmarkers_equivalence.csv") 
-      resmarkers_filtered<-merge(resmarkers_filtered, amp_res_eq, by = "resmarker", all.x = TRUE)
-      
-    }
-  }
-  
-  #add locus column
-#  amp_res_eq<-read.csv("resources/amplicons_resmarkers_equivalence.csv") 
-#  resmarkers_filtered<-merge(resmarkers_filtered, amp_res_eq, by = "resmarker", all.x = TRUE)  
-  
-  # calculate allele counts and allele freqs
-  resmarkers_filtered <- resmarkers_filtered %>%
-    group_by(SampleID, locus, resmarker) %>%
-    mutate(norm.reads.locus = Reads/sum(Reads)) %>%
-    mutate(n.alleles = n())
-  
-  #frequency filtering
-  resmarkers_filtered <- resmarkers_filtered[resmarkers_filtered$norm.reads.locus > MAF, ]
-  resmarkers_filtered <- resmarkers_filtered[, !(names(resmarkers_filtered) %in% c("n.alleles"))] #remove old allele counts
-  
-  # recalculate allele counts based on remaining alleles
-  resmarkers_filtered <- resmarkers_filtered %>%
-    group_by(SampleID,locus, resmarker) %>%
-    #   mutate(norm.reads.locus = reads/sum(reads))%>%
-    mutate(n.alleles = n())
-  
-  # EXPORT
-  base_filename3 <- basename(resmarkers_table)
-  filename3 <- tools::file_path_sans_ext(base_filename3)
-  
-  resmarkers_filtered <- resmarkers_filtered[, !names(resmarkers_filtered) %in% c("microhap", "NEG_threshold")]
-  
-  write.table(resmarkers_filtered,file=paste0(outdir, "/", filename3, "_", CFilteringMethod_, "_", as.character(MAF), "_filtered.csv"),quote=F,sep=",",col.names=T,row.names=F)
-}
+    logging.debug(f"Exiting `parse_pseudo_cigar` with {len(tuples)} tuples generated")
+    return tuples
 
 
 
-### Specific use case report Are there amplicons from use_case on false_positives_initial, false_positives_1, false_positives_2?
+def calculate_aa_changes(row, ref_sequences) -> dict:
+    """
+    Uses the pseudo cigar string to determine if the codon and/or amino acid matches the reference
+    :param row: The currently processed row of the merged allele_data + resistance marker table
+    :param ref_sequences: A dictionary of reference sequences
+    :return: row 
+	
+    """
+    logging.debug(f"------ Start of `calculate_aa_changes` for row {row['amplicon']} ------")
 
-if (!is.null(use_case_amps)){
-  uc_amps <- read.csv(use_case_amps)
-  
-  use_case_false_positives_initial <- sum(uc_amps$locus.pool %in% false_positives_initial$SampleID)
-  use_case_false_positives_1 <- sum(uc_amps$locus.pool %in% false_positives_1$SampleID)
-  use_case_false_positives_2 <- sum(uc_amps$locus.pool %in% false_positives_2$SampleID)
-  
-  use_case_row<-c("false_positives_use_case_amplicons", use_case_false_positives_initial, use_case_false_positives_1, use_case_false_positives_2)
-  use_case_report <- rbind(report, use_case_row)
-  rownames(use_case_report)[9]<-"false_positives_use_case_amplicons"
-  
-  #report with use case
-  write.table(use_case_report,file=paste0(outdir, "/", filename, "_", CFilteringMethod_, "_", as.character(MAF), "_filter_USE_CASE_report.csv"),quote=F,sep=",",col.names=T,row.names=F)
-  
-  use_case_report_2 <- use_case_report[9,]
-  colnames(use_case_report_2)[1]<-"amps"
-  use_case_report_2$amps<-c("use_case_amps")
-  
-  plot_data_2 <- gather(use_case_report_2, key = "Category", value = "Value", -amps)
-  
-  # Define the desired order of columns for the x-axis
-  desired_order <- c(unique(plot_data_2$Category)[1], unique(plot_data_2$Category)[2], unique(plot_data_2$Category)[3])
-  
-  # Reorder the rows based on the desired order of columns
-  plot_data_2$Category <- factor(plot_data_2$Category, levels = desired_order)
-  plot_data_2<-plot_data_2[-4,]
-  
-  plot_use_case <- ggplot(plot_data_2, aes(x = Category, y = as.numeric(Value), group = amps, color = amps)) +
-    geom_line(linewidth = 1.5) +
-    labs(title = "",
-         x = "",
-         y = "False Positive Amplicons") +
-    theme_minimal()+
-    scale_y_continuous(limits = c(0, max(as.numeric(plot_data_2[,3])) + 1)) +
-    theme(legend.title=element_blank())+
-    theme(axis.text.x = element_text(angle = -10, hjust = 0.33))
-  
-  #plot with use case
-  fig<-grid.arrange(plot_total, plot_rest, plot_use_case, ncol = 3)
-  ggsave(paste0(outdir, "/", filename, "_", CFilteringMethod_, "_", as.character(MAF), "_filter_USE_CASE_report.png"), fig, width = 21, height = 10.5, dpi = 300)
-  
-}else{
-  
-  #### EXPORTS WITHOUT USE CASE####
-  
-  #report
-  write.table(report,file=paste0(outdir, "/", filename, "_", CFilteringMethod_, "_", as.character(MAF), "_filter_report.csv"),quote=F,sep=",",col.names=T,row.names=F)
-  
-  #plot
-  fig<-grid.arrange(plot_total, plot_rest, ncol = 2)
-  ggsave(paste0(outdir, "/", filename, "_", CFilteringMethod_, "_", as.character(MAF), "_filter_report.png"), fig, width = 14, height = 7, dpi = 300)
-}
+    pseudo_cigar = row['pseudo_cigar']
+    orientation = row['V4']
+    logging.debug(f"Processing pseudo_cigar: {pseudo_cigar}, orientation: {orientation}")
+
+    if not isinstance(pseudo_cigar, str):
+        raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(pseudo_cigar)}. Value: {pseudo_cigar}")
+
+    if not isinstance(orientation, str):
+        raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(orientation)}. Value: {orientation}")
+
+    new_mutations = {}
+
+    if pseudo_cigar == ".":
+        row['Codon'] = row['RefCodon']
+        row['AA'] = translate(row['Codon'])
+        row['CodonRefAlt'] = 'REF'
+        row['AARefAlt'] = 'REF'
+    else:
+        refseq_len = len(ref_sequences[row['amplicon']].seq)
+        changes = parse_pseudo_cigar(pseudo_cigar, orientation, refseq_len)
+        logging.debug(f"Parsed changes: {changes}")
+
+        codon = list(row['RefCodon'])
+        # build the ASV codon using the reference codon and the changes listed in the cigar string
+
+        # we need to eventually use the operation informatin to make informed decisions on the codon in terms of frame shifts
+        for pos, op, alt in changes:
+            logging.debug(f"Processing change: pos={pos}, op={op}, alt={alt}")
+
+            # ignore masks
+            if op == "+":
+                continue
+
+            # make sure that the position is within the codon
+            if (pos >= row['CodonStart']) and (pos < row['CodonEnd']):
+                previous_codon = codon
+                index = pos - row['CodonStart']
+                codon[index] = alt
+                logging.debug(f"Changing codon position {index} to {alt}. Previous codon: {''.join(previous_codon)}, current codon: {''.join(codon)}")
+            else:
+                new_mutations[pos] = (alt, ref_sequences[row['amplicon']].seq[int(pos)-1])
+                logging.debug(f"Position {pos} outside of codon. Adding to new_mutations.")
+
+        row['Codon'] = "".join(codon)
+        row['AA'] = translate(row['Codon'])
+        row['CodonRefAlt'] = 'ALT' if row['Codon'] != row['RefCodon'] else 'REF'
+        row['AARefAlt'] = 'ALT' if row['AA'] != translate(row['RefCodon']) else 'REF'
+        logging.debug(f"Final codon: {row['Codon']}, Final AA: {row['AA']}")
+
+
+    # Add new mutations to the row
+    row['new_mutations'] = json.dumps(new_mutations)
+    logging.debug(f"New mutations added to row: {row['new_mutations']}")
+
+    logging.debug(f"------ End of `calculate_aa_changes` for row {row['amplicon']} ------")
+    return row
+
+
+def extract_info_from_V5(v5_string) -> tuple:
+    """
+    Extracts information from the V5 column of the resistance marker table
+    :param v5_string: the V5 string found in the resistance marker table
+    :return: (gene_id, gene, codon_id) 
+    Example: extract_info_from_V5("PF3D7_0709000-crt-73") -> ("0709000", "crt", "73")
+	
+    """
+    logging.debug(f"Entering `extract_info_from_V5` with v5_string={v5_string}")
+    split_string = v5_string.split('-')
+    gene_id = split_string[0].split('_')[-1]
+    gene = split_string[1]
+    codon_id = split_string[-1]
+    return gene_id, gene, codon_id
+
+
+def process_row(row, ref_sequences):
+    logging.debug(f"Entering `process_row` with sampleID={row['sampleID']}, pseudocigar={row['pseudo_cigar']}, reads={row['reads']}")
+    gene_id, gene, codon_id = extract_info_from_V5(row['V5'])
+    row['GeneID'] = gene_id
+    row['Gene'] = gene
+    row['CodonID'] = codon_id
+
+    # Get codon and translate
+    if row['V4'] == '-':
+        refseq_len = len(ref_sequences[row['amplicon']].seq)
+        refseq_rc = ref_sequences[row['amplicon']].seq.reverse_complement()
+        CodonStart = refseq_len - (row['CodonStart']) - 2 # 0-based indexing
+        codon_end = refseq_len - (row['CodonStart']) + 1
+
+        row['CodonStart'] = CodonStart
+        row['CodonEnd'] = codon_end
+
+        ref_codon = str(refseq_rc[row['CodonStart'] : row['CodonEnd']])
+        row['RefCodon'] = ref_codon
+        row['RefAA'] = translate(ref_codon)
+    else:
+        CodonStart = row['CodonStart']-1
+        codon_end = row['CodonStart']+2
+
+        row['CodonStart'] = CodonStart
+        row['CodonEnd'] = codon_end
+        ref_codon = str(ref_sequences[row['amplicon']].seq[row['CodonStart'] : row['CodonEnd']])
+        row['RefCodon'] = ref_codon
+        row['RefAA'] = translate(ref_codon)
+
+    return calculate_aa_changes(row, ref_sequences)
+
+
+def main(args):
+    allele_data = pd.read_csv(args.allele_data_path, sep='\t')
+    res_markers_info = pd.read_csv(args.res_markers_info_path, sep='\t')
+    res_markers_info = res_markers_info.rename(columns={'codon_start': 'CodonStart'})
+
+
+    # Keep the data that we are interested in
+    res_markers_info = res_markers_info[(res_markers_info['CodonStart'] > 0) & (res_markers_info['CodonStart'] < res_markers_info['ampInsert_length'])]
+
+    # Filter allele data to only include drug resistance amplicons
+    allele_data = allele_data[allele_data['locus'].str.endswith(('-1B', '-2'))]
+
+    # Join the allele table and resistance marker table on the locus
+    allele_data = res_markers_info.set_index('amplicon').join(allele_data.set_index('locus'), how='left').reset_index()
+
+    # Filter any rows that have `NaN` in the sampleID column 
+    allele_data = allele_data.dropna(subset=['pseudo_cigar'])
+
+    # Ensure reads is integer
+    allele_data['reads'] = allele_data['reads'].astype(int)
+
+    # Read in the reference sequences - this will be used for the reference codons
+    ref_sequences = SeqIO.to_dict(SeqIO.parse(args.refseq_path, 'fasta'))
+
+    # Create function to run on all rows of the joined allele data + resistance marker table.
+    process_row_partial = partial(process_row, ref_sequences=ref_sequences)
+
+    # Run in parallel
+    with ProcessPoolExecutor(max_workers=args.n_cores) as executor:
+        results = list(executor.map(process_row_partial, [row for _, row in allele_data.iterrows()]))
+
+    # Create a table that identifies whether there are dna and/or codon difference in the ASVs
+    # at the positions specified in the resistance marker table
+    df_results = pd.DataFrame(results)
+    df_results = df_results.rename(columns={'reads': 'Reads', 'sampleID': 'SampleID', "pseudo_cigar": "PseudoCIGAR"})
+
+    df_results = df_results.sort_values(['CodonID', 'Gene', 'SampleID'] ,ascending=[False, False, False])
+    df_results = df_results[['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'amplicon', 'PseudoCIGAR', 'new_mutations']]
+    df_resmarker = df_results.drop(['amplicon', 'PseudoCIGAR', 'new_mutations'], axis=1)
+
+    # Summarize reads
+    df_resmarker = df_resmarker.groupby(['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']).agg({
+        'Reads': 'sum'
+    }).reset_index()
+
+    # Output resmarker table
+    df_resmarker.to_csv('resmarker_table.txt', sep='\t', index=False)
+
+
+    # Group data and create microhaplotypes
+    df_microhap = df_results.groupby(['SampleID', 'GeneID', 'Gene', 'PseudoCIGAR', 'Reads']).apply(
+        lambda x: pd.Series({
+            'MicrohapIndex': '/'.join(map(str, x['CodonID'].sort_values())),
+            'Microhaplotype': '/'.join(x.set_index('CodonID').loc[x['CodonID'].sort_values()]['AA']),
+            'RefMicrohap': '/'.join(x.set_index('CodonID').loc[x['CodonID'].sort_values()]['RefAA']),
+        })
+    ).reset_index()
+
+    # Create MicrohapRefAlt column
+    df_microhap['MicrohapRefAlt'] = np.where(df_microhap['Microhaplotype'] == df_microhap['RefMicrohap'], 'REF', 'ALT')
+
+    # Select columns and rename them
+    df_microhap = df_microhap[['SampleID', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt', 'Reads']]
+
+    # Summarize reads
+    df_microhap_collapsed = df_microhap.groupby(['SampleID', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt']).agg({
+        'Reads': 'sum'
+    }).reset_index()
+
+    # Sort by MicrohapIndex, Gene, and SampleID
+    df_microhap_collapsed = df_microhap_collapsed.sort_values(['MicrohapIndex', 'Gene', 'SampleID'], ascending=[False, False, False])
+
+    # Output microhaplotype table
+    df_microhap_collapsed.to_csv('resmarker_microhap_table.txt', sep='\t', index=False)
+
+    # Create New Mutations table (could parellize)
+    mutation_list = []
+    for _, row in df_results.iterrows():
+        new_mutations = json.loads(row['new_mutations'])
+        if len(new_mutations) > 0:
+            for pos, (alt, ref) in new_mutations.items():
+                new_row = {
+                    'SampleID': row['SampleID'],
+                    'GeneID': row['GeneID'],
+                    'Gene': row['Gene'],
+                    'CodonID': row['CodonID'],
+                    'Position': pos,
+                    'Alt': alt,
+                    'Ref': ref,
+                    'Reads': row['Reads']
+                }
+                # Append the new row to the new_rows list
+                mutation_list.append(new_row)
+
+    # Create a new DataFrame from the new_rows list
+    df_new_mutations = pd.DataFrame(mutation_list) 
+    df_new_mutations.to_csv('resmarker_new_mutations.txt', sep='\t', index=False)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process some input files.")
+
+    parser.add_argument("--allele_data_path", required=True, help="Path to allele_data.txt")
+    parser.add_argument("--res_markers_info_path", required=True, help="Path to resistance marker table")
+    parser.add_argument("--refseq_path", required=True, help="Path to reference sequences [fasta]")
+    parser.add_argument("--n-cores", type=int, default=1, help="Number of cores to use")
+    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set the logging level")
+    parser.add_argument("--log-file", type=str, help="Write logs to a file instead of the console")
+
+    args = parser.parse_args()
+
+    numeric_level = getattr(logging, args.log_level.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError(f"Invalid log level: {args.log_level}")
+
+    if args.log_file:
+        logging.basicConfig(filename=args.log_file, level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s")
+    else:
+        logging.basicConfig(level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s")
+
+    main(args)
