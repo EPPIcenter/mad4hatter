@@ -72,28 +72,28 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
     :return: row 
 	
     """
-    logging.debug(f"------ Start of `calculate_aa_changes` for row {row['amplicon']} ------")
-
-    pseudo_cigar = row['pseudo_cigar']
+    logging.debug(f"------ Start of `calculate_aa_changes` for row {row['Locus']} ------")
+    
+    PseudoCIGAR = row['PseudoCIGAR']
     orientation = row['V4']
-    logging.debug(f"Processing pseudo_cigar: {pseudo_cigar}, orientation: {orientation}")
+    logging.debug(f"Processing PseudoCIGAR: {PseudoCIGAR}, orientation: {orientation}")
 
-    if not isinstance(pseudo_cigar, str):
-        raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(pseudo_cigar)}. Value: {pseudo_cigar}")
+    if not isinstance(PseudoCIGAR, str):
+        raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(PseudoCIGAR)}. Value: {PseudoCIGAR}")
 
     if not isinstance(orientation, str):
         raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(orientation)}. Value: {orientation}")
 
     new_mutations = {}
 
-    if pseudo_cigar == ".":
+    if PseudoCIGAR == ".":
         row['Codon'] = row['RefCodon']
         row['AA'] = translate(row['Codon'])
         row['CodonRefAlt'] = 'REF'
         row['AARefAlt'] = 'REF'
     else:
-        refseq_len = len(ref_sequences[row['amplicon']].seq)
-        changes = parse_pseudo_cigar(pseudo_cigar, orientation, refseq_len)
+        refseq_len = len(ref_sequences[row['Locus']].seq)
+        changes = parse_pseudo_cigar(PseudoCIGAR, orientation, refseq_len)
         logging.debug(f"Parsed changes: {changes}")
 
         codon = list(row['RefCodon'])
@@ -114,7 +114,7 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
                 codon[index] = alt
                 logging.debug(f"Changing codon position {index} to {alt}. Previous codon: {''.join(previous_codon)}, current codon: {''.join(codon)}")
             else:
-                new_mutations[pos] = (alt, ref_sequences[row['amplicon']].seq[int(pos)-1])
+                new_mutations[pos] = (alt, ref_sequences[row['Locus']].seq[int(pos)-1])
                 logging.debug(f"Position {pos} outside of codon. Adding to new_mutations.")
 
         row['Codon'] = "".join(codon)
@@ -127,8 +127,8 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
     # Add new mutations to the row
     row['new_mutations'] = json.dumps(new_mutations)
     logging.debug(f"New mutations added to row: {row['new_mutations']}")
-
-    logging.debug(f"------ End of `calculate_aa_changes` for row {row['amplicon']} ------")
+    
+    logging.debug(f"------ End of `calculate_aa_changes` for row {row['Locus']} ------")
     return row
 
 
@@ -149,7 +149,7 @@ def extract_info_from_V5(v5_string) -> tuple:
 
 
 def process_row(row, ref_sequences):
-    logging.debug(f"Entering `process_row` with sampleID={row['sampleID']}, pseudocigar={row['pseudo_cigar']}, reads={row['reads']}")
+    logging.debug(f"Entering `process_row` with SampleID={row['SampleID']}, pseudocigar={row['PseudoCIGAR']}, Reads={row['Reads']}")
     gene_id, gene, codon_id = extract_info_from_V5(row['V5'])
     row['GeneID'] = gene_id
     row['Gene'] = gene
@@ -157,8 +157,8 @@ def process_row(row, ref_sequences):
 
     # Get codon and translate
     if row['V4'] == '-':
-        refseq_len = len(ref_sequences[row['amplicon']].seq)
-        refseq_rc = ref_sequences[row['amplicon']].seq.reverse_complement()
+        refseq_len = len(ref_sequences[row['Locus']].seq)
+        refseq_rc = ref_sequences[row['Locus']].seq.reverse_complement()
         CodonStart = refseq_len - (row['CodonStart']) - 2 # 0-based indexing
         codon_end = refseq_len - (row['CodonStart']) + 1
 
@@ -174,7 +174,7 @@ def process_row(row, ref_sequences):
 
         row['CodonStart'] = CodonStart
         row['CodonEnd'] = codon_end
-        ref_codon = str(ref_sequences[row['amplicon']].seq[row['CodonStart'] : row['CodonEnd']])
+        ref_codon = str(ref_sequences[row['Locus']].seq[row['CodonStart'] : row['CodonEnd']])
         row['RefCodon'] = ref_codon
         row['RefAA'] = translate(ref_codon)
 
@@ -184,23 +184,23 @@ def process_row(row, ref_sequences):
 def main(args):
     allele_data = pd.read_csv(args.allele_data_path, sep='\t')
     res_markers_info = pd.read_csv(args.res_markers_info_path, sep='\t')
-    res_markers_info = res_markers_info.rename(columns={'codon_start': 'CodonStart'})
+    res_markers_info = res_markers_info.rename(columns={'codon_start': 'CodonStart', 'amplicon': 'Locus'})
 
 
     # Keep the data that we are interested in
     res_markers_info = res_markers_info[(res_markers_info['CodonStart'] > 0) & (res_markers_info['CodonStart'] < res_markers_info['ampInsert_length'])]
 
     # Filter allele data to only include drug resistance amplicons
-    allele_data = allele_data[allele_data['locus'].str.endswith(('-1B', '-2'))]
+    allele_data = allele_data[allele_data['Locus'].str.endswith(('-1B', '-2'))]
 
-    # Join the allele table and resistance marker table on the locus
-    allele_data = res_markers_info.set_index('amplicon').join(allele_data.set_index('locus'), how='left').reset_index()
+    # Join the allele table and resistance marker table on the Locus
+    allele_data = res_markers_info.set_index('Locus').join(allele_data.set_index('Locus'), how='left').reset_index()
 
-    # Filter any rows that have `NaN` in the sampleID column 
-    allele_data = allele_data.dropna(subset=['pseudo_cigar'])
+    # Filter any rows that have `NaN` in the SampleID column 
+    allele_data = allele_data.dropna(subset=['PseudoCIGAR'])
 
     # Ensure reads is integer
-    allele_data['reads'] = allele_data['reads'].astype(int)
+    allele_data['Reads'] = allele_data['Reads'].astype(int)
 
     # Read in the reference sequences - this will be used for the reference codons
     ref_sequences = SeqIO.to_dict(SeqIO.parse(args.refseq_path, 'fasta'))
@@ -218,8 +218,8 @@ def main(args):
     df_results = df_results.rename(columns={'reads': 'Reads', 'sampleID': 'SampleID', "pseudo_cigar": "PseudoCIGAR"})
 
     df_results = df_results.sort_values(['CodonID', 'Gene', 'SampleID'] ,ascending=[False, False, False])
-    df_results = df_results[['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'amplicon', 'PseudoCIGAR', 'new_mutations']]
-    df_resmarker = df_results.drop(['amplicon', 'PseudoCIGAR', 'new_mutations'], axis=1)
+    df_results = df_results[['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'Locus', 'PseudoCIGAR', 'new_mutations']]
+    df_resmarker = df_results.drop(['Locus', 'PseudoCIGAR', 'new_mutations'], axis=1)
 
     # Summarize reads
     df_resmarker = df_resmarker.groupby(['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']).agg({

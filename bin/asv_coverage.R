@@ -41,19 +41,19 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
       ungroup()  %>%
       select(sampleID,reads) %>%
       group_by(sampleID) %>%
-      summarise(OutputDada2 = sum(reads)), by = c("SampleID" = "sampleID")
+      summarise(OutputDada2 = sum(reads)), by = c("SampleID"="sampleID")
     )  %>%
     left_join(allele.data  %>%
       ungroup()  %>%
-      select(sampleID,reads) %>%
-      group_by(sampleID) %>%
-      summarise(OutputPostprocessing = sum(reads)), by = c("SampleID" = "sampleID")
+      select(SampleID,Reads) %>%
+      group_by(SampleID) %>%
+      summarise(OutputPostprocessing = sum(Reads)), by = c("SampleID")
     )  %>%
     mutate(across(everything(), as.character)) %>%    
     pivot_longer(cols = c(Input, `No Dimers`, Amplicons, OutputDada2, OutputPostprocessing))
 
   qc.postproc %<>% dplyr::rename("Stage" = "name", "Reads" = "value")
-
+  qc.postproc$Reads[is.na(qc.postproc$Reads)] <- 0
 
   write.table(qc.postproc, quote=F,sep='\t',col.names = TRUE, row.names = F, file = args$sample_coverage_out)
 }
@@ -70,9 +70,9 @@ if (!is.null(args$amplicon_coverage) && file.exists(args$amplicon_coverage)) {
       by = c("SampleID" = "sampleID", "Locus" = "locus"),
       ) %>%
     left_join(allele.data %>%
-      group_by(sampleID,locus) %>%
-      summarise(OutputPostprocessing = sum(reads)),
-          by = c("SampleID" = "sampleID", "Locus" = "locus"))
+      group_by(SampleID,Locus) %>%
+      summarise(OutputPostprocessing = sum(Reads)),
+          by = c("SampleID", "Locus"))
    qc.postproc$OutputDada2[is.na(qc.postproc$OutputDada2)] <- 0
    qc.postproc$OutputPostprocessing[is.na(qc.postproc$OutputPostprocessing)] <- 0
 

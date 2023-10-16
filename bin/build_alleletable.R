@@ -22,6 +22,14 @@ allele.table = df.denoised %>%
   group_by(sampleID, locus, asv) %>%
   mutate(reads=sum(reads)) %>%
   arrange(locus) %>%
+  dplyr::rename(
+    SampleID = sampleID,
+    Locus = locus,
+    ASV = asv,
+    Reads = reads,
+    Allele = allele,
+    PseudoCIGAR = pseudo_cigar
+  ) %>%
   distinct()
 
 write.table(allele.table,file="allele_data.txt",quote=F,sep="\t",col.names=T,row.names=F)
