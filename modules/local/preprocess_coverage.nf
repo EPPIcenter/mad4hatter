@@ -15,7 +15,7 @@ process PREPROCESS_COVERAGE {
     awk -v fname=\$(basename "\$1" | sed -e 's/.SAMPLEsummary.txt//g' -e 's/.AMPLICONsummary.txt//g') -v OFS="\\t" '{print fname, \$0}' "\$1"
   }
   
-  echo -e "SampleID\\tX\\tReads" > sample_coverage.txt
+  echo -e "SampleID\\tStage\\tReads" > sample_coverage.txt
   echo -e "SampleID\\tLocus\\tReads" > amplicon_coverage.txt
 
   for file in \$(ls $sample_coverages)

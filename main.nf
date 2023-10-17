@@ -50,7 +50,9 @@ workflow {
     // create a quality report with the raw data
     QUALITY_CONTROL(
       DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
-      DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch
+      DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
+      null,
+      null
     )
 
     // exit here
