@@ -75,7 +75,7 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
     logging.debug(f"------ Start of `calculate_aa_changes` for row {row['Locus']} ------")
     
     PseudoCIGAR = row['PseudoCIGAR']
-    orientation = row['V4']
+    orientation = row['strand']
     logging.debug(f"Processing PseudoCIGAR: {PseudoCIGAR}, orientation: {orientation}")
 
     if not isinstance(PseudoCIGAR, str):
@@ -134,8 +134,8 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
 
 def extract_info_from_V5(v5_string) -> tuple:
     """
-    Extracts information from the V5 column of the resistance marker table
-    :param v5_string: the V5 string found in the resistance marker table
+    Extracts information from the gene_id column of the resistance marker table
+    :param v5_string: the gene_id string found in the resistance marker table
     :return: (gene_id, gene, codon_id) 
     Example: extract_info_from_V5("PF3D7_0709000-crt-73") -> ("0709000", "crt", "73")
 	
@@ -150,13 +150,13 @@ def extract_info_from_V5(v5_string) -> tuple:
 
 def process_row(row, ref_sequences):
     logging.debug(f"Entering `process_row` with SampleID={row['SampleID']}, pseudocigar={row['PseudoCIGAR']}, Reads={row['Reads']}")
-    gene_id, gene, codon_id = extract_info_from_V5(row['V5'])
+    gene_id, gene, codon_id = extract_info_from_V5(row['gene_id'])
     row['GeneID'] = gene_id
     row['Gene'] = gene
     row['CodonID'] = codon_id
 
     # Get codon and translate
-    if row['V4'] == '-':
+    if row['strand'] == '-':
         refseq_len = len(ref_sequences[row['Locus']].seq)
         refseq_rc = ref_sequences[row['Locus']].seq.reverse_complement()
         CodonStart = refseq_len - (row['CodonStart']) - 2 # 0-based indexing

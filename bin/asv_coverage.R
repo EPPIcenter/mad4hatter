@@ -34,7 +34,7 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
   sample.coverage = read.table(args$sample_coverage, header = TRUE, sep = "\t")
   print(str(sample.coverage))
   sample.coverage <- sample.coverage %>%
-    pivot_wider(names_from = "X", values_from = "Reads")
+    pivot_wider(names_from = "Stage", values_from = "Reads")
 
   qc.postproc <- sample.coverage %>%
     left_join(clusters  %>%
