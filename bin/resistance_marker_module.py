@@ -6,11 +6,12 @@ from Bio import SeqIO
 from Bio.Seq import translate
 import argparse
 import re
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
 import numpy as np
 import json
 import logging
+from logging.handlers import RotatingFileHandler
 
 
 def parse_pseudo_cigar(string, orientation, refseq_len):
@@ -72,28 +73,28 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
     :return: row 
 	
     """
-    logging.debug(f"------ Start of `calculate_aa_changes` for row {row['amplicon']} ------")
+    logging.debug(f"------ Start of `calculate_aa_changes` for row {row['Locus']} ------")
+    
+    PseudoCIGAR = row['PseudoCIGAR']
+    orientation = row['strand']
+    logging.debug(f"Processing PseudoCIGAR: {PseudoCIGAR}, orientation: {orientation}")
 
-    pseudo_cigar = row['pseudo_cigar']
-    orientation = row['V4']
-    logging.debug(f"Processing pseudo_cigar: {pseudo_cigar}, orientation: {orientation}")
-
-    if not isinstance(pseudo_cigar, str):
-        raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(pseudo_cigar)}. Value: {pseudo_cigar}")
+    if not isinstance(PseudoCIGAR, str):
+        raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(PseudoCIGAR)}. Value: {PseudoCIGAR}")
 
     if not isinstance(orientation, str):
         raise TypeError(f"Expected a string for `calculate_aa_changes` but got {type(orientation)}. Value: {orientation}")
 
     new_mutations = {}
 
-    if pseudo_cigar == ".":
+    if PseudoCIGAR == ".":
         row['Codon'] = row['RefCodon']
         row['AA'] = translate(row['Codon'])
         row['CodonRefAlt'] = 'REF'
         row['AARefAlt'] = 'REF'
     else:
-        refseq_len = len(ref_sequences[row['amplicon']].seq)
-        changes = parse_pseudo_cigar(pseudo_cigar, orientation, refseq_len)
+        refseq_len = len(ref_sequences[row['Locus']].seq)
+        changes = parse_pseudo_cigar(PseudoCIGAR, orientation, refseq_len)
         logging.debug(f"Parsed changes: {changes}")
 
         codon = list(row['RefCodon'])
@@ -114,7 +115,7 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
                 codon[index] = alt
                 logging.debug(f"Changing codon position {index} to {alt}. Previous codon: {''.join(previous_codon)}, current codon: {''.join(codon)}")
             else:
-                new_mutations[pos] = (alt, ref_sequences[row['amplicon']].seq[int(pos)-1])
+                new_mutations[pos] = (alt, ref_sequences[row['Locus']].seq[int(pos)-1])
                 logging.debug(f"Position {pos} outside of codon. Adding to new_mutations.")
 
         row['Codon'] = "".join(codon)
@@ -127,15 +128,15 @@ def calculate_aa_changes(row, ref_sequences) -> dict:
     # Add new mutations to the row
     row['new_mutations'] = json.dumps(new_mutations)
     logging.debug(f"New mutations added to row: {row['new_mutations']}")
-
-    logging.debug(f"------ End of `calculate_aa_changes` for row {row['amplicon']} ------")
+    
+    logging.debug(f"------ End of `calculate_aa_changes` for row {row['Locus']} ------")
     return row
 
 
-def extract_info_from_V5(v5_string) -> tuple:
+def extract_info_from_gene_id(v5_string) -> tuple:
     """
-    Extracts information from the V5 column of the resistance marker table
-    :param v5_string: the V5 string found in the resistance marker table
+    Extracts information from the gene_id column of the resistance marker table
+    :param v5_string: the gene_id string found in the resistance marker table
     :return: (gene_id, gene, codon_id) 
     Example: extract_info_from_V5("PF3D7_0709000-crt-73") -> ("0709000", "crt", "73")
 	
@@ -149,16 +150,16 @@ def extract_info_from_V5(v5_string) -> tuple:
 
 
 def process_row(row, ref_sequences):
-    logging.debug(f"Entering `process_row` with sampleID={row['sampleID']}, pseudocigar={row['pseudo_cigar']}, reads={row['reads']}")
-    gene_id, gene, codon_id = extract_info_from_V5(row['V5'])
+    logging.debug(f"Entering `process_row` with SampleID={row['SampleID']}, pseudocigar={row['PseudoCIGAR']}, Reads={row['Reads']}")
+    gene_id, gene, codon_id = extract_info_from_gene_id(row['gene_id'])
     row['GeneID'] = gene_id
     row['Gene'] = gene
     row['CodonID'] = codon_id
 
     # Get codon and translate
-    if row['V4'] == '-':
-        refseq_len = len(ref_sequences[row['amplicon']].seq)
-        refseq_rc = ref_sequences[row['amplicon']].seq.reverse_complement()
+    if row['strand'] == '-':
+        refseq_len = len(ref_sequences[row['Locus']].seq)
+        refseq_rc = ref_sequences[row['Locus']].seq.reverse_complement()
         CodonStart = refseq_len - (row['CodonStart']) - 2 # 0-based indexing
         codon_end = refseq_len - (row['CodonStart']) + 1
 
@@ -174,7 +175,7 @@ def process_row(row, ref_sequences):
 
         row['CodonStart'] = CodonStart
         row['CodonEnd'] = codon_end
-        ref_codon = str(ref_sequences[row['amplicon']].seq[row['CodonStart'] : row['CodonEnd']])
+        ref_codon = str(ref_sequences[row['Locus']].seq[row['CodonStart'] : row['CodonEnd']])
         row['RefCodon'] = ref_codon
         row['RefAA'] = translate(ref_codon)
 
@@ -182,44 +183,83 @@ def process_row(row, ref_sequences):
 
 
 def main(args):
-    allele_data = pd.read_csv(args.allele_data_path, sep='\t')
-    res_markers_info = pd.read_csv(args.res_markers_info_path, sep='\t')
-    res_markers_info = res_markers_info.rename(columns={'codon_start': 'CodonStart'})
 
+    logging.debug(f"------ Start of `main` ------")
+    
+    # Reading allele data
+    logging.debug(f"Reading allele data from: {args.allele_data_path}")
+    allele_data = pd.read_csv(args.allele_data_path, sep='\t')
+    logging.debug(f"Read {allele_data.shape[0]} rows from allele data")
+
+    # Reading resistance markers
+    logging.debug(f"Reading res markers info from: {args.res_markers_info_path}")
+    res_markers_info = pd.read_csv(args.res_markers_info_path, sep='\t')
+    logging.debug(f"Read {res_markers_info.shape[0]} rows from res markers info")
+
+    # Renaming columns
+    logging.debug("Renaming columns in res markers info")
+    res_markers_info = res_markers_info.rename(columns={'codon_start': 'CodonStart', 'amplicon': 'Locus'})
 
     # Keep the data that we are interested in
     res_markers_info = res_markers_info[(res_markers_info['CodonStart'] > 0) & (res_markers_info['CodonStart'] < res_markers_info['ampInsert_length'])]
 
     # Filter allele data to only include drug resistance amplicons
-    allele_data = allele_data[allele_data['locus'].str.endswith(('-1B', '-2'))]
+    logging.debug(f"Filtering allele data based on locus suffix")
+    allele_data = allele_data[allele_data['Locus'].str.endswith(('-1B', '-2'))]
+    logging.debug(f"Filtered allele data to {allele_data.shape[0]} rows")
 
     # Join the allele table and resistance marker table on the locus
-    allele_data = res_markers_info.set_index('amplicon').join(allele_data.set_index('locus'), how='left').reset_index()
+    logging.debug("Joining allele table and resistance marker table on the locus")
+    allele_data = res_markers_info.set_index('Locus').join(allele_data.set_index('Locus'), how='left').reset_index()
+    logging.debug(f"Joined data has {allele_data.shape[0]} rows")
 
-    # Filter any rows that have `NaN` in the sampleID column 
-    allele_data = allele_data.dropna(subset=['pseudo_cigar'])
+    # Filter any rows that have `NaN` in the SampleID column 
+    allele_data = allele_data.dropna(subset=['PseudoCIGAR'])
 
     # Ensure reads is integer
-    allele_data['reads'] = allele_data['reads'].astype(int)
+    allele_data['Reads'] = allele_data['Reads'].astype(int)
 
     # Read in the reference sequences - this will be used for the reference codons
+    logging.debug("Reading in the reference sequences")
     ref_sequences = SeqIO.to_dict(SeqIO.parse(args.refseq_path, 'fasta'))
+    logging.debug(f"Loaded {len(ref_sequences)} reference sequences")
 
     # Create function to run on all rows of the joined allele data + resistance marker table.
+    logging.debug("Setting up the parallel function")
     process_row_partial = partial(process_row, ref_sequences=ref_sequences)
 
     # Run in parallel
-    with ProcessPoolExecutor(max_workers=args.n_cores) as executor:
-        results = list(executor.map(process_row_partial, [row for _, row in allele_data.iterrows()]))
+    logging.debug(f"Processing rows in parallel using {args.n_cores} cores")
 
+    results = []
+
+    with ProcessPoolExecutor(max_workers=args.n_cores) as executor:
+        # Create a dictionary that maps futures to their corresponding rows for debugging and error handling
+        future_to_row = {executor.submit(process_row_partial, row[1]): row for row in allele_data.iterrows()}
+
+        for future in as_completed(future_to_row):
+            row_data = future_to_row[future]
+            try:
+                result = future.result()
+                results.append(result)
+                locus_val = row_data[1]['Locus']
+                sample_id = row_data[1]['SampleID']
+                reads = row_data[1]['Reads']
+                gene_id = row_data[1]['gene_id']
+                logging.debug(f"Successfully processed row with SampleID: {sample_id}, Locus: {locus_val}, Reads: {reads}, GeneID: {gene_id}")
+            except Exception as e:
+                logging.error(f"Error processing row with locus: {row_data[1]['Locus']}. Error: {e}")
+
+    
+    logging.debug(f"Total rows processed: {len(results)}")
     # Create a table that identifies whether there are dna and/or codon difference in the ASVs
     # at the positions specified in the resistance marker table
     df_results = pd.DataFrame(results)
     df_results = df_results.rename(columns={'reads': 'Reads', 'sampleID': 'SampleID', "pseudo_cigar": "PseudoCIGAR"})
 
     df_results = df_results.sort_values(['CodonID', 'Gene', 'SampleID'] ,ascending=[False, False, False])
-    df_results = df_results[['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'amplicon', 'PseudoCIGAR', 'new_mutations']]
-    df_resmarker = df_results.drop(['amplicon', 'PseudoCIGAR', 'new_mutations'], axis=1)
+    df_results = df_results[['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'Locus', 'PseudoCIGAR', 'new_mutations']]
+    df_resmarker = df_results.drop(['Locus', 'PseudoCIGAR', 'new_mutations'], axis=1)
 
     # Summarize reads
     df_resmarker = df_resmarker.groupby(['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']).agg({
@@ -289,6 +329,9 @@ if __name__ == "__main__":
     parser.add_argument("--n-cores", type=int, default=1, help="Number of cores to use")
     parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set the logging level")
     parser.add_argument("--log-file", type=str, help="Write logs to a file instead of the console")
+    parser.add_argument("--log-max-size", type=int, default=5, help="Maximum log file size in MB")
+    parser.add_argument("--log-backups", type=int, default=1, help="Number of log files to keep")
+
 
     args = parser.parse_args()
 
@@ -297,7 +340,9 @@ if __name__ == "__main__":
         raise ValueError(f"Invalid log level: {args.log_level}")
 
     if args.log_file:
-        logging.basicConfig(filename=args.log_file, level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s")
+        # Use rotating log files
+        file_handler = RotatingFileHandler(args.log_file, maxBytes=args.log_max_size * 1024 * 1024, backupCount=args.log_backups)
+        logging.basicConfig(level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s", handlers=[file_handler])
     else:
         logging.basicConfig(level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s")
 
