@@ -269,15 +269,22 @@ def main(args):
     # Output resmarker table
     df_resmarker.to_csv('resmarker_table.txt', sep='\t', index=False)
 
+    def create_microhap_lambda(x):
+        # Obtain sorted codons and their corresponding amino acids
+        sorted_codon_ids = x['CodonID'].sort_values()
+        amino_acids_by_codon = x.set_index('CodonID').loc[sorted_codon_ids]['AA']
+        
+        # Check for length mismatch
+        if len(sorted_codon_ids) != len(amino_acids_by_codon):
+            logging.error(f"Length mismatch detected! Codon IDs: {sorted_codon_ids.tolist()}, Amino Acids: {amino_acids_by_codon.tolist()}")
 
-    # Group data and create microhaplotypes
-    df_microhap = df_results.groupby(['SampleID', 'GeneID', 'Gene', 'PseudoCIGAR', 'Reads']).apply(
-        lambda x: pd.Series({
-            'MicrohapIndex': '/'.join(map(str, x['CodonID'].sort_values())),
-            'Microhaplotype': '/'.join(x.set_index('CodonID').loc[x['CodonID'].sort_values()]['AA']),
-            'RefMicrohap': '/'.join(x.set_index('CodonID').loc[x['CodonID'].sort_values()]['RefAA']),
+        return pd.Series({
+            'MicrohapIndex': '/'.join(map(str, sorted_codon_ids)),
+            'Microhaplotype': '/'.join(amino_acids_by_codon),
+            'RefMicrohap': '/'.join(x.set_index('CodonID').loc[sorted_codon_ids]['RefAA']),
         })
-    ).reset_index()
+
+    df_microhap = df_results.groupby(['SampleID', 'GeneID', 'Gene', 'PseudoCIGAR', 'Reads']).apply(create_microhap_lambda).reset_index()
 
     # Create MicrohapRefAlt column
     df_microhap['MicrohapRefAlt'] = np.where(df_microhap['Microhaplotype'] == df_microhap['RefMicrohap'], 'REF', 'ALT')
