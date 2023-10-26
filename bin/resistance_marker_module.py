@@ -12,6 +12,7 @@ import numpy as np
 import json
 import logging
 from logging.handlers import RotatingFileHandler
+import traceback
 
 
 def parse_pseudo_cigar(string, orientation, refseq_len):
@@ -257,12 +258,38 @@ def main(args):
     df_results = pd.DataFrame(results)
     df_results = df_results.rename(columns={'reads': 'Reads', 'sampleID': 'SampleID', "pseudo_cigar": "PseudoCIGAR"})
 
-    df_results = df_results.sort_values(['CodonID', 'Gene', 'SampleID'] ,ascending=[False, False, False])
-    df_results = df_results[['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'Locus', 'PseudoCIGAR', 'new_mutations']]
-    df_resmarker = df_results.drop(['Locus', 'PseudoCIGAR', 'new_mutations'], axis=1)
+    sort_columns, sort_order, select_columns = None, None, None
+    if args.add_locus_column:
+        sort_columns, sort_order = ['CodonID', 'Gene', 'Locus', 'SampleID'], [False, False, False, False]
+        select_columns = ['SampleID', 'Locus', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
+    else:
+        sort_columns, sort_order = ['CodonID', 'Gene', 'SampleID'], [False, False, False]
+        select_columns = ['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
+
+    # Select the columns we want
+    logging.debug(f"Selecting columns: {select_columns}")
+    df_results = df_results[select_columns]
+    logging.debug(f"Selected {df_results.shape[0]} rows")
+    logging.debug(f"Columns: {df_results.columns}")
+
+    # Sort by CodonID, Gene, and SampleID (and Locus if applicable)
+    logging.debug(f"Sorting by columns: {sort_columns}, order: {sort_order}")
+    df_results = df_results.sort_values(sort_columns, ascending=sort_order)
+
+    # Drop unnecessary columns 
+    drop_columns = ['PseudoCIGAR', 'new_mutations']
+    logging.debug(f"Dropping columns: {drop_columns}")
+    df_resmarker = df_results.drop(drop_columns, axis=1)
 
     # Summarize reads
-    df_resmarker = df_resmarker.groupby(['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']).agg({
+    group_by_columns = ['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']
+    if args.add_locus_column:
+        # Insert after SampleID
+        group_by_columns.insert(1, 'Locus')
+
+    logging.debug(f"Group by columns for resmarker table: {group_by_columns}")
+
+    df_resmarker = df_resmarker.groupby(group_by_columns).agg({
         'Reads': 'sum'
     }).reset_index()
 
@@ -284,26 +311,45 @@ def main(args):
             'RefMicrohap': '/'.join(x.set_index('CodonID').loc[sorted_codon_ids]['RefAA']),
         })
 
-    df_microhap = df_results.groupby(['SampleID', 'GeneID', 'Gene', 'PseudoCIGAR', 'Reads']).apply(create_microhap_lambda).reset_index()
+    group_by_columns = ['SampleID', 'GeneID', 'Gene', 'PseudoCIGAR', 'Reads']
+    if args.add_locus_column:
+        # Insert after SampleID
+        group_by_columns.insert(1, 'Locus')
+
+    df_microhap = df_results.groupby(group_by_columns).apply(create_microhap_lambda).reset_index()
 
     # Create MicrohapRefAlt column
     df_microhap['MicrohapRefAlt'] = np.where(df_microhap['Microhaplotype'] == df_microhap['RefMicrohap'], 'REF', 'ALT')
 
     # Select columns and rename them
-    df_microhap = df_microhap[['SampleID', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt', 'Reads']]
+    microhap_select_columns = ['SampleID', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt', 'Reads']
+    if args.add_locus_column:
+        microhap_select_columns += ['Locus']
+
+    df_microhap = df_microhap[microhap_select_columns]
 
     # Summarize reads
-    df_microhap_collapsed = df_microhap.groupby(['SampleID', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt']).agg({
+    microhap_groupby_columns = ['SampleID', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt']
+    if args.add_locus_column:
+        # Insert after SampleID
+        microhap_groupby_columns.insert(1, 'Locus')
+
+    df_microhap_collapsed = df_microhap.groupby(microhap_groupby_columns).agg({
         'Reads': 'sum'
     }).reset_index()
 
     # Sort by MicrohapIndex, Gene, and SampleID
-    df_microhap_collapsed = df_microhap_collapsed.sort_values(['MicrohapIndex', 'Gene', 'SampleID'], ascending=[False, False, False])
+    df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = None, None
+    if args.add_locus_column:
+        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['MicrohapIndex', 'Gene', 'Locus', 'SampleID'], [False, False, False, False]
+    else:
+        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['MicrohapIndex', 'Gene', 'SampleID'], [False, False, False]
+    df_microhap_collapsed = df_microhap_collapsed.sort_values(df_microhap_collapsed_sort_columns, ascending=df_microhap_collapsed_sort_order)
 
     # Output microhaplotype table
     df_microhap_collapsed.to_csv('resmarker_microhap_table.txt', sep='\t', index=False)
 
-    # Create New Mutations table (could parellize)
+    # Prepare the data for the new mutations output
     mutation_list = []
     for _, row in df_results.iterrows():
         new_mutations = json.loads(row['new_mutations'])
@@ -319,38 +365,55 @@ def main(args):
                     'Ref': ref,
                     'Reads': row['Reads']
                 }
-                # Append the new row to the new_rows list
+                if args.add_locus_column:
+                    new_row['Locus'] = row['Locus']
                 mutation_list.append(new_row)
 
-    # Create a new DataFrame from the new_rows list
-    df_new_mutations = pd.DataFrame(mutation_list) 
+    df_new_mutations = pd.DataFrame(mutation_list)
+
+    # Ensure that Locus is the second column if it exists in the DataFrame
+    if args.add_locus_column and 'Locus' in df_new_mutations.columns:
+        cols = df_new_mutations.columns.tolist()
+        cols.insert(1, cols.pop(cols.index('Locus')))
+        df_new_mutations = df_new_mutations[cols]
+
     df_new_mutations.to_csv('resmarker_new_mutations.txt', sep='\t', index=False)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process some input files.")
+    try:
+        parser = argparse.ArgumentParser(description="Process some input files.")
 
-    parser.add_argument("--allele_data_path", required=True, help="Path to allele_data.txt")
-    parser.add_argument("--res_markers_info_path", required=True, help="Path to resistance marker table")
-    parser.add_argument("--refseq_path", required=True, help="Path to reference sequences [fasta]")
-    parser.add_argument("--n-cores", type=int, default=1, help="Number of cores to use")
-    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set the logging level")
-    parser.add_argument("--log-file", type=str, help="Write logs to a file instead of the console")
-    parser.add_argument("--log-max-size", type=int, default=5, help="Maximum log file size in MB")
-    parser.add_argument("--log-backups", type=int, default=1, help="Number of log files to keep")
+        parser.add_argument("--allele_data_path", required=True, help="Path to allele_data.txt")
+        parser.add_argument("--res_markers_info_path", required=True, help="Path to resistance marker table")
+        parser.add_argument("--refseq_path", required=True, help="Path to reference sequences [fasta]")
+        parser.add_argument("--n-cores", type=int, default=1, help="Number of cores to use")
+        parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set the logging level")
+        parser.add_argument("--log-file", type=str, help="Write logs to a file instead of the console")
+        parser.add_argument("--log-max-size", type=int, default=5, help="Maximum log file size in MB")
+        parser.add_argument("--log-backups", type=int, default=1, help="Number of log files to keep")
+        parser.add_argument("--add-locus-column", action="store_true", help="Add a locus column to the output table")
 
+        args = parser.parse_args()
 
-    args = parser.parse_args()
+        numeric_level = getattr(logging, args.log_level.upper(), None)
+        if not isinstance(numeric_level, int):
+            raise ValueError(f"Invalid log level: {args.log_level}")
+        
+        if args.log_file:
+            # Use rotating log files
+            file_handler = RotatingFileHandler(args.log_file, maxBytes=args.log_max_size * 1024 * 1024, backupCount=args.log_backups)
+            logging.basicConfig(level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s", handlers=[file_handler])
+        else:
+            logging.basicConfig(level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s")
 
-    numeric_level = getattr(logging, args.log_level.upper(), None)
-    if not isinstance(numeric_level, int):
-        raise ValueError(f"Invalid log level: {args.log_level}")
+        logging.info("Program start.")
+        main(args)
+    except Exception as e:
+        logging.error(f"An error of type {type(e).__name__} occurred. Message: {e}")
+        logging.error(traceback.format_exc())  # Log the full traceback
+        raise e
+    finally:
+        logging.info("Program complete.")
+        logging.shutdown()
 
-    if args.log_file:
-        # Use rotating log files
-        file_handler = RotatingFileHandler(args.log_file, maxBytes=args.log_max_size * 1024 * 1024, backupCount=args.log_backups)
-        logging.basicConfig(level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s", handlers=[file_handler])
-    else:
-        logging.basicConfig(level=numeric_level, format="%(asctime)s - %(levelname)s - %(message)s")
-
-    main(args)
