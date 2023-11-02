@@ -1,5 +1,5 @@
 /*
- * WORKFLOW - DENOISE_AMPLICONS_2
+ * WORKFLOW - POSTPROCESSING
  * 
  * This workflow uses is comprised of multiple postprocessing steps to reduce noise with masking, 
  * and identify difference in the ASVs given a reference
@@ -13,7 +13,7 @@ include { BUILD_PSEUDOCIGAR } from '../modules/local/build_pseudocigar.nf'
 include { FILTER_ASVS } from '../modules/local/filter_asvs.nf'
 
 
-workflow DENOISE_AMPLICONS_2 {
+workflow POSTPROCESSING {
 
   take: 
   denoise_ch
