@@ -2,14 +2,6 @@
 
 nextflow.enable.dsl = 2
 
-if ( params.readDIR == null ) {
-  exit 0, log.error("`--readDIR` must be specified.")
-}
-
-if ( params.target == null ) {
-  exit 0, log.error("`--target` must be specified.")
-}
-
 // Expand user directory if exists
 outDIR = "${params.outDIR}".replaceFirst("^~", System.getProperty("user.home"))
 readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home"))
@@ -44,7 +36,10 @@ include { BUILD_ALLELETABLE } from './modules/local/build_alleletable.nf'
 workflow {
 
   if (params.QC_only) {
-    
+
+    // Make sure required inputs are present
+    check_readdir()
+
     // Run QC Only Workflow
     QC_ONLY(params.reads)
 
@@ -74,6 +69,10 @@ workflow {
     )
 
   } else {
+
+    // Make sure required inputs are present
+    check_readdir()
+    check_target()
 
     // Create read pairs channel from fastq data
     read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
@@ -112,7 +111,6 @@ workflow {
     )
   }
 }
-
 
 workflow.onComplete {
   def outputDir = new File("${params.outDIR}/run")
@@ -182,4 +180,22 @@ def record_runtime() {
     output.append("NextflowBuild\t${nextflow.build}\n")
     output.append("NextflowTimestamp\t${nextflow.timestamp}\n")
     output.append("NextflowVersion\t${nextflow.version}\n")
+}
+
+
+/* Parameter check helper functions
+ *
+ * Check the readDIR and target parameters before executing the workflow
+ *
+ */
+def check_readdir() {
+  if ( params.readDIR == null ) {
+    exit 0, log.error("`--readDIR` must be specified.")
+  }
+}
+
+def check_target() {
+  if ( params.target == null ) {
+    exit 0, log.error("`--target` must be specified.")
+  }
 }

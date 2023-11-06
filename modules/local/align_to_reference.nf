@@ -7,6 +7,12 @@ process ALIGN_TO_REFERENCE {
 
   label 'process_high'
 
+  publishDir(
+    path: "${params.outDIR}/alignments",
+    mode: 'copy',
+    pattern: 'alignments.txt'
+  )
+
   input:
   path clusters
   path refseq_fasta
