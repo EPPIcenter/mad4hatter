@@ -4,6 +4,8 @@ parser <- ArgumentParser(description='Aligns sequences (DADA2 clusters) against 
 parser$add_argument('--clusters', type="character", required=TRUE, help="RDS Clusters from DADA2. This is the main output from the DADA module.")
 parser$add_argument('--refseq-fasta', type="character")
 parser$add_argument('--alignment-threshold', type="integer", default = 60)
+parser$add_argument('--gap-opening', type="integer", default = -8)
+parser$add_argument('--gap-extension', type="integer", default = -5)
 parser$add_argument('--n-cores', type = 'integer', default = 1, help = "Number of cores to use. Ignored if running parallel flag is unset.")
 parser$add_argument('--amplicon-table', type="character", required=TRUE, help = "Amplicon table with primer pools. This is used to organize the sequence table by amplicon.")
 
@@ -52,7 +54,7 @@ sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
 df_aln <- foreach(seq1 = 1:nrow(clusters), .combine = "bind_rows") %dopar% {
   # the alignment is performed only with the reference sequence for the corresponding locus as we have this information from the demultiplexing step
   refseq.seq1 = ref_sequences[clusters$locus[seq1]] #commenting out next lines as I concatenated all genomes
-  aln <- pairwiseAlignment(refseq.seq1, str_remove_all(clusters$asv[seq1],"N"), substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
+  aln <- pairwiseAlignment(refseq.seq1, str_remove_all(clusters$asv[seq1],"N"), substitutionMatrix = sigma, gapOpening = args$gap_opening, gapExtension = args$gap_extension, scoreOnly = FALSE)
   patt <- c(alignedPattern(aln), alignedSubject(aln))
   ind <- sum(str_count(as.character(patt),"-"))
   data.frame(

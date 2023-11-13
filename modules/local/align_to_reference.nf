@@ -22,6 +22,8 @@ process ALIGN_TO_REFERENCE {
     --clusters ${clusters} \
     --refseq-fasta ${refseq_fasta} \
     --amplicon-table ${amplicon_info} \
+    --gap-opening ${params.gap_opening} \
+    --gap-extension ${params.gap_extension} \
     --n-cores ${task.cpus}
   """
 }
