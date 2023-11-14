@@ -42,6 +42,7 @@ workflow {
 
     // Make sure required inputs are present
     check_readdir()
+    check_target()
 
     // Run QC Only Workflow
     QC_ONLY(params.reads)
