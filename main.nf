@@ -23,10 +23,13 @@ tuple containing 3 elements: pair_id, R1, R2
 // workflows
 include { DEMULTIPLEX_AMPLICONS } from './workflows/demultiplex_amplicons.nf'
 include { DENOISE_AMPLICONS_1 } from './workflows/denoise_amplicons_1.nf'
-include { POSTPROCESSING } from './workflows/postprocessing.nf'
+include { DENOISE_AMPLICONS_2 } from './workflows/denoise_amplicons_2.nf'
 include { RESISTANCE_MARKER_MODULE } from './workflows/resistance_marker_module.nf'
 include { QUALITY_CONTROL} from './workflows/quality_control.nf'
+
+// workflows
 include { QC_ONLY } from './workflows/qc_only.nf'
+include { POSTPROC_ONLY } from './workflows/postproc_only.nf'
 
 
 // modules
@@ -43,30 +46,13 @@ workflow {
     // Run QC Only Workflow
     QC_ONLY(params.reads)
 
-  } else if (params.postproc_only) {
+  } else if (params.denoised_asvs != null) {
 
-    // Read in denoised asv file provided by the user 
-    File denoised_asvs_file = new File(params.denoised_asvs).absoluteFile
-    if(!denoised_asvs_file.exists()) {
-        exit 1, "The specified denoised_asvs file '${params.denoised_asvs}' does not exist."
-    }
+    // Make sure the target is specified
+    check_target()
 
-    // Add debugging steps as this is user input
-    log.debug("Denoised ASVs path: ${params.denoised_asvs}")
-    log.debug("Absolute path: ${denoised_asvs_file.absolutePath}")
-    log.debug("Does it exist? ${denoised_asvs_file.exists()}")
-
-    // Create the Nextflow Channel
-    denoise_ch = Channel.fromPath(denoised_asvs_file)
-    
-    // Run postprocessing only workflow
-    POSTPROCESSING(denoise_ch)
-
-    // Allele table creation
-    BUILD_ALLELETABLE(
-      denoise_ch,
-      POSTPROCESSING.out.results_ch
-    )
+    // Run Postprocessing only
+    POSTPROC_ONLY(params.denoised_asvs)
 
   } else {
 
@@ -86,14 +72,14 @@ workflow {
     )
 
     // Masking, collapsing ASVs
-    POSTPROCESSING(
+    DENOISE_AMPLICONS_2(
       DENOISE_AMPLICONS_1.out.denoise_ch
     )
 
     // Finally create the final allele table
     BUILD_ALLELETABLE(
       DENOISE_AMPLICONS_1.out.denoise_ch,
-      POSTPROCESSING.out.results_ch
+      DENOISE_AMPLICONS_2.out.results_ch
     )
 
     // Create the quality report now
@@ -107,7 +93,7 @@ workflow {
     // By default, run the resistance marker module in the main workflow
     RESISTANCE_MARKER_MODULE(
       BUILD_ALLELETABLE.out.alleledata,
-      POSTPROCESSING.out.reference_ch
+      DENOISE_AMPLICONS_2.out.reference_ch
     )
   }
 }

@@ -2,8 +2,7 @@
 /*
  * WORKFLOW - QC_ONLY
  * 
- * This workflow uses is comprised of multiple postprocessing steps to reduce noise with masking, 
- * and identify difference in the ASVs given a reference
+ * This workflow is meant to drive quality control of amplicon sequencing data
  */
 
 include { DEMULTIPLEX_AMPLICONS } from './demultiplex_amplicons.nf'
