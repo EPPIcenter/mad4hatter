@@ -41,13 +41,15 @@ workflow {
   if (params.QC_only) {
 
     // Make sure required inputs are present
-    check_readdir()
+    check_readdir_presence(should_exist: true)
     check_target()
 
     // Run QC Only Workflow
     QC_ONLY(params.reads)
 
   } else if (params.denoised_asvs != null) {
+
+    check_readdir_presence(should_exist: false)
 
     // Make sure the target is specified
     check_target()
@@ -58,7 +60,7 @@ workflow {
   } else {
 
     // Make sure required inputs are present
-    check_readdir()
+    check_readdir_presence(should_exist: true)
     check_target()
 
     // Create read pairs channel from fastq data
@@ -175,11 +177,19 @@ def record_runtime() {
  * Check the readDIR and target parameters before executing the workflow
  *
  */
-def check_readdir() {
-  if ( params.readDIR == null ) {
-    exit 0, log.error("`--readDIR` must be specified.")
+def check_readdir_presence(should_exist) {
+
+  // If readDIR MUST be provided and is not, exit with an error
+  if ( should_exist.containsValue(true) && params.readDIR == null ) {
+    exit 0, log.error("`--readDIR` must be specified but is missing.")
   }
+
+  // If readDIR MUST NOT be provided and is, exit with an error
+  if ( should_exist.containsValue(false) && params.readDIR != null ) {
+    exit 0, log.error("`--readDIR` must not be specified but is present.")
+  }  
 }
+
 
 def check_target() {
   if ( params.target == null ) {
