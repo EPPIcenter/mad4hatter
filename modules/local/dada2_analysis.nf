@@ -7,6 +7,12 @@ process DADA2_ANALYSIS {
 
   label 'process_high'
 
+  publishDir(
+    path: "${params.outDIR}/dada2_analysis",
+    mode: 'copy',
+    pattern: 'dada2.clusters.txt'
+  )
+
   input:
   path (demultiplexed_fastqs, stageAs: "demuliplexed_fastqs?")
   path amplicon_info

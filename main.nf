@@ -2,14 +2,6 @@
 
 nextflow.enable.dsl = 2
 
-if ( params.readDIR == null ) {
-  exit 0, log.error("`--readDIR` must be specified.")
-}
-
-if ( params.target == null ) {
-  exit 0, log.error("`--target` must be specified.")
-}
-
 // Expand user directory if exists
 outDIR = "${params.outDIR}".replaceFirst("^~", System.getProperty("user.home"))
 readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home"))
@@ -35,59 +27,78 @@ include { DENOISE_AMPLICONS_2 } from './workflows/denoise_amplicons_2.nf'
 include { RESISTANCE_MARKER_MODULE } from './workflows/resistance_marker_module.nf'
 include { QUALITY_CONTROL} from './workflows/quality_control.nf'
 
+// workflows
+include { QC_ONLY } from './workflows/qc_only.nf'
+include { POSTPROC_ONLY } from './workflows/postproc_only.nf'
+
 
 // modules
 include { BUILD_ALLELETABLE } from './modules/local/build_alleletable.nf'
 
 // main workflow
 workflow {
-  read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
-  DEMULTIPLEX_AMPLICONS(read_pairs)
 
-  // if QC_only is set, generate the report and exit early
-  if (params.QC_only == true) {
+  if (params.QC_only) {
 
-    // create a quality report with the raw data
+    // Make sure required inputs are present
+    check_readdir_presence(should_exist: true)
+    check_target()
+
+    // Run QC Only Workflow
+    QC_ONLY(params.reads)
+
+  } else if (params.denoised_asvs != null) {
+
+    check_readdir_presence(should_exist: false)
+
+    // Make sure the target is specified
+    check_target()
+
+    // Run Postprocessing only
+    POSTPROC_ONLY(params.denoised_asvs)
+
+  } else {
+
+    // Make sure required inputs are present
+    check_readdir_presence(should_exist: true)
+    check_target()
+
+    // Create read pairs channel from fastq data
+    read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
+
+    // Trim and demultiplex amplicons by amplicon
+    DEMULTIPLEX_AMPLICONS(read_pairs)
+
+    // Denoising (DADA specific)
+    DENOISE_AMPLICONS_1(
+      DEMULTIPLEX_AMPLICONS.out.demux_fastqs_ch
+    )
+
+    // Masking, collapsing ASVs
+    DENOISE_AMPLICONS_2(
+      DENOISE_AMPLICONS_1.out.denoise_ch
+    )
+
+    // Finally create the final allele table
+    BUILD_ALLELETABLE(
+      DENOISE_AMPLICONS_1.out.denoise_ch,
+      DENOISE_AMPLICONS_2.out.results_ch
+    )
+
+    // Create the quality report now
     QUALITY_CONTROL(
       DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
       DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
-      null,
-      null
+      BUILD_ALLELETABLE.out.alleledata,
+      DENOISE_AMPLICONS_1.out.denoise_ch
     )
 
-    // exit here
-    return
+    // By default, run the resistance marker module in the main workflow
+    RESISTANCE_MARKER_MODULE(
+      BUILD_ALLELETABLE.out.alleledata,
+      DENOISE_AMPLICONS_2.out.reference_ch
+    )
   }
-
-  // Denoising (DADA specific)
-  DENOISE_AMPLICONS_1(
-    DEMULTIPLEX_AMPLICONS.out.demux_fastqs_ch
-  )
-
-  // Masking, collapsing ASVs
-  DENOISE_AMPLICONS_2(
-    DENOISE_AMPLICONS_1.out.denoise_ch
-  )
-
-  // Finally create the final allele table
-  BUILD_ALLELETABLE(
-    DENOISE_AMPLICONS_1.out.denoise_ch,
-    DENOISE_AMPLICONS_2.out.results_ch
-  )
-
-  // Create the quality report now
-  QUALITY_CONTROL(
-    DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
-    DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
-    BUILD_ALLELETABLE.out.alleledata,
-    DENOISE_AMPLICONS_1.out.denoise_ch
-  )
-
-  // By default, run the resistance marker module in the main workflow
-  RESISTANCE_MARKER_MODULE(
-    BUILD_ALLELETABLE.out.alleledata,
-    DENOISE_AMPLICONS_2.out.reference_ch
-  )
 }
 
 workflow.onComplete {
@@ -100,6 +111,12 @@ workflow.onComplete {
   record_runtime()
 }
 
+
+/* Record parmameters
+ *
+ * Records set parameters for the run
+ *
+ */
 def record_params() {
     
     def output = new File("${params.outDIR}/run/parameters.tsv")
@@ -109,6 +126,12 @@ def record_params() {
     }
 }
 
+
+/* Record runtime information
+ *
+ * Records runtime and environment information and writes summary to a tabulated (tsv) file
+ *
+ */
 def record_runtime() {
 
     def output = new File("${params.outDIR}/run/runtime.tsv")
@@ -146,4 +169,30 @@ def record_runtime() {
     output.append("NextflowBuild\t${nextflow.build}\n")
     output.append("NextflowTimestamp\t${nextflow.timestamp}\n")
     output.append("NextflowVersion\t${nextflow.version}\n")
+}
+
+
+/* Parameter check helper functions
+ *
+ * Check the readDIR and target parameters before executing the workflow
+ *
+ */
+def check_readdir_presence(should_exist) {
+
+  // If readDIR MUST be provided and is not, exit with an error
+  if ( should_exist.containsValue(true) && params.readDIR == null ) {
+    exit 0, log.error("`--readDIR` must be specified but is missing.")
+  }
+
+  // If readDIR MUST NOT be provided and is, exit with an error
+  if ( should_exist.containsValue(false) && params.readDIR != null ) {
+    exit 0, log.error("`--readDIR` must not be specified but is present.")
+  }  
+}
+
+
+def check_target() {
+  if ( params.target == null ) {
+    exit 0, log.error("`--target` must be specified.")
+  }
 }

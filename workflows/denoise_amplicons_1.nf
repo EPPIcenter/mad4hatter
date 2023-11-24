@@ -15,6 +15,7 @@ workflow DENOISE_AMPLICONS_1 {
 
   main:
 
+  // This module takes all amplicon-demultiplexed fastqs and runs DADA2
   DADA2_ANALYSIS(
     demultiplexed_fastqs.collect(),
     params.amplicon_info,
