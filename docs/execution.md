@@ -116,3 +116,32 @@ The resources consumed by a process will depend on the process itself as well as
 ### Threading
 
 If an application is multithreaded, raising the number cores *should* decrease the amount of time a process takes. Increasing the number of cores can also increase the amount of memory used by the application, so settings may also need be tinkered with depending on the limitation of your hardware. Currently, `DADA2_ANALYSIS` and `DADA2_POSTPROC` are the only modules that are multithreaded.  
+
+
+## Other workflows
+
+### QC Only
+
+The above example runs the entire pipeline. If you only want to run the QC module, you can use the following command:
+
+```bash
+nextflow run main.nf --readDIR /wynton/scratch/data/AAD1017 --target v4 -profile sge,apptainer -config conf/custom.config --QC_only
+```
+
+If you specify the `--QC_only` flag, this will just run the QC module. This may be useful if you want to understand your coverage before running the entire pipeline.
+
+If you run this workflow, the only outputs you will see is your `amplicon_coverage.txt`, `sample_coverage.txt` and the quality report under `quality_report/QCplots.html`. 
+
+### Postprocessing only
+
+If you want to run the postprocessing module only, you can use the following command:
+
+```bash
+nextflow run main.nf --denoised_asvs /wynton/scratch/results/dada2_analysis/dada2.clusters.txt --target v4 -profile sge,apptainer
+```
+
+You may want to run this workflow if you want to rerun the postprocessing module with different parameters. For example, you may want to run the postprocessing module with different allele masking parameters, or supply a different alignment threshold.
+
+The output of this workflow is the `allele_data.txt` file. 
+
+
