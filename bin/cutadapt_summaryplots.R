@@ -37,10 +37,14 @@ amplicon_stats=df %>% select(-Pool) %>% pivot_wider(names_from = Locus, values_f
 write.table(amplicon_stats, file=paste(outDIR,"/amplicon_stats.txt",sep=""), quote=F, sep ="\t", col.names=T, row.names=F)
 
 sample_amplicon_stats=df %>% group_by(SampleID,Pool) %>% dplyr::summarise(medianReads=median(Reads)) %>% pivot_wider(names_from = Pool, values_from = medianReads) %>% data.frame()
-colnames(sample_amplicon_stats)=c("SampleID","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
+
+# Declare a variable to contain the pools detected. Each
+# panel has a different number of pools, so make this dynamic.
+pool_columns <- sprintf("Pool_%s", sort(unique(df$Pool)))
+colnames(sample_amplicon_stats)=c("SampleID",pool_columns)
 
 loci_stats = df %>% group_by(SampleID) %>% group_by(SampleID,Pool) %>% dplyr::summarise(n_loci=sum(Reads >= 100)) %>% pivot_wider(names_from = Pool, values_from = n_loci) %>% data.frame()
-colnames(loci_stats)=c("SampleID","Pool_1A","Pool_1AB","Pool_1B","Pool_1B2", "Pool_2")
+colnames(loci_stats)=c("SampleID",pool_columns)
 
 
 df1=read.delim(samplestatFILE,header=T)
