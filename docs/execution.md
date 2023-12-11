@@ -120,9 +120,11 @@ If an application is multithreaded, raising the number cores *should* decrease t
 
 ## Other workflows
 
+Below are workflows that are useful for running specific modules of the pipeline. 
+
 ### QC Only
 
-The above example runs the entire pipeline. If you only want to run the QC module, you can use the following command:
+If you only want to run the QC module, you can use the following command:
 
 ```bash
 nextflow run main.nf --readDIR /wynton/scratch/data/AAD1017 --target v4 -profile sge,apptainer -config conf/custom.config --QC_only
@@ -134,14 +136,13 @@ If you run this workflow, the only outputs you will see is your `amplicon_covera
 
 ### Postprocessing only
 
-If you want to run the postprocessing module only, you can use the following command:
+If you provide the `dada2.clusters.txt` file from a previous run using the `--denoised_asvs` flag, this will just run the postprocessing module. There is no need to supply a `readDIR` to run this workflow. You may want to run this workflow if you want to rerun the postprocessing module with different parameters. For example, you may want to run the postprocessing module with different allele masking parameters, or supply a different alignment threshold.
+
+Below is an example of how to run the postprocessing module:
 
 ```bash
 nextflow run main.nf --denoised_asvs /wynton/scratch/results/dada2_analysis/dada2.clusters.txt --target v4 -profile sge,apptainer
 ```
 
-You may want to run this workflow if you want to rerun the postprocessing module with different parameters. For example, you may want to run the postprocessing module with different allele masking parameters, or supply a different alignment threshold.
-
 The output of this workflow is the `allele_data.txt` file. 
-
 
