@@ -7,6 +7,9 @@ parent: Analysis Modules
 
 # Resistance markers
 
+{: .note }
+This module can only be run with the `v4` amplicon panel.
+
 This module will identify variants that are known to provide antibiotic resistance to *Plasmodium falciparum* by using the **PseudoCIGAR** string found in `allele_data.txt`. This module identifies mutations found within the genomic coordinates of interest (`resistance_markers_amplicon_v4.txt`), and reports any new indels or SNPs occurred. 
 
 ## File Outputs
