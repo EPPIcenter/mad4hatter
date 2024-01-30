@@ -1,0 +1,8 @@
+sampleID	asv	hapseq	refseq	refid	score	indels
+sample_no_indel	ATATCGAGCATGT	ATATCGAGCATGT	ATATCGAGCATGT	test_loci_1	100	1
+sample_insert ATATTCGAGCATGT   ATATTCGAGCATGT   ATAT-CGAGCATGT   test_loci_1     100     1
+sample_insert_start_of_mask ATATCGTAGCATGT   ATATCGTAGCATGT   ATATCG-AGCATGT   test_loci_1     100     1
+sample_insert_end_of_mask ATATCGAGCAATGT   ATATCGAGCAATGT   ATATCGAGCA-TGT   test_loci_1     100     1
+sample_insert_in_mask ATATCGAAGCATGT   ATATCGAAGCATGT   ATATCGA-GCATGT   test_loci_1     100     1
+sample_deletion_in_mask ATATCG-GCATGT   ATATCG-GCATGT   ATATCGAGCATGT   test_loci_1     100     1
+sample_with_deletion	ATAT-GAGCATGT	ATAT-GAGCATGT	ATATCGAGCATGT	test_loci_1	100	1

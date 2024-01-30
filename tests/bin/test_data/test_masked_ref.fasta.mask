@@ -1,0 +1,4 @@
+>test_loci_1
+ANATCGNNNATGN
+>test_loci_2
+NNNAATAATGNNNNNGAT
