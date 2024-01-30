@@ -89,16 +89,6 @@ mask_aligned_sequence <- function(pos, refseq) {
   return(newstring)
 }
 
-# Function to remove dashes between 'N's
-remove_dashes_between_N <- function(newstring) {
-  NdashN <- unique(regmatches(newstring, gregexpr("N-+N", newstring))[[1]])
-  newstring_nodash <- newstring
-  for(i in NdashN) {
-    newstring_nodash <- gsub(i, strrep("N", nchar(i)), newstring_nodash)
-  }
-  return(newstring_nodash)
-}
-
 # ---------------------------
 # EXECUTE MAIN SCRIPT
 # ---------------------------
