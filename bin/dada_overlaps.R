@@ -176,13 +176,13 @@ seqtab.nochim.df <- seqtab.nochim.df %>%
   mutate(sampleID = str_remove_all(sample, pat.sampleID)) %>%
   select(sampleID, locus, asv, reads)
 
-allele_sequences <- seqtab.nochim.df |>
-  dplyr::select(locus, asv) |>
-  dplyr::distinct() |>
-  dplyr::group_by(locus) |>
-  dplyr::mutate(allele = seq(1, dplyr::n())) |>
-  dplyr::ungroup() |>
-  dplyr::mutate(allele = paste0(locus, ".", allele)) |>
+allele_sequences <- seqtab.nochim.df %>%
+  dplyr::select(locus, asv) %>%
+  dplyr::distinct() %>%
+  dplyr::group_by(locus) %>%
+  dplyr::mutate(allele = seq(1, dplyr::n())) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(allele = paste0(locus, ".", allele)) %>%
   dplyr::rename(sequence = asv)
 
 allele.data = seqtab.nochim.df %>%
