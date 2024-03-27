@@ -257,28 +257,24 @@ def main(args):
     # at the positions specified in the resistance marker table
     df_results = pd.DataFrame(results)
     df_results = df_results.rename(columns={'reads': 'Reads', 'sampleID': 'SampleID', "pseudo_cigar": "PseudoCIGAR"})
+    df_results['CodonID'] = df_results['CodonID'].astype(int)
 
     sort_columns, sort_order, select_columns = None, None, None
     if args.add_locus_column:
-        sort_columns, sort_order = ['SampleID', 'CodonID', 'Gene', 'Locus'], [True, True, True, True]
-        select_columns = ['SampleID', 'Locus', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
+        sort_columns, sort_order = ['SampleID', 'chr', 'CodonID'], [True, True, True]
+        select_columns = ['SampleID', 'chr', 'Locus', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
     else:
-        sort_columns, sort_order = ['SampleID', 'CodonID', 'Gene'], [True, True, True]
-        select_columns = ['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
+        sort_columns, sort_order = ['SampleID', 'chr', 'CodonID'], [True, True, True]
+        select_columns = ['SampleID', 'chr', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
 
     # Select the columns we want
     logging.debug(f"Selecting columns: {select_columns}")
-    df_results = df_results[select_columns]
+    df_resmarker = df_results[select_columns]
     logging.debug(f"Selected {df_results.shape[0]} rows")
     logging.debug(f"Columns: {df_results.columns}")
 
-    # Drop unnecessary columns 
-    drop_columns = ['PseudoCIGAR', 'new_mutations']
-    logging.debug(f"Dropping columns: {drop_columns}")
-    df_resmarker = df_results.drop(drop_columns, axis=1)
-
     # Summarize reads
-    group_by_columns = ['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']
+    group_by_columns = ['SampleID', 'chr', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']
     if args.add_locus_column:
         # Insert after SampleID
         group_by_columns.insert(1, 'Locus')
@@ -291,7 +287,12 @@ def main(args):
 
     # Sort by CodonID, Gene, and SampleID (and Locus if applicable)
     logging.debug(f"Sorting by columns: {sort_columns}, order: {sort_order}")
-    df_resmarker = df_resmarker.sort_values(by=sort_columns, ascending=sort_order)
+    df_resmarker.sort_values(by=sort_columns, ascending=sort_order, inplace=True)
+
+    # Drop unnecessary columns
+    drop_columns = ['chr']
+    logging.debug(f"Dropping columns: {drop_columns}")
+    df_resmarker.drop(drop_columns, axis=1, inplace=True)
 
     # Output resmarker table
     df_resmarker.to_csv('resmarker_table.txt', sep='\t', index=False)
@@ -311,7 +312,7 @@ def main(args):
             'RefMicrohap': '/'.join(x.set_index('CodonID').loc[sorted_codon_ids]['RefAA']),
         })
 
-    group_by_columns = ['SampleID', 'GeneID', 'Gene', 'PseudoCIGAR', 'Reads']
+    group_by_columns = ['SampleID', 'chr', 'GeneID', 'Gene', 'PseudoCIGAR', 'Reads']
     if args.add_locus_column:
         # Insert after SampleID
         group_by_columns.insert(1, 'Locus')
@@ -322,14 +323,14 @@ def main(args):
     df_microhap['MicrohapRefAlt'] = np.where(df_microhap['Microhaplotype'] == df_microhap['RefMicrohap'], 'REF', 'ALT')
 
     # Select columns and rename them
-    microhap_select_columns = ['SampleID', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt', 'Reads']
+    microhap_select_columns = ['SampleID', 'chr', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt', 'Reads']
     if args.add_locus_column:
         microhap_select_columns += ['Locus']
 
     df_microhap = df_microhap[microhap_select_columns]
 
     # Summarize reads
-    microhap_groupby_columns = ['SampleID', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt']
+    microhap_groupby_columns = ['SampleID', 'chr', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt']
     if args.add_locus_column:
         # Insert after SampleID
         microhap_groupby_columns.insert(1, 'Locus')
@@ -338,13 +339,24 @@ def main(args):
         'Reads': 'sum'
     }).reset_index()
 
+    # Function to extract the first integer from MicrohapIndex for sorting
+    def extract_first_position(microhap_index):
+        # Split the string, convert to integers, and return the first element
+        positions = list(map(int, microhap_index.split('/')))
+        return min(positions)
+
+    df_microhap_collapsed['SortPosition'] = df_microhap_collapsed['MicrohapIndex'].apply(extract_first_position)
+
     # Sort by MicrohapIndex, Gene, and SampleID
     df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = None, None
     if args.add_locus_column:
-        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['SampleID', 'MicrohapIndex', 'Gene', 'Locus'], [True, True, True, True]
+        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['SampleID', 'chr', 'SortPosition'], [True, True, True]
     else:
-        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['SampleID', 'MicrohapIndex', 'Gene'], [True, True, True]
+        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['SampleID', 'chr', 'SortPosition'], [True, True, True]
     df_microhap_collapsed = df_microhap_collapsed.sort_values(by=df_microhap_collapsed_sort_columns, ascending=df_microhap_collapsed_sort_order)
+
+    # Remove the sort position column
+    df_microhap_collapsed.drop(['SortPosition', 'chr'], axis=1, inplace=True)
 
     # Output microhaplotype table
     df_microhap_collapsed.to_csv('resmarker_microhap_table.txt', sep='\t', index=False)
