@@ -260,10 +260,10 @@ def main(args):
 
     sort_columns, sort_order, select_columns = None, None, None
     if args.add_locus_column:
-        sort_columns, sort_order = ['CodonID', 'Gene', 'Locus', 'SampleID'], [False, False, False, False]
+        sort_columns, sort_order = ['SampleID', 'CodonID', 'Gene', 'Locus'], [True, True, True, True]
         select_columns = ['SampleID', 'Locus', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
     else:
-        sort_columns, sort_order = ['CodonID', 'Gene', 'SampleID'], [False, False, False]
+        sort_columns, sort_order = ['SampleID', 'CodonID', 'Gene'], [True, True, True]
         select_columns = ['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
 
     # Select the columns we want
@@ -271,10 +271,6 @@ def main(args):
     df_results = df_results[select_columns]
     logging.debug(f"Selected {df_results.shape[0]} rows")
     logging.debug(f"Columns: {df_results.columns}")
-
-    # Sort by CodonID, Gene, and SampleID (and Locus if applicable)
-    logging.debug(f"Sorting by columns: {sort_columns}, order: {sort_order}")
-    df_results = df_results.sort_values(sort_columns, ascending=sort_order)
 
     # Drop unnecessary columns 
     drop_columns = ['PseudoCIGAR', 'new_mutations']
@@ -293,6 +289,10 @@ def main(args):
         'Reads': 'sum'
     }).reset_index()
 
+    # Sort by CodonID, Gene, and SampleID (and Locus if applicable)
+    logging.debug(f"Sorting by columns: {sort_columns}, order: {sort_order}")
+    df_resmarker = df_resmarker.sort_values(by=sort_columns, ascending=sort_order)
+
     # Output resmarker table
     df_resmarker.to_csv('resmarker_table.txt', sep='\t', index=False)
 
@@ -300,7 +300,7 @@ def main(args):
         # Obtain sorted codons and their corresponding amino acids
         sorted_codon_ids = x['CodonID'].sort_values()
         amino_acids_by_codon = x.set_index('CodonID').loc[sorted_codon_ids]['AA']
-        
+
         # Check for length mismatch
         if len(sorted_codon_ids) != len(amino_acids_by_codon):
             logging.error(f"Length mismatch detected! Codon IDs: {sorted_codon_ids.tolist()}, Amino Acids: {amino_acids_by_codon.tolist()}")
@@ -341,10 +341,10 @@ def main(args):
     # Sort by MicrohapIndex, Gene, and SampleID
     df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = None, None
     if args.add_locus_column:
-        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['MicrohapIndex', 'Gene', 'Locus', 'SampleID'], [False, False, False, False]
+        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['SampleID', 'MicrohapIndex', 'Gene', 'Locus'], [True, True, True, True]
     else:
-        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['MicrohapIndex', 'Gene', 'SampleID'], [False, False, False]
-    df_microhap_collapsed = df_microhap_collapsed.sort_values(df_microhap_collapsed_sort_columns, ascending=df_microhap_collapsed_sort_order)
+        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['SampleID', 'MicrohapIndex', 'Gene'], [True, True, True]
+    df_microhap_collapsed = df_microhap_collapsed.sort_values(by=df_microhap_collapsed_sort_columns, ascending=df_microhap_collapsed_sort_order)
 
     # Output microhaplotype table
     df_microhap_collapsed.to_csv('resmarker_microhap_table.txt', sep='\t', index=False)
