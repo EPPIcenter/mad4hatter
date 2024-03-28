@@ -29,9 +29,12 @@ nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/res
 
 ## Further Information
 
-The default parameter setting for pooling in DADA2 is set to False, meaning that all inference is performed on individual samples. Pseudo pooling, on the other hand, involves an initial round of DADA2 clustering followed by pooling the alleles called for each sample, which are then entered as priors for a second round of pooling. This process aims to 'rescue' low abundance alleles that DADA2 identified as errors if they appear at a higher abundance in another sample in the run. However, while this approach may enhance sensitivity in detecting variants, it also carries the risk of reintroducing false positives, potentially due to common sequencing errors and low-level contamination.
+The default parameter setting for pooling in DADA2 is set to False, meaning that all inference is performed on individual samples. Pseudo pooling, on the other hand, involves an initial round of DADA2 clustering followed by pooling the alleles called for each sample, which are then entered as priors for a second round of pooling. This process aims to 'rescue' low abundance alleles that DADA2 identified as errors if they appear at a higher abundance in another sample in the run. However, while this approach may enhance sensitivity in detecting variants, it also carries the risk of reintroducing false positives, potentially due to PCR errors, sequencing errors, and/or low-level contamination.
 
 Through extensive analysis using multiple mixture controls from various runs at different sites, we found that activating pseudo pooling increased the sensitivity of our calls. To address the challenge of additional false positives, we adjusted the omega_a value from the default of 1e-40 to 1e-120.
+
+![Schematic of DADA2 with pseudo pooling](pseudo_pooling.png)
+*pseudo-pooling schematic, Benjamin Callahan, https://benjjneb.github.io/dada2/pseudo.html*
 
 For more detailed information on pseudo pooling, please refer to the documentation available [here](https://benjjneb.github.io/dada2/pseudo.html). If you have any questions or need guidance on selecting the most suitable settings for your specific needs, please feel free to reach out to the UCSF team.
 
