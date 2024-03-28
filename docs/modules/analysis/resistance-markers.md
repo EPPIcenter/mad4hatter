@@ -10,7 +10,7 @@ parent: Analysis Modules
 {: .note }
 This module can only be run with the `v4` amplicon panel.
 
-This module will identify variants that are known to provide antibiotic resistance to *Plasmodium falciparum* by using the **PseudoCIGAR** string found in `allele_data.txt`. This module identifies mutations found within the genomic coordinates of interest (`resistance_markers_amplicon_v4.txt`), and reports any new indels or SNPs occurred. 
+This module is designed to identify variants associated with drug resistance in Plasmodium falciparum by utilizing the **PseudoCIGAR** string extracted from `allele_data.txt`. It works by examining mutations within specific genomic coordinates of interest outlined in (`resistance_markers_amplicon_v4.txt`). Any new indels or single nucleotide polymorphisms (SNPs) that occur within these coordinates are reported.
 
 ## File Outputs
 
@@ -38,7 +38,7 @@ This file contains all codons that are found in the ASV as specified by the geno
 
 ### resmarker_microhap_table.txt
 
-This file provides the same information as the resistance marker table, but in less granular form and joined by haplotype.   
+This file provides the same information as the resistance marker table above, but it is more informative as it strings the mutations from each locus together into haplotypes. 
 
 |Column|Description|
 |:--:|:--:|
@@ -54,7 +54,6 @@ This file provides the same information as the resistance marker table, but in l
 ### resmarker_new_mutations.txt
 
 This file contains DNA mutations that were not within the specified genomic coordinates. The indels and SNPs here are listed in this file to allow end users an opportunity to see other mutations found. They should be interpreted with some caution as they are simply reported and not filtered in any way. 
-
 
 |Column|Description|
 |:--:|:--:|
