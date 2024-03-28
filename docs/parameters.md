@@ -34,7 +34,14 @@ The default parameter setting for pooling in DADA2 is set to False, meaning that
 Through extensive analysis using multiple mixture controls from various runs at different sites, we found that activating pseudo pooling increased the sensitivity of our calls. To address the challenge of additional false positives, we adjusted the omega_a value from the default of 1e-40 to 1e-120.
 
 ![Schematic of DADA2 with pseudo pooling](../assets/images/pseudo_pooling.png)
-*pseudo-pooling schematic, Benjamin Callahan, https://benjjneb.github.io/dada2/pseudo.html*
+*Pseudo-pooling schematic: Benjamin Callahan, https://benjjneb.github.io/dada2/pseudo.html*
+
+Utilizing pseudo pooling in DADA2 will approximately double the runtime of the process, as it essentially involves running the algorithm twice, incorporating some prior information during the second run. If time efficiency is a concern and there's less emphasis on retrieving alleles at low abundance, users may opt to disable pseudo pooling using the `pool` flag. In our pipeline, we've maintained the default parameters for pseudo pooling, but these settings may be revisited in the future. These parameters include:
+
+* `PSEUDO_PREVALENCE`: Determines the minimum number of samples in which an allele must be identified during the first round of DADA2 to be considered for inclusion as a prior during the second round (default=2).
+* `PSEUDO_ABUNDANCE`: Specifies the minimum abundance threshold an allele must meet to be included (default = inf). By default, the PSEUDO_ABUNDANCE parameter is essentially disregarded.
+
+End users may opt to implement additional filtering to further improve precision in the pipeline outputs. This could involve setting a read cutoff per allele or establishing an abundance threshold, such as requiring the allele to be present at a certain percentage within the locus (e.g., >1%).
 
 For more detailed information on pseudo pooling, please refer to the documentation available [here](https://benjjneb.github.io/dada2/pseudo.html). If you have any questions or need guidance on selecting the most suitable settings for your specific needs, please feel free to reach out to the UCSF team.
 
