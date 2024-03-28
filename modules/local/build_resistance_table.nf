@@ -23,13 +23,11 @@ process BUILD_RESISTANCE_TABLE {
   path ('resmarker_new_mutations.txt'), emit: new_mutations
 
   script:
-  def add_locus_column = params.add_locus_column ? "--add-locus-column" : ""
   """
   python3 ${projectDir}/bin/resistance_marker_module.py \
     --allele_data_path ${alleledata} \
     --res_markers_info_path ${resmarkers} \
     --refseq_path ${refseq} \
-    --n-cores ${task.cpus} \
-    ${add_locus_column}
+    --n-cores ${task.cpus} 
   """
 }

@@ -259,13 +259,8 @@ def main(args):
     df_results = df_results.rename(columns={'reads': 'Reads', 'sampleID': 'SampleID', "pseudo_cigar": "PseudoCIGAR"})
     df_results['CodonID'] = df_results['CodonID'].astype(int)
 
-    sort_columns, sort_order, select_columns = None, None, None
-    if args.add_locus_column:
-        sort_columns, sort_order = ['SampleID', 'chr', 'CodonID'], [True, True, True]
-        select_columns = ['SampleID', 'chr', 'Locus', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
-    else:
-        sort_columns, sort_order = ['SampleID', 'chr', 'CodonID'], [True, True, True]
-        select_columns = ['SampleID', 'chr', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
+    sort_columns, sort_order = ['SampleID', 'chr', 'CodonID'], [True, True, True]
+    select_columns = ['SampleID', 'chr', 'Locus', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads', 'PseudoCIGAR', 'new_mutations']
 
     # Select the columns we want
     logging.debug(f"Selecting columns: {select_columns}")
@@ -274,10 +269,7 @@ def main(args):
     logging.debug(f"Columns: {df_results.columns}")
 
     # Summarize reads
-    group_by_columns = ['SampleID', 'chr', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']
-    if args.add_locus_column:
-        # Insert after SampleID
-        group_by_columns.insert(1, 'Locus')
+    group_by_columns = ['SampleID', 'Locus', 'chr', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon', 'CodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']
 
     logging.debug(f"Group by columns for resmarker table: {group_by_columns}")
 
@@ -312,10 +304,7 @@ def main(args):
             'RefMicrohap': '/'.join(x.set_index('CodonID').loc[sorted_codon_ids]['RefAA']),
         })
 
-    group_by_columns = ['SampleID', 'chr', 'GeneID', 'Gene', 'PseudoCIGAR', 'Reads']
-    if args.add_locus_column:
-        # Insert after SampleID
-        group_by_columns.insert(1, 'Locus')
+    group_by_columns = ['SampleID', 'Locus', 'chr', 'GeneID', 'Gene', 'PseudoCIGAR', 'Reads']
 
     df_microhap = df_results.groupby(group_by_columns).apply(create_microhap_lambda).reset_index()
 
@@ -323,17 +312,11 @@ def main(args):
     df_microhap['MicrohapRefAlt'] = np.where(df_microhap['Microhaplotype'] == df_microhap['RefMicrohap'], 'REF', 'ALT')
 
     # Select columns and rename them
-    microhap_select_columns = ['SampleID', 'chr', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt', 'Reads']
-    if args.add_locus_column:
-        microhap_select_columns += ['Locus']
-
+    microhap_select_columns = ['SampleID', 'Locus', 'chr', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt', 'Reads']
     df_microhap = df_microhap[microhap_select_columns]
 
     # Summarize reads
-    microhap_groupby_columns = ['SampleID', 'chr', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt']
-    if args.add_locus_column:
-        # Insert after SampleID
-        microhap_groupby_columns.insert(1, 'Locus')
+    microhap_groupby_columns = ['SampleID', 'Locus', 'chr', 'GeneID', 'Gene', 'MicrohapIndex', 'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt']
 
     df_microhap_collapsed = df_microhap.groupby(microhap_groupby_columns).agg({
         'Reads': 'sum'
@@ -348,11 +331,7 @@ def main(args):
     df_microhap_collapsed['SortPosition'] = df_microhap_collapsed['MicrohapIndex'].apply(extract_first_position)
 
     # Sort by MicrohapIndex, Gene, and SampleID
-    df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = None, None
-    if args.add_locus_column:
-        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['SampleID', 'chr', 'SortPosition'], [True, True, True]
-    else:
-        df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['SampleID', 'chr', 'SortPosition'], [True, True, True]
+    df_microhap_collapsed_sort_columns, df_microhap_collapsed_sort_order = ['SampleID', 'chr', 'SortPosition'], [True, True, True]
     df_microhap_collapsed = df_microhap_collapsed.sort_values(by=df_microhap_collapsed_sort_columns, ascending=df_microhap_collapsed_sort_order)
 
     # Remove the sort position column
@@ -369,6 +348,7 @@ def main(args):
             for pos, (alt, ref) in new_mutations.items():
                 new_row = {
                     'SampleID': row['SampleID'],
+                    'Locus': row['Locus'],
                     'GeneID': row['GeneID'],
                     'Gene': row['Gene'],
                     'CodonID': row['CodonID'],
@@ -377,18 +357,10 @@ def main(args):
                     'Ref': ref,
                     'Reads': row['Reads']
                 }
-                if args.add_locus_column:
-                    new_row['Locus'] = row['Locus']
+
                 mutation_list.append(new_row)
 
     df_new_mutations = pd.DataFrame(mutation_list)
-
-    # Ensure that Locus is the second column if it exists in the DataFrame
-    if args.add_locus_column and 'Locus' in df_new_mutations.columns:
-        cols = df_new_mutations.columns.tolist()
-        cols.insert(1, cols.pop(cols.index('Locus')))
-        df_new_mutations = df_new_mutations[cols]
-
     df_new_mutations.to_csv('resmarker_new_mutations.txt', sep='\t', index=False)
 
 
@@ -404,14 +376,13 @@ if __name__ == "__main__":
         parser.add_argument("--log-file", type=str, help="Write logs to a file instead of the console")
         parser.add_argument("--log-max-size", type=int, default=5, help="Maximum log file size in MB")
         parser.add_argument("--log-backups", type=int, default=1, help="Number of log files to keep")
-        parser.add_argument("--add-locus-column", action="store_true", help="Add a locus column to the output table")
 
         args = parser.parse_args()
 
         numeric_level = getattr(logging, args.log_level.upper(), None)
         if not isinstance(numeric_level, int):
             raise ValueError(f"Invalid log level: {args.log_level}")
-        
+
         if args.log_file:
             # Use rotating log files
             file_handler = RotatingFileHandler(args.log_file, maxBytes=args.log_max_size * 1024 * 1024, backupCount=args.log_backups)
