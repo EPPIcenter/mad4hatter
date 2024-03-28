@@ -33,7 +33,7 @@ The default parameter setting for pooling in DADA2 is set to False, meaning that
 
 Through extensive analysis using multiple mixture controls from various runs at different sites, we found that activating pseudo pooling increased the sensitivity of our calls. To address the challenge of additional false positives, we adjusted the omega_a value from the default of 1e-40 to 1e-120.
 
-For more detailed information on pseudo pooling, please refer to the documentation available (here)[https://benjjneb.github.io/dada2/pseudo.html]. If you have any questions or need guidance on selecting the most suitable settings for your specific needs, please feel free to reach out to the UCSF team.
+For more detailed information on pseudo pooling, please refer to the documentation available [here](https://benjjneb.github.io/dada2/pseudo.html). If you have any questions or need guidance on selecting the most suitable settings for your specific needs, please feel free to reach out to the UCSF team.
 
 
 
