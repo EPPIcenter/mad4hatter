@@ -12,7 +12,6 @@ print(args)
 
 library(stringr)
 library(dplyr)
-library(dada2)
 library(foreach)
 library(parallel)
 library(BSgenome)

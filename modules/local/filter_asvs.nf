@@ -7,6 +7,7 @@
 process FILTER_ASVS {
 
     label 'process_low'
+    conda 'envs/postproc-env.yml'
 
     input:
     path alignments

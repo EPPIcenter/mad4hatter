@@ -6,6 +6,7 @@
 process COLLAPSE_CONCATENATED_READS {
 
   label 'process_single'
+  conda 'envs/postproc-env.yml'
 
   input:
   path clusters

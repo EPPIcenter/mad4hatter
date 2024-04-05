@@ -1,0 +1,11 @@
+name: qc
+channels:
+- conda-forge
+dependencies:
+- r-tidyverse=2.0.0
+- r-argparse=2.2.2
+- r-rmarkdown=2.26
+- pip=24.0
+- r-gridextra=2.3
+- r-ggbeeswarm=0.7.2
+

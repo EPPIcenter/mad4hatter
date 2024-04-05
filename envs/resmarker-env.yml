@@ -1,9 +1,8 @@
 name: resmarker
 channels:
-  - conda-forge
-  - bioconda
-  - defaults
+- conda-forge
 dependencies:
-  - bwa
-  - bcftools
-  - samtools
+- pandas=2.2.1
+- pip=24.0
+- biopython=1.83
+

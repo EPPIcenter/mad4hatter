@@ -6,6 +6,7 @@
 process ALIGN_TO_REFERENCE {
 
   label 'process_high'
+  conda 'envs/postproc-env.yml'
 
   input:
   path clusters

@@ -7,6 +7,7 @@
 process CREATE_REFERENCE_FROM_GENOMES {
 
   label 'process_medium'
+  conda 'envs/postproc-env.yml'
 
   input:
   path genome

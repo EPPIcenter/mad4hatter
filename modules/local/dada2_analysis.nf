@@ -6,6 +6,7 @@
 process DADA2_ANALYSIS {
 
   label 'process_high'
+  conda 'envs/dada2-env.yml'
 
   publishDir(
     path: "${params.outDIR}/dada2_analysis",

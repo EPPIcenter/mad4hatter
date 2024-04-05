@@ -1,6 +1,7 @@
 process QUALITY_REPORT {
   
   label 'process_low'
+  conda 'envs/qc-env.yml'
 
   publishDir(
       path: "${params.outDIR}",

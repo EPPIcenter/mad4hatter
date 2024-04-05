@@ -1,6 +1,9 @@
 // modules/local/postprocess_coverage.nf
 
 process POSTPROCESS_COVERAGE {
+
+  conda 'envs/postproc-env.yml'
+
   input:
   path alleledata
   path clusters

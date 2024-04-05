@@ -6,6 +6,7 @@
 process BUILD_ALLELETABLE {
 
   label 'process_single'
+  conda 'envs/postproc-env.yml'
 
   publishDir(
     path: "${params.outDIR}",

@@ -1,0 +1,10 @@
+name: dada2
+channels:
+- conda-forge
+- bioconda
+dependencies:
+- r-tidyverse=2.0.0
+- pip=24.0
+- r-argparse=2.2.2
+- bioconductor-dada2=1.30.0
+

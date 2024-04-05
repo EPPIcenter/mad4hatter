@@ -1,7 +1,6 @@
 process MASK_REFERENCE_TANDEM_REPEATS {
 
   label 'process_single'
-
   conda 'envs/trf-env.yml'
 
   input:

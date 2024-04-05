@@ -1,6 +1,6 @@
 name: trf
 channels:
-  - conda-forge
-  - bioconda
+- bioconda
 dependencies:
-  - trf=4.09.1=hec16e2b_2
+- trf=4.09.1
+

@@ -2,8 +2,7 @@
 process MASK_SEQUENCES {
 
   label 'process_medium'
-
-  conda 'pandoc'
+  conda 'envs/postproc-env.yml'
 
   input:
   path masks

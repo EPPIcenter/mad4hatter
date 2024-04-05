@@ -8,6 +8,7 @@ process CUTADAPT {
 
   tag "$pair_id"
   label 'process_low'
+  conda 'envs/cutadapt-env.yml'
 
     input:
     file fwd_primers
