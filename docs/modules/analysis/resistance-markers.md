@@ -12,7 +12,7 @@ This module can only be run with the `v4` amplicon panel.
 
 This module is designed to identify variants associated with drug resistance in Plasmodium falciparum by utilizing the **PseudoCIGAR** string extracted from `allele_data.txt`. It works by examining mutations within specific genomic coordinates of interest outlined in (`resistance_markers_amplicon_v4.txt`). Any new indels or single nucleotide polymorphisms (SNPs) that occur within these coordinates are reported. 
 
-In the case that there are multiple loci covering the same drug resistance marker being inspected these will be reported on separate lines. You can identify these as they will have the same GeneID, Gene, and CodonID, but will have different values in the locus column. In most cases we would expect the Codon and amino acid (AA) reported to be the same on both loci, however if you find divergence one option would be to take the one with the highest number of reads. Please reach out to the UCSF team if you have any questions about interpretting these files!  
+In the case that there are multiple loci covering the same drug resistance marker being inspected these will be reported on separate lines. You can identify these as they will have the same GeneID, Gene, and CodonID, but will have different values in the locus column. In most cases we would expect the Codon and amino acid (AA) reported to be the same on both loci, however if you find divergence one option would be to take the one with the highest number of reads. Please reach out to the UCSF team if you have any questions about interpreting these files!  
 
 ## File Outputs
 
