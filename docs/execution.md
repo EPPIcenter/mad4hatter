@@ -138,10 +138,10 @@ If you run this workflow, the only outputs you will see is your `amplicon_covera
 
 If you provide the `dada2.clusters.txt` file from a previous run using the `--denoised_asvs` flag, this will just run the postprocessing module. There is no need to supply a `readDIR` to run this workflow. You may want to run this workflow if you want to rerun the postprocessing module with different parameters. For example, you may want to run the postprocessing module with different allele masking parameters, or supply a different alignment threshold.
 
-Below is an example of how to run the postprocessing module:
+Below is an example of how to run just the postprocessing module:
 
 ```bash
-nextflow run main.nf --denoised_asvs /wynton/scratch/results/dada2_analysis/dada2.clusters.txt --target v4 -profile sge,apptainer
+nextflow run main.nf --denoised_asvs /wynton/scratch/results/raw_dada2_output/dada2.clusters.txt --target v4 -profile sge,apptainer
 ```
 
 The output of this workflow is the `allele_data.txt` file. 
