@@ -1,6 +1,9 @@
 // modules/local/postprocess_coverage.nf
 
 process POSTPROCESS_COVERAGE {
+
+  label 'process_single'
+
   input:
   path alleledata
   path clusters
