@@ -33,76 +33,7 @@ The table below defines the each parameter above:
 
 Each module should be assigned a specific amount of RAM, processors and execution time. There is no one size fits all per se, but a good strategy to begin is requesting more resources than you think you will need, and then reduce as needed.
 
-
-### Understanding Resource Requirements
-
-Below is a schematic that shows how many resources each process uses with a 12 sample toy dataset (676 MB total) and is meant to give a sense of which processes are more computationally intensive. 
-
-{: .info }
-This is a *much smaller* dataset then you will usually use. Depending on the sequencer used and the library preparation, datasets can range in size (5 GB to 100+ GB).
-
-![Resources used by the pipeline for a toy dataset](resource_schematic.png)
-
-Some processes are more expensive computationally and will always require more resources. `DADA2_ANALYSIS` requires by far the most memory and time to run. `DADA2_POSTPROC` does not require much time to run, but does require a fair number of resources 4.6GB or RAM.
-
-The least costly processes are the `CUTADAPT` and `QUALITY_CHECK` processes, which are assigned one sample each out of the 12 samples in the dataset. Most of these processes use between 200-300MB of RAM and run for a few seconds. Some samples have more reads - the largest sample, `GM-1A-D2-10000-P2-3_S20_L001` has 1690087 forward reads, which is over 2.3 times more than the second sample, and likely requires more processing time (see `CUTADAPT(8)`).
-
-### How to set resources
-
-Below is an example `custom.config` file found under the `conf/` directory that specifies resources for each module. The easiest thing to do when assigning your own resources is to open this file and adjust resources accordingly. 
-
-{: .info }
-The file below has recommended settings for a dataset that is between 5 - 10 GB. When adjusting these numbers, a good strategy is to double or halve the of resources, depending if you are trying to increase or decrease resource allocation, respectively. 
-
-```
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     aarandad / ampseq_workflow Nextflow config file
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          Custom config options for institutions
-----------------------------------------------------------------------------------------
-*/
-
-// NOTE: current configuration target Wynton at UCSF. You may change or erase this file as needed.
-
-process {
-
-    // process resources
-    withName: 'CUTADAPT|QUALITY_CHECK' {
-      time = '60m'
-      cpus = 4
-      penv = 'smp'
-      memory = '8 GB'
-    }
-    withName: 'DADA2_ANALYSIS' {
-      time = '600m'
-      cpus = 4
-      penv = 'smp'
-      memory = '32 GB'
-    }
-    withName: 'DADA2_POSTPROC' {
-      time = '120m'
-      cpus = 1
-      penv = 'smp'
-      memory = '64 GB'
-    }
-    withName: 'RESISTANCE_MARKERS' {
-      time = '120m'
-      cpus = 4
-      penv = 'smp'
-      memory = '8 GB'
-    }
-}
-
-executor {
-  $sge {
-      queueSize = 1000
-      // pollInterval = '30sec'
-  }
-}
-```
-
-Below is a table that describes each resource:
+There are multiple resource tiers defined in `conf/base.config` and each module is assigned one of these tiers. You may update these tiers if you wish to modify resources broadly. The resources are described as follows:
 
 |Resource|Description|
 |:--:|:--:|
@@ -111,7 +42,71 @@ Below is a table that describes each resource:
 |penv|The parallel environment to use. You will generally never need to change this value.|
 |memory|The amount of memory to use for the process|
 
-The resources consumed by a process will depend on the process itself as well as the size of the dataset you wish to run. 
+Below is a table of which modules are assigned to each tier:
+
+|Module|Tier|
+|:--:|:--:|
+|CREATE_PRIMER_FILES|Single|
+|PREPROCESS_COVERAGE|Single|
+|POSTPROCESS_COVERAGE|Single|
+|MASK_REFERENCE_TANDEM_REPEATS|Single|
+|COLLAPSE_CONCATENATED_READS|Single|
+|BUILD_ALLELETABLE|Single|
+|CUTADAPT|Low|
+|FILTER_ASVS|Low|
+|QUALITY_REPORT|Low|
+|CREATE_REFERENCE_FROM_GENOMES|Medium|
+|MASK_REFERENCE_HOMOPOLYMERS|Medium|
+|MASK_SEQUENCES|Medium|
+|BUILD_PSEUDOCIGAR|Medium|
+|BUILD_RESISTANCE_TABLE|Medium|
+|ALIGN_TO_REFERENCE|High|
+|DADA2_ANALYSIS|High|
+
+
+If you would like override a specific module, we recommend updating the `conf/custom.config` file. This file is prepopulated with the DADA2_ANALYSIS module because this module tends to be updated the most. It also serves as a template to add other modules if required. 
+
+{: .info }
+The file below has recommended settings for a dataset that is between 5 - 10 GB. When adjusting these numbers, a good strategy is to double or halve the of resources, depending if you are trying to increase or decrease resource allocation, respectively. 
+
+
+```
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     EPPIcenter / mad4hatter Nextflow config file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          Custom config options for institutions
+----------------------------------------------------------------------------------------
+*/
+
+process {
+
+    withName: 'DADA2_ANALYSIS' {
+      time = '600m'
+      cpus = 4
+      penv = 'smp'
+      memory = '16 GB'
+    }
+}
+
+executor {
+  $sge {
+      queueSize = 1000
+  }
+}
+
+executor {
+  $local {
+      queueSize = 1000
+  }
+}
+```
+
+
+The executor settings may also be overwritten in this config file. The `queueSize` parameter is the maximum number of jobs that can be submitted at once, which we set to `1000`. This parameter is useful to prevent the scheduler from becoming overloaded or to increase the number of modules that can run in parallel if running a large dataset.
+
+{: .info }
+This controls the number of jobs submitted, not threading within a module.
 
 ### Threading
 
