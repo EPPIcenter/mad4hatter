@@ -5,4 +5,5 @@ channels:
 dependencies:
 - cutadapt=4.1
 - pip=22.2.2
+- jq==1.6
 
