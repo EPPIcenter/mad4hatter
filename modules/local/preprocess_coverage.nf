@@ -1,6 +1,9 @@
 // modules/local/preprocess_coverage.nf
 
 process PREPROCESS_COVERAGE {
+
+  label 'process_single'
+
   input:
   path sample_coverages
   path amplicon_coverages
