@@ -18,7 +18,11 @@ workflow MASK_LOW_COMPLEXITY_REGIONS {
 
   main:
   
-  // optionally mask sequences
+  // Initialize Channels
+  def mask_reference_tandem_repeats_ch = Channel.empty()
+  def mask_reference_homopolymers_ch = Channel.empty()
+
+  // Optionally mask tandem repeats
   if (params.mask_tandem_repeats) {
     MASK_REFERENCE_TANDEM_REPEATS(
       reference,
@@ -29,7 +33,7 @@ workflow MASK_LOW_COMPLEXITY_REGIONS {
     mask_reference_tandem_repeats_ch = MASK_REFERENCE_TANDEM_REPEATS.out.masked_fasta
   }
 
-
+  // Optionally mask homopolymers
   if (params.mask_homopolymers) {
     MASK_REFERENCE_HOMOPOLYMERS(
       reference,
