@@ -18,10 +18,11 @@ Below are a table of parameters to control how much masking of low complexity re
 
 |Parameter|Description|
 |---|---|
-|add_mask|Whether to add a mask or not to the final sequences (default `true`)|
+|mask_homopolymers|Whether to mask homopolymers (default `true`)|
+|homopolymer_threshold|The number of repeating bases to qualify a sequence as a homopolymer region (default `5`)|
+|mask_tandem_repeats|Whether to mask tandem repeats (default `true`)|
 |trf_min_score|Used by Tandem Repeat Finder. This will control the alignment score required to call a sequence a tandem repeat (default `25`)|
 |trf_max_period|Used by Tandem Repeat Finder. This will limit the range of the pattern size of a tandem repeat (default `3`)|
-|homopolymer_threshold|The number of repeating bases to qualify a sequence as a homopolymer region (default `5`)|
 
 ### Examples 
 
