@@ -12,8 +12,37 @@ params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
 params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
 params.resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_${params.target}.txt"
 
-// Files
-cutadapt_minlen = params.cutadapt_minlen
+// Make sure only refseq fasta OR genome are specified.
+both_reference_and_genome_are_set_by_user = (params.refseq_fasta != null && params.genome != null)
+if (both_reference_and_genome_are_set_by_user) {
+  exit 1, "Only a valid reference or genome path may be specified in a single run."
+}
+
+// Validate that the specified reference (or default)
+// exists on disk. If the genome is specified, this
+// will take precedence over the fasta file because we are 
+// going to create the reference fasta.
+default_refseq_fastapath = "$projectDir/resources/${params.target}/${params.target}_reference.fasta"
+reference_path_to_validate = params.genome ?: (params.refseq_fasta ?: default_refseq_fastapath) // order matters.
+
+// Should never happen unless the default reference is deleted.
+if(reference_path_to_validate == null) {
+  exit 1, "A reference fasta or genome must be provided."
+}
+
+// Check for the home directory ('~') and expand if it exists.
+reference_path_to_validate = "${reference_path_to_validate}".replaceFirst("^~", System.getProperty("user.home"))
+
+// Make sure the file exists on disk.
+File absolute_path_to_reference_file = new File(reference_path_to_validate).absoluteFile
+if(!absolute_path_to_reference_file.exists()) {
+  exit 1, "The specified reference '${absolute_path_to_reference_file}' could not be found."
+}
+
+// Use the actual 'string' path for the refseq_fasta.
+// Note that this is just for the refseq_fasta and it can
+// be null if the genome is provided.
+refseq_fasta = params.genome != null ? null : absolute_path_to_reference_file.getPath()
 
 /*
 Create 'read_pairs' channel that emits for each read pair a
@@ -30,7 +59,7 @@ include { QUALITY_CONTROL} from './workflows/quality_control.nf'
 // workflows
 include { QC_ONLY } from './workflows/qc_only.nf'
 include { POSTPROC_ONLY } from './workflows/postproc_only.nf'
-
+include { PREPARE_REFERENCE } from './workflows/prepare_reference.nf'
 
 // modules
 include { BUILD_ALLELETABLE } from './modules/local/build_alleletable.nf'
@@ -54,8 +83,14 @@ workflow {
     // Make sure the target is specified
     check_target()
 
+    // Prepare reference
+    PREPARE_REFERENCE(refseq_fasta)
+
     // Run Postprocessing only
-    POSTPROC_ONLY(params.denoised_asvs)
+    POSTPROC_ONLY(
+      params.denoised_asvs,
+      PREPARE_REFERENCE.out.reference_ch
+    )
 
   } else {
 
@@ -65,6 +100,9 @@ workflow {
 
     // Create read pairs channel from fastq data
     read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
+
+    // Prepare reference
+    PREPARE_REFERENCE(refseq_fasta)
 
     // Trim and demultiplex amplicons by amplicon
     DEMULTIPLEX_AMPLICONS(read_pairs)
@@ -76,7 +114,8 @@ workflow {
 
     // Masking, collapsing ASVs
     DENOISE_AMPLICONS_2(
-      DENOISE_AMPLICONS_1.out.denoise_ch
+      DENOISE_AMPLICONS_1.out.denoise_ch,
+      PREPARE_REFERENCE.out.reference_ch
     )
 
     // Finally create the final allele table
@@ -98,7 +137,7 @@ workflow {
     if (params.target == "v4") {
       RESISTANCE_MARKER_MODULE(
         BUILD_ALLELETABLE.out.alleledata,
-        DENOISE_AMPLICONS_2.out.reference_ch
+        PREPARE_REFERENCE.out.reference_ch
       )
     }
   }

@@ -12,6 +12,7 @@ workflow POSTPROC_ONLY {
 
     take:
     denoised_asvs
+    reference_ch
 
     main:
     // Read in denoised asv file provided by the user 
@@ -29,7 +30,7 @@ workflow POSTPROC_ONLY {
     denoise_ch = Channel.fromPath(denoised_asvs_file)
     
     // Run postprocessing only workflow
-    DENOISE_AMPLICONS_2(denoise_ch)
+    DENOISE_AMPLICONS_2(denoise_ch, reference_ch)
 
     // Allele table creation
     BUILD_ALLELETABLE(
