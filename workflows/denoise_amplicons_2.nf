@@ -11,7 +11,7 @@ include { MASK_LOW_COMPLEXITY_REGIONS } from '../subworkflows/local/mask_low_com
 include { PREPARE_REFERENCE_SEQUENCES } from '../subworkflows/local/prepare_reference_sequences.nf'
 include { BUILD_PSEUDOCIGAR } from '../modules/local/build_pseudocigar.nf'
 include { FILTER_ASVS } from '../modules/local/filter_asvs.nf'
-
+include { COLLAPSE_CONCATENATED_READS } from '../modules/local/collapse_concatenated_reads.nf'
 
 workflow DENOISE_AMPLICONS_2 {
 
@@ -19,6 +19,10 @@ workflow DENOISE_AMPLICONS_2 {
   denoise_ch
 
   main:
+
+  // custom trimming
+  denoise_ch = params.just_concatenate ? 
+    COLLAPSE_CONCATENATED_READS(denoise_ch) : denoise_ch
 
   // create the reference if the user has not provided one (but has a genome), otherwise use the user file
   def reference = (params.refseq_fasta == null) ? PREPARE_REFERENCE_SEQUENCES().reference_ch : params.refseq_fasta

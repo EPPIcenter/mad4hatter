@@ -9,7 +9,7 @@ process DADA2_ANALYSIS {
   conda 'envs/dada2-env.yml'
 
   publishDir(
-    path: "${params.outDIR}/dada2_analysis",
+    path: "${params.outDIR}/raw_dada2_output",
     mode: 'copy',
     pattern: 'dada2.clusters.txt'
   )

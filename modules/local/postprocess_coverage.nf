@@ -3,6 +3,7 @@
 process POSTPROCESS_COVERAGE {
 
   conda 'envs/postproc-env.yml'
+  label 'process_single'
 
   input:
   path alleledata
