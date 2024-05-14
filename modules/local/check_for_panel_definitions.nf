@@ -7,6 +7,7 @@ process CHECK_FOR_PANEL_DEFINITIONS {
 
   label 'process_single'
   errorStrategy 'terminate'
+  conda 'envs/postproc-env.yml'
 
   input:
   path amplicon_info
