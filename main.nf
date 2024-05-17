@@ -46,10 +46,10 @@ def helpMessage() {
       --target     The amplicon panel version that was used. [Options: 4cast, ama1, v1, v2, v3, v4 (default)]
 
     Optional arguments:
-      --outDIR                  Path to folder to place final output
+      --outDIR                  Path to folder to place final output [Default: results]
       --sequencer               The sequencer used to produce your data. [Options: miseq, nextseq (default)]
       --QC_only                 Whether to only run QC related workflows or all workflows [Options: True (default), False]
-      --denoised_asvs           Path to denoised ASVs from DADA2. Used to only run the postprocessing workflow TODO: Add this to readme
+      --denoised_asvs           Path to denoised ASVs from DADA2. Used to only run the postprocessing workflow 
       -profile                  Runtime profile [Options: sge,apptainer, docker, conda]
       -config                   Resource configurations for each process
 
@@ -60,7 +60,7 @@ def helpMessage() {
       --maxEE                   Limit on number of expected errors within a read during filtering and trimming within DADA2 [Default: 2]
 
       (Post processing parameters)
-      --concat_non_overlaps     Whether to concatenate or discard any sequences that DADA2 was unable to be merge #TODO: IS this set to anything 
+      --concat_non_overlaps     Whether to concatenate or discard any sequences that DADA2 was unable to be merge 
       --refseq_fasta            Path to targeted reference 
       --genome                  Path to full genome covering all targets 
       --homopolymer_threshold   The length a homopolymer must reach to be masked [Default: 5]
@@ -91,8 +91,10 @@ def helpMessage() {
       
       Alter Masking parameters 
       nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --homopolymer_threshold 2 --trf_min_score 30 --trf_max_period 5
-        """
+        """.stripIndent()
 }
+
+
 // main workflow
 workflow {
   // Print help if requested

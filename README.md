@@ -65,9 +65,9 @@ Below are parameters that you can set to control the postprocessing module.
 |Parameter|Description|
 |---|---|
 |refseq_fasta **or** genome|Path to reference sequences **or** a specified genome target that is registered in the pipeline. Additionally you can specify a path to genome (*one* is **required**). This is required in order to map DADA sequences to their respective amplicons and to identify off target sequences|
-|add_mask|Whether to add a mask or not to the final sequences (default `true`)|
-|trf_min_score|Used by Tandem Repeat Finder. This will control the alignment score required to call a sequence a tandem repeat (default `25`)|
-|trf_max_period|Used by Tandem Repeat Finder. This will limit the range of the pattern size of a tandem repeat (default `3`)|
+|homopolymer_threshold|Homopolymers greater than this threshold will be masked (default `5`)|
+|trf_min_score|Used by Tandem Repeat Finder. This will control the alignment score required to call a sequence a tandem repeat and mask it (default `25`)|
+|trf_max_period|Used by Tandem Repeat Finder. This will limit the range of the pattern size of a tandem repeat to be masked(default `3`)|
 
 Below is a continuation of the example above that shows how these parameters may be modified on the command line. Notice the `genome` parameter will accept an identifier or a path to a fasta. Details about the fasta associated with an identifier can be found in `conf/base.config`.
 
