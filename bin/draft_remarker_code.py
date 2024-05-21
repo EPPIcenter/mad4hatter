@@ -64,7 +64,7 @@ sequence = 'ACTGACTAAG'
 start_position = 6
 print('REF')
 print(process_resmarker(reference, sequence,
-      start_position, '.', 'TAA'))  # Output: TGA
+      start_position, '.', 'TAA'))  # Output: TAA
 print('')
 
 # NO INDEL
@@ -100,7 +100,7 @@ sequence = 'ACTGACTGATG'
 start_position = 6
 print('Insertion after codon')
 print(process_resmarker(reference, sequence,
-      start_position, '6I=A8G', 'TAA'))  # Output: TGA
+      start_position, '10I=T8G', 'TAA'))  # Output: TGA
 print('')
 
 # DELETION after codon
