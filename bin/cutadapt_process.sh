@@ -135,7 +135,7 @@ cutadapt \
     ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
 
-amplicons=$(jq '.read_counts.output' ${cutadapt_json})
+amplicons=$(jq '.read_counts.read1_with_adapter' ${cutadapt_json})
 printf "%s\t%s\n" "Amplicons" ${amplicons} >> ${sample_id}.SAMPLEsummary.txt
 
 # Get amplicons specific reads
