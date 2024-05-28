@@ -6,7 +6,7 @@ The mad4hatter pipeline uses [nextflow](https://www.nextflow.io/) and will need 
 
 ### Setting Parameters
 
-To view the parameters and examples of usage on the command line run:
+To view the parameters and examples on the command line run:
 
 ```bash 
 nextflow run main.nf --help 
