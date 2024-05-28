@@ -48,14 +48,16 @@ def helpMessage() {
     Optional arguments:
       --outDIR                  Path to folder to place final output [Default: results]
       --sequencer               The sequencer used to produce your data. [Options: miseq, nextseq (default)]
-      --QC_only                 Whether to only run QC related workflows or all workflows [Options: True (default), False]
-      --denoised_asvs           Path to denoised ASVs from DADA2. Used to only run the postprocessing workflow 
+      --QC_only                 Runs just the QC workflow when set [Default: Not set]
+      --denoised_asvs           Path to denoised ASVs from DADA2. Used to only run the postprocessing workflow
+
+      (Nextflow parameters. Note the flags have "-" and not "--" at the start) 
       -profile                  Runtime profile [Options: sge,apptainer, docker, conda]
       -config                   Resource configurations for each process
 
       (DADA2 parameters)
       --omega_a                 Level of statistical evidence required for DADA2 to infer a new ASV [Default: 1e-120]
-      --pool                    Pooling method for DADA2 to process ASVs [pseudo (default), TRUE, FALSE]
+      --pool                    Pooling method for DADA2 to process ASVs [pseudo (default), true, false]
       --band_size               Limit on the net cumulative number of insertions of one sequence relative to the other in DADA2 [Default: 16]
       --maxEE                   Limit on number of expected errors within a read during filtering and trimming within DADA2 [Default: 2]
 
@@ -75,13 +77,13 @@ def helpMessage() {
       nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 -profile docker
       
       Only run the QC workflow
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --QC_only true
+      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --QC_only
       
       Only run the Postprocessing workflow
       nextflow run main.nf --outDIR postprocessing_results --target v4 --denoised_asvs results/raw_dada2_output/dada2.clusters.txt
       
       Alter Dada2 params 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --omega_a 1e-40 --pool FALSE --band_size 20 --maxEE 4
+      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --omega_a 1e-40 --pool false --band_size 20 --maxEE 4
       
       Set full genome 
       nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --genome data/reference/v1/PkPfPmPoPv.fasta
