@@ -35,8 +35,75 @@ include { POSTPROC_ONLY } from './workflows/postproc_only.nf'
 // modules
 include { BUILD_ALLELETABLE } from './modules/local/build_alleletable.nf'
 
+def helpMessage() {
+  log.info """
+    Usage:
+      The typical command for running the pipeline is as follows:
+      nextflow run main.nf --readDIR data/testdata --target v4
+
+    Mandatory arguments:
+      --readDIR    Path to folder containing fastq files
+      --target     The amplicon panel version that was used. [Options: 4cast, ama1, v1, v2, v3, v4 (default)]
+
+    Optional arguments:
+      --outDIR                  Path to folder to place final output [Default: results]
+      --sequencer               The sequencer used to produce your data. [Options: miseq, nextseq (default)]
+      --QC_only                 Runs just the QC workflow when set [Default: Not set]
+      --denoised_asvs           Path to denoised ASVs from DADA2. Used to only run the postprocessing workflow
+
+      (Nextflow parameters. Note the flags have "-" and not "--" at the start) 
+      -profile                  Runtime profile [Options: sge,apptainer, docker, conda]
+      -config                   Resource configurations for each process
+
+      (DADA2 parameters)
+      --omega_a                 Level of statistical evidence required for DADA2 to infer a new ASV [Default: 1e-120]
+      --pool                    Pooling method for DADA2 to process ASVs [pseudo (default), true, false]
+      --band_size               Limit on the net cumulative number of insertions of one sequence relative to the other in DADA2 [Default: 16]
+      --maxEE                   Limit on number of expected errors within a read during filtering and trimming within DADA2 [Default: 2]
+
+      (Post processing parameters)
+      --concat_non_overlaps     Whether to concatenate or discard any sequences that DADA2 was unable to be merge 
+      --refseq_fasta            Path to targeted reference 
+      --genome                  Path to full genome covering all targets 
+      --homopolymer_threshold   The length a homopolymer must reach to be masked [Default: 5]
+      --trf_min_score           The alignment of a tandem repeat must meet or exceed this alignment score to be masked [Default: 25]
+      --trf_max_period          The pattern size must be less than this to be masked [Default: 3]
+
+    Examples:
+      More advanced usage 
+      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --sequencer nextseq -config custom.config
+
+      Change runtime param to use Docker
+      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 -profile docker
+      
+      Only run the QC workflow
+      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --QC_only
+      
+      Only run the Postprocessing workflow
+      nextflow run main.nf --outDIR postprocessing_results --target v4 --denoised_asvs results/raw_dada2_output/dada2.clusters.txt
+      
+      Alter Dada2 params 
+      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --omega_a 1e-40 --pool false --band_size 20 --maxEE 4
+      
+      Set full genome 
+      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --genome data/reference/v1/PkPfPmPoPv.fasta
+      
+      Set targeted reference 
+      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --refseq_fasta resources/v4/v4_reference.fasta
+      
+      Alter Masking parameters 
+      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --homopolymer_threshold 2 --trf_min_score 30 --trf_max_period 5
+        """.stripIndent()
+}
+
+
 // main workflow
 workflow {
+  // Print help if requested
+  if (params.help) {
+      helpMessage()
+      exit 0
+}
 
   if (params.QC_only) {
 
