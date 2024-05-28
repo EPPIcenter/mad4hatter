@@ -6,6 +6,12 @@ The mad4hatter pipeline uses [nextflow](https://www.nextflow.io/) and will need 
 
 ### Setting Parameters
 
+To view the parameters and examples of usage on the command line run:
+
+```bash 
+nextflow run main.nf --help 
+```
+
 Below are parameters that are essential to running the pipeline. You will need to specify where your `fastq` files will be read from, what sequencer was used to generate the data, and what amplicon panel was used. You may optionally include a destination folder where you would like final pipeline output to go, or choose to only run the QC portion of the pipeline. 
 
 |Parameter|Description|
