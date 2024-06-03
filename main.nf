@@ -11,6 +11,7 @@ params.QC_only         = false
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
 params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
 params.resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_${params.target}.txt"
+params.help	       = false
 
 // Files
 cutadapt_minlen = params.cutadapt_minlen
