@@ -16,6 +16,13 @@ def get_mask_coordinates(pseudo_cigar):
     return set(mask_coordinates)
 
 
+def set_codon_as_undetermined(codon, ref_codon):
+    if '-' in codon or '-' in ref_codon:
+        return 'X'
+    else:
+        return codon
+
+
 def extract_codon_from_asv(reference, sequence, mask_coordinates, start_position):
     preceding_indel_present = False
 
@@ -37,24 +44,29 @@ def extract_codon_from_asv(reference, sequence, mask_coordinates, start_position
                     preceding_indel_present = True
             index += 1
         codon = sequence[start_position:start_position+3]
+        aligned_ref_codon = reference[start_position:start_position+3]
+        codon = set_codon_as_undetermined(codon, aligned_ref_codon)
     return codon, preceding_indel_present
 
 
 def process_resmarker(reference, sequence, start_position, pseudo_cigar, ref_codon):
     if pseudo_cigar == '.':
-        codon_masked = False
         codon = ref_codon
+        codon_masked = False
         preceding_indel_present = False
     else:
         codon_coordinates = list(range(start_position, start_position+3))
         # Need to change this
+        # Get list of coordinates for the mask in the cigar
         mask_coordinates = get_mask_coordinates(pseudo_cigar)
 
-        # Check if there's any overlap
+        # Check if the codon is masked
         codon_masked = bool(mask_coordinates.intersection(codon_coordinates))
+
         # Get codon from asv
         codon, preceding_indel_present = extract_codon_from_asv(
             reference, sequence, mask_coordinates, start_position)
+
     return codon, codon_masked, preceding_indel_present
 
 
@@ -109,7 +121,7 @@ sequence = 'ACTGACTGA-'
 start_position = 6
 print('Deletion after codon')
 print(process_resmarker(reference, sequence,
-      start_position, '5D=A8G', 'TAA'))  # Output: TGA
+      start_position, '8G10D=G', 'TAA'))  # Output: TGA
 print('')
 
 # MASKED INSERTION AND PARTIAL CODON
@@ -136,7 +148,7 @@ sequence = 'ACTGACTAGAG'
 start_position = 6
 print('Insertion in the codon')
 print(process_resmarker(reference, sequence,
-      start_position, '5+3N8I=A8G', 'TAA'))  # Output: TAG
+      start_position, '5+3N8I=A8G', 'TAA'))  # Output: 'X'
 print('')
 
 # Deletion in the codon
@@ -145,7 +157,7 @@ sequence = 'ACTGACT-AG'
 start_position = 6
 print('Deletion in the codon')
 print(process_resmarker(reference, sequence,
-      start_position, '5+3N8D=A', 'TAA'))  # Output: T-A
+      start_position, '5+3N8D=A', 'TAA'))  # Output: 'X'
 print('')
 
 # COMBO - masked deletion, unmasked insertion, masked codon
@@ -154,6 +166,4 @@ sequence = '-CTTTGACT-AG'
 start_position = 6
 print('Deletion in the codon')
 print(process_resmarker(reference, sequence,
-      start_position, '1+2N4I=28G7+4N', 'TAA'))  # Output: T-A
-
-# Need to handle asv not being long enough to get codon
+      start_position, '1+2N4I=28G7+4N', 'TAA'))  # Output: 'X'
