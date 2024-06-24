@@ -32,11 +32,10 @@ workflow PREPARE_REFERENCE_SEQUENCES {
   CREATE_REFERENCE_FROM_GENOMES(
     genome,
     params.amplicon_info,
-    "${params.target}_reference.fasta" // could allow this to be customizable
+    "${params.target}_reference.fasta"
   )
 
   emit:
-  reference_ch = (params.refseq_fasta == null) ? 
-    CREATE_REFERENCE_FROM_GENOMES.out.reference_fasta :
-    params.refseq_fasta
+  reference_ch = CREATE_REFERENCE_FROM_GENOMES.out.reference_fasta 
+
 }

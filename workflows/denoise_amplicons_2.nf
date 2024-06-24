@@ -17,20 +17,17 @@ workflow DENOISE_AMPLICONS_2 {
 
   take: 
   denoise_ch
-
+  reference_ch
   main:
 
   // custom trimming
   denoise_ch = params.just_concatenate ? 
     COLLAPSE_CONCATENATED_READS(denoise_ch) : denoise_ch
 
-  // create the reference if the user has not provided one (but has a genome), otherwise use the user file
-  def reference = (params.refseq_fasta == null) ? PREPARE_REFERENCE_SEQUENCES().reference_ch : params.refseq_fasta
-
   // use the denoised sequences and align them to the reference
   ALIGN_TO_REFERENCE(
     denoise_ch,
-    reference,
+    reference_ch,
     params.amplicon_info
   )
 
@@ -40,7 +37,7 @@ workflow DENOISE_AMPLICONS_2 {
 
   if (params.masked_fasta == null && (params.mask_tandem_repeats || params.mask_homopolymers)) {
     MASK_LOW_COMPLEXITY_REGIONS(
-      reference,
+      reference_ch,
       FILTER_ASVS.out.filtered_alignments_ch
     )
 
@@ -56,5 +53,4 @@ workflow DENOISE_AMPLICONS_2 {
 
   emit:
   results_ch = BUILD_PSEUDOCIGAR.out.pseudocigar
-  reference_ch = reference
 }
