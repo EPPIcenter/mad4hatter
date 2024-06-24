@@ -6,6 +6,7 @@
 process BUILD_PSEUDOCIGAR {
 
   label 'process_medium'
+  conda 'envs/postproc-env.yml'
 
   input:
   path alignments

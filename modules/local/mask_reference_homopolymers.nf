@@ -1,6 +1,7 @@
 process MASK_REFERENCE_HOMOPOLYMERS {
 
-  label 'process_medium'  
+  label 'process_medium'
+  conda 'envs/postproc-env.yml'
 
   input:
   path refseq_fasta
