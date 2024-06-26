@@ -1,7 +1,7 @@
 #' @title Create the pseudoCIGAR string for aligned ASVs
-#' 
+#'
 #' @description This script produces a pseudoCIGAR string using masked or unmasked ASVs based on the input alignments.
-#' 
+#'
 #' @keywords pseudocigar
 
 library(stringr)
@@ -177,7 +177,6 @@ compute_deletion_cigar <- function(position, ref_position, ref_char, deletion_gr
 #' @param mask_group Group identifier for the mask region.
 #' @return A string representing the CIGAR format for masks.
 compute_mask_cigar <- function(position, ref_position, ref_chars, mask_group) {
-
   # Determine the unique group value
   unique_group <- unique(mask_group)[!is.na(unique(mask_group))]
 
@@ -202,7 +201,7 @@ compute_mask_cigar <- function(position, ref_position, ref_chars, mask_group) {
 }
 
 #' Compute Substitution Group
-#' 
+#'
 #' @description Identify the group of substitution for given query and reference characters.
 #' @param query_chars A vector of characters representing the query.
 #' @param ref_chars A vector of characters representing the reference.
@@ -222,7 +221,6 @@ compute_substitution_group <- function(query_chars, ref_chars, ref_position, mas
 #' @param query Query sequence.
 #' @return A string representing the pseudoCIGAR format.
 build_pseudoCIGAR_string <- function(reference, query) {
-
   # Check if lengths of reference and query are the same
   if (nchar(reference) != nchar(query)) {
     stop("The lengths of reference and query sequences must be the same.")
@@ -243,14 +241,16 @@ build_pseudoCIGAR_string <- function(reference, query) {
   # in a masked region. Keep track of reference positions ('ref_position')
   # because all position reporting should be relative to the reference,
   # and we will need to keep track of this due to insertions in the ASV.
-  df <- tibble(position = seq_along(ref_chars),
-               ref_position = cumsum(ifelse(ref_chars != "-", 1, 0)),
-               ref_char = ref_chars,
-               query_char = query_chars,
-               mask_group = compute_mask_group(ref_chars),
-               insertion_group = compute_insertion_group(ref_chars, mask_group),
-               deletion_group = compute_deletion_group(query_chars, mask_group),
-               substitution_group = compute_substitution_group(query_chars, ref_chars, ref_position, mask_group)) %>%
+  df <- tibble(
+    position = seq_along(ref_chars),
+    ref_position = cumsum(ifelse(ref_chars != "-", 1, 0)),
+    ref_char = ref_chars,
+    query_char = query_chars,
+    mask_group = compute_mask_group(ref_chars),
+    insertion_group = compute_insertion_group(ref_chars, mask_group),
+    deletion_group = compute_deletion_group(query_chars, mask_group),
+    substitution_group = compute_substitution_group(query_chars, ref_chars, ref_position, mask_group)
+  ) %>%
     filter(!(is.na(mask_group) & is.na(insertion_group) & is.na(deletion_group) & is.na(substitution_group)))
 
   # Filter out the masked positions for insertions and deletions
@@ -263,11 +263,11 @@ build_pseudoCIGAR_string <- function(reference, query) {
 
   # CIGAR computation
   df_cigar <- df %>%
-    group_by(mask_group, insertion_group, deletion_group, substitution_group) %>% # 
+    group_by(mask_group, insertion_group, deletion_group, substitution_group) %>% #
     reframe(
       start_position = first(position),
       result = case_when(
-        !is.na(first(mask_group)) ~ compute_mask_cigar(position, ref_position, ref_char, mask_group),  # Modified this line to add ref_char
+        !is.na(first(mask_group)) ~ compute_mask_cigar(position, ref_position, ref_char, mask_group), # Modified this line to add ref_char
         !is.na(first(insertion_group)) & first(query_char) != "-" ~ compute_insertion_cigar(position, ref_position, query_char, insertion_group),
         !is.na(first(deletion_group)) & first(ref_char) != "-" ~ compute_deletion_cigar(position, ref_position, ref_char, deletion_group),
         !is.na(first(substitution_group)) ~ paste0(first(ref_position), first(query_char)),
@@ -290,32 +290,41 @@ build_pseudoCIGAR_string <- function(reference, query) {
 # Main code to create the pseudocigar string
 library(argparse)
 
-parser <- ArgumentParser(description='Create the pseudoCIGAR string using masked or unmasked ASVs')
-parser$add_argument('--alignments', type="character", required=TRUE, help = "File containing aligned ASVs")
-parser$add_argument("--ncores", type="integer", default=1, help="Number of cores to use for parallel processing")
+parser <- ArgumentParser(description = "Create the pseudoCIGAR string using masked or unmasked ASVs")
+parser$add_argument("--alignments", type = "character", required = TRUE, help = "File containing aligned ASVs")
+parser$add_argument("--ncores", type = "integer", default = 1, help = "Number of cores to use for parallel processing")
 
 args <- parser$parse_args()
 print(args)
 
 # Load in alignment data. This can be masked (with 'N's)or unmasked data.
-df.aln <- read.csv(args$alignments, sep="\t", header=TRUE)
+df.aln <- read.csv(args$alignments, sep = "\t", header = TRUE)
 
 # Setup parallel backend if needed
 doMC::registerDoMC(args$ncores)
 
-# Create the pseudoCIGAR string for each alignment entry
-pseudo_cigar <- foreach(ii = 1:nrow(df.aln), .combine='bind_rows', .packages=c("stringr")) %dopar% {
-  row <- df.aln[ii, ]
+# Extract unique combinations of refseq and hapseq
+unique_combinations <- df.aln %>% distinct(refseq, hapseq)
+
+# Create the pseudoCIGAR string for each unique combination of refseq and hapseq
+pseudo_cigar_unique <- foreach(ii = 1:nrow(unique_combinations), .combine = "bind_rows", .packages = c("stringr")) %dopar% {
+  row <- unique_combinations[ii, ]
   tibble(
-    sampleID = row$sampleID,
-    refid = row$refid,
-    asv = row$asv,
-    pseudo_cigar=build_pseudoCIGAR_string(
+    refseq = row$refseq,
+    hapseq = row$hapseq,
+    pseudo_cigar = build_pseudoCIGAR_string(
       row$refseq,
       row$hapseq
     )
   )
 }
+# Merge the pseudo_cigar strings back with the original dataset
+pseudo_cigar_table <- df.aln %>%
+  left_join(pseudo_cigar_unique, by = c("refseq", "hapseq"))
+
+# Selecting specific columns
+pseudo_cigar_table <- pseudo_cigar_table %>%
+  select(sampleID, refid, asv, pseudo_cigar)
 
 # Write out the data frame
-write.table(pseudo_cigar,file="alignments.pseudocigar.txt",quote=FALSE,sep="\t",col.names=TRUE,row.names=FALSE)
+write.table(pseudo_cigar_table, file = "alignments.pseudocigar.txt", quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
