@@ -6,7 +6,6 @@ from Bio import SeqIO
 from Bio.Seq import translate, Seq
 import argparse
 import re
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
 import numpy as np
 import json
@@ -17,139 +16,147 @@ from datetime import datetime
 startTime = datetime.now()
 
 
-def extract_reference_per_marker(ref_marker_table, ref_sequences):
-    def process_row(row):
-        locus_seq = ref_sequences[row['Locus']].seq
-        if row['strand'] == '-':
-            refseq_len = len(locus_seq)
-            refseq_rc = locus_seq.reverse_complement()
-            codon_start = refseq_len - \
-                row['CodonStart'] - 2  # 0-based indexing
-            codon_end = refseq_len - row['CodonStart'] + 1
-            ref_codon = str(refseq_rc[codon_start: codon_end])
+class ProcessMarkerInfo:
+    def __init__(self, ref_sequences):
+        self.ref_sequences = ref_sequences
+
+    def extract_info_for_markers(self, res_marker_table):
+        marker_info = res_marker_table.apply(
+            self.extract_marker_info, axis=1)
+
+        res_marker_table = pd.DataFrame(marker_info.tolist())
+
+        # Translate RefCodon to amino acid
+        res_marker_table['RefAA'] = res_marker_table['RefCodon'].apply(
+            lambda x: translate(x))
+        return res_marker_table
+
+    def extract_marker_info(self, row):
+        locus = row['Locus']
+        strand = row['strand']
+        codon_start = row['CodonStart']
+        ref_seq = self.ref_sequences[locus].seq
+
+        if strand == '-':
+            refseq_len = len(ref_seq)
+            ref_seq = ref_seq.reverse_complement()
+            relative_codon_start = refseq_len - codon_start - 2
         else:
-            codon_start = row['CodonStart'] - 1
-            codon_end = row['CodonStart'] + 2
-            ref_codon = str(locus_seq[codon_start: codon_end])
+            relative_codon_start = codon_start - 1
+
+        codon_end = relative_codon_start + 3
+        ref_codon = str(ref_seq[relative_codon_start: codon_end])
         return {
-            'translatedCodonStart': codon_start,
+            'GeneID': row.GeneID,
+            'Gene': row.Gene,
+            'CodonID': row.CodonID,
+            'strand': strand,
+            'Locus': locus,
+            'relativeCodonStart': relative_codon_start,
+            'CodonStart': codon_start,
             'CodonEnd': codon_end,
             'RefCodon': ref_codon
         }
-    new_columns = ref_marker_table.apply(process_row, axis=1)
-    new_columns_df = pd.DataFrame(
-        new_columns.tolist(), index=ref_marker_table.index)
-
-    ref_marker_table = pd.concat([ref_marker_table, new_columns_df], axis=1)
-
-    # Translate RefCodon to amino acis
-    ref_marker_table['RefAA'] = ref_marker_table['RefCodon'].apply(
-        lambda x: translate(x))
-    return ref_marker_table
 
 
-def extract_mask_coordinates(mask_string):
-    start, length = map(int, mask_string.strip('N').split('+'))
-    start = start - 1
-    end = start + length
-    return list(range(start, end))
+class MaskCoordinatesExtractor:
+    @staticmethod
+    def mask_str_to_coordinates(mask_string):
+        start, length = map(int, mask_string.strip('N').split('+'))
+        start = start - 1
+        end = start + length
+        return list(range(start, end))
+
+    @staticmethod
+    def cigar_to_mask_coordinates(pseudo_cigar):
+        # Get masking coordinates
+        masking_pattern = r'\d+\+\d+N'
+        masks = re.findall(masking_pattern, pseudo_cigar)
+        mask_coordinates = []
+        for mask in masks:
+            mask_coordinates.extend(
+                MaskCoordinatesExtractor.mask_str_to_coordinates(mask))
+        return set(mask_coordinates)
+
+    @staticmethod
+    def create_masked_coordinate_table(allele_data):
+        # Only process the first cigar from each locus
+        cigar_per_locus = allele_data.groupby('Locus', as_index=False).first()
+
+        cigar_per_locus['masked_coords'] = cigar_per_locus['PseudoCIGAR'].apply(
+            MaskCoordinatesExtractor.cigar_to_mask_coordinates)
+
+        return cigar_per_locus[['Locus', 'masked_coords']]
 
 
-def get_locus_mask_coordinates(pseudo_cigar):
-    # Get masking coordinates
-    masking_pattern = r'\d+\+\d+N'
-    masks = re.findall(masking_pattern, pseudo_cigar)
-    mask_coordinates = []
-    for mask in masks:
-        mask_coordinates.extend(extract_mask_coordinates(mask))
-    return set(mask_coordinates)
+class CodonProcessor:
+    @staticmethod
+    def set_codon_with_indel_as_undetermined(codon, ref_codon):
+        if '-' in codon or '-' in ref_codon:
+            return 'X'
+        else:
+            return codon
 
-
-def create_masked_coordinate_table(allele_data):
-    # Only process the first cigar from each locus
-    cigar_per_locus = allele_data.groupby('Locus', as_index=False).first()
-
-    cigar_per_locus['masked_coords'] = cigar_per_locus['PseudoCIGAR'].apply(
-        get_locus_mask_coordinates)
-
-    return cigar_per_locus[['Locus', 'masked_coords']]
-
-
-def set_codon_with_indel_as_undetermined(codon, ref_codon):
-    if '-' in codon or '-' in ref_codon:
-        return 'X'
-    else:
-        return codon
-
-
-def extract_codon_from_asv(reference, sequence, mask_coordinates, start_position):
-    preceding_indel_present = False
-    # No indels
-    if '-' not in reference and '-' not in sequence:
-        codon = sequence[start_position:start_position+3]
-    # Indels
-    else:
-        index = 0
-        while index < start_position:
-            ref_base = reference[index]
-            seq_base = sequence[index]
-            if ref_base == '-':
-                start_position += 1
-                if index + 1 not in mask_coordinates:
-                    preceding_indel_present = True
-            if seq_base == '-':
-                if index + 1 not in mask_coordinates:
-                    preceding_indel_present = True
-            index += 1
-        codon = sequence[start_position:start_position+3]
-        aligned_ref_codon = reference[start_position:start_position+3]
-        codon = set_codon_with_indel_as_undetermined(codon, aligned_ref_codon)
-    return codon, preceding_indel_present
-
-
-def process_resmarker(reference, sequence, start_position, pseudo_cigar, ref_codon, mask_coordinates, strand):
-    if pseudo_cigar == '.':
-        codon = ref_codon
-        codon_masked = False
+    @staticmethod
+    def extract_codon_from_asv(reference, asv, mask_coordinates, start_position, end_position):
         preceding_indel_present = False
-    else:
-        if strand == '-':
-            sequence = Seq(sequence).reverse_complement()
-            reference = Seq(reference).reverse_complement()
-        codon_coordinates = list(range(start_position, start_position+3))
+        # No indels
+        if '-' not in reference and '-' not in asv:
+            codon = asv[start_position:end_position]
+        # Indels
+        else:
+            index = 0
+            while index < start_position:
+                ref_base = reference[index]
+                seq_base = asv[index]
+                if ref_base == '-':
+                    start_position += 1
+                    if index + 1 not in mask_coordinates:
+                        preceding_indel_present = True
+                if seq_base == '-':
+                    if index + 1 not in mask_coordinates:
+                        preceding_indel_present = True
+                index += 1
+            codon = asv[start_position:end_position]
+            aligned_ref_codon = reference[start_position:end_position]
+            codon = CodonProcessor.set_codon_with_indel_as_undetermined(
+                codon, aligned_ref_codon)
+        return codon, preceding_indel_present
 
-        # Check if the codon is masked
-        codon_masked = bool(mask_coordinates.intersection(codon_coordinates))
+    @staticmethod
+    def get_codon_info_for_marker(marker_info):
+        reference = marker_info['refseq']
+        sequence = marker_info['hapseq']
+        start_position = marker_info['relativeCodonStart']
+        pseudo_cigar = marker_info['PseudoCIGAR']
+        ref_codon = marker_info['RefCodon']
+        mask_coordinates = marker_info['masked_coords']
+        strand = marker_info['strand']
+        end_position = marker_info['CodonEnd']
+        if pseudo_cigar == '.':
+            codon = ref_codon
+            codon_masked = False
+            preceding_indel_present = False
+        else:
+            if strand == '-':
+                sequence = Seq(sequence).reverse_complement()
+                reference = Seq(reference).reverse_complement()
+            codon_coordinates = list(range(start_position, start_position+3))
 
-        # Get codon from asv
-        codon, preceding_indel_present = extract_codon_from_asv(
-            reference, sequence, mask_coordinates, start_position
-        )
+            # Check if the codon is masked
+            codon_masked = bool(
+                mask_coordinates.intersection(codon_coordinates))
 
-    return codon, codon_masked, preceding_indel_present
-
-
-def apply_process_resmarker(row):
-    codon, codon_masked, preceding_indel_present = process_resmarker(
-        row['refseq'], row['hapseq'], row['translatedCodonStart'], row['PseudoCIGAR'], row['RefCodon'], row['masked_coords'], row['strand']
-    )
-    return pd.Series({'Codon': codon, 'codon_masked': codon_masked, 'preceding_indel_present': preceding_indel_present})
+            # Get codon from asv
+            codon, preceding_indel_present = CodonProcessor.extract_codon_from_asv(
+                reference, sequence, mask_coordinates, start_position, end_position
+            )
+        marker_with_codon_info = (pd.concat([marker_info, pd.Series(
+            {'Codon': codon, 'codon_masked': codon_masked, 'preceding_indel_present': preceding_indel_present})]))
+        return marker_with_codon_info
 
 
-def generate_mhap_table(resmarker_table):
-    resmarker_table = resmarker_table.sort_values(by='translatedCodonStart')
-    mhap_table = resmarker_table.groupby(['SampleID', 'Locus', 'Reads']).agg(
-        MicrohapIndex=('translatedCodonStart',
-                       lambda x: '/'.join(map(str, x))),
-        RefMicrohap=('RefAA', lambda x: '/'.join(map(str, x))),
-        Microhaplotype=('AA', lambda x: '/'.join(map(str, x)))
-    ).reset_index()
-    mhap_table['MicrohapRefAlt'] = np.where(
-        mhap_table['RefMicrohap'] == mhap_table['Microhaplotype'], 'REF', 'ALT')
-    return mhap_table
-
-
-def parse_pseudo_cigar(string):
+def pseudo_cigar_to_mutations(string):
     """
     Parse a pseudo CIGAR string into a list of tuples (position, operation, value)
     The pseudo CIGAR string is a string representation of the differences between a reference sequence and a query sequence. The string
@@ -216,7 +223,7 @@ def extract_mutations_from_df(df, ref_sequences):
             continue
 
         # returns 0-based position
-        changes = parse_pseudo_cigar(pseudo_cigar)
+        changes = pseudo_cigar_to_mutations(pseudo_cigar)
 
         ref_seq = ref_sequences[locus].seq
         for pos, op, alt in changes:
@@ -227,6 +234,9 @@ def extract_mutations_from_df(df, ref_sequences):
                 pos = len(ref_seq) - pos - 1
 
             results.append({
+                'GeneID': row.GeneID,
+                'Gene': row.Gene,
+                'Locus': locus,
                 'PseudoCIGAR': pseudo_cigar,
                 'Position': pos,
                 'Alt': alt,
@@ -236,14 +246,76 @@ def extract_mutations_from_df(df, ref_sequences):
     return pd.DataFrame(results)
 
 
-def generate_resmarker_table(asv_table, allele_data):
-    # Get resmarker codon
-    resmarker_per_unique_asv = asv_table.apply(
-        apply_process_resmarker, axis=1)
-    # Merge the results back to the original DataFrame
-    resmarker_per_unique_asv = pd.concat(
-        [asv_table, resmarker_per_unique_asv], axis=1)
+def generate_mhap_table(resmarker_table):
+    resmarker_table = resmarker_table.sort_values(by='relativeCodonStart')
+    mhap_table = resmarker_table.groupby(['SampleID', 'Locus', 'GeneID', 'Gene', 'PseudoCIGAR', 'Reads']).agg(
+        MicrohapIndex=('CodonID',
+                       lambda x: '/'.join(map(str, x))),
+        RefMicrohap=('RefAA', lambda x: '/'.join(map(str, x))),
+        Microhaplotype=('AA', lambda x: '/'.join(map(str, x)))
+    ).reset_index()
+    mhap_table['MicrohapRefAlt'] = np.where(
+        mhap_table['RefMicrohap'] == mhap_table['Microhaplotype'], 'REF', 'ALT')
+    return mhap_table
 
+
+def generate_all_mutations_table(asv_table, allele_data, ref_sequences):
+    # Get all mutations
+    mutations_df = extract_mutations_from_df(
+        asv_table, ref_sequences)
+    all_mutations = allele_data.merge(mutations_df, on=['Locus', 'PseudoCIGAR'])[
+        ['SampleID', 'Locus', 'GeneID', 'Gene', 'PseudoCIGAR', 'Position', 'Alt', 'Ref', 'Reads']]
+    all_mutations = all_mutations.groupby(
+        ['SampleID', 'Locus', 'GeneID', 'Gene', 'Position', 'Alt', 'Ref']).Reads.sum().reset_index()
+    return all_mutations
+
+
+def main(args):
+
+    logging.debug(f"------ Start of `main` ------")
+
+    # READ DATA
+    allele_data = pd.read_csv(args.allele_data_path, sep='\t')
+    aligned_asv_data = pd.read_csv(args.aligned_asv_table_path, sep='\t')
+    res_markers_info = pd.read_csv(args.res_markers_info_path, dtype={
+                                   'GeneID': str}, sep='\t')
+    ref_sequences = SeqIO.to_dict(SeqIO.parse(args.refseq_path, 'fasta'))
+
+    # MARKER INFO - Extract codon start relative to strand and reference information
+    marker_info_extractor = ProcessMarkerInfo(ref_sequences)
+    processed_res_markers_info = marker_info_extractor.extract_info_for_markers(
+        res_markers_info)
+
+    # GET MASKED COORDS
+    mask_extractor = MaskCoordinatesExtractor()
+    masked_coords_table = mask_extractor.create_masked_coordinate_table(
+        allele_data)
+
+    # MERGE DATA - allele data, alignments, resmarker info
+    # Merge allele data with resmarkers, only keeping the loci we need and markers with calls
+    allele_data_per_resmarker = allele_data.merge(
+        processed_res_markers_info, on='Locus', how='inner')
+    # Merge with alignment data
+    allele_data_per_resmarker = allele_data_per_resmarker.merge(
+        aligned_asv_data, left_on=['SampleID', 'Locus', 'ASV'],
+        right_on=['sampleID', 'refid', 'asv'], how='left')
+
+    # GET TABLE TO EXTRACT INFO FROM - compress to unique that need to be processed
+    # Compile info for unique asv and markers
+    required_columns = ['Locus', 'ASV', 'PseudoCIGAR', 'strand', 'GeneID', 'Gene', 'CodonID', 'CodonStart',
+                        'hapseq', 'refseq', 'relativeCodonStart', 'CodonEnd', 'RefCodon', 'RefAA',]
+    unique_asvs_per_resmarker_to_process = allele_data_per_resmarker[required_columns].drop_duplicates(
+    )
+    # Merge with masked coordinates
+    unique_asvs_per_resmarker_to_process = unique_asvs_per_resmarker_to_process.merge(
+        masked_coords_table, on='Locus', how='left')
+
+    # THIS WAS IN A FUNCTION
+    # GET UNIQUE RESMARKERS
+    # Get Codon
+    # This runs on unique asvs
+    resmarker_per_unique_asv = unique_asvs_per_resmarker_to_process.apply(
+        CodonProcessor.get_codon_info_for_marker, axis=1)
     # Add on additional columns
     resmarker_per_unique_asv['AA'] = resmarker_per_unique_asv['Codon'].apply(
         lambda x: translate(x))
@@ -252,71 +324,55 @@ def generate_resmarker_table(asv_table, allele_data):
     resmarker_per_unique_asv['AARefAlt'] = np.where(
         resmarker_per_unique_asv['RefAA'] == resmarker_per_unique_asv['AA'], 'REF', 'ALT')
 
-    # Merge back with samples
+    # Merge back with sample data
     resmarker_data = resmarker_per_unique_asv.merge(
-        allele_data[['SampleID', 'Locus', 'ASV', 'PseudoCIGAR', 'Reads', 'CodonStart']], on=['Locus', 'ASV', 'PseudoCIGAR', 'CodonStart'])
-
-    # Condense down repeat codons
-    resmarker_data = resmarker_data.groupby(['SampleID', 'Locus', 'RefCodon', 'Codon', 'gene_id',
-                                             'translatedCodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'strand']).Reads.sum().reset_index()
-
-    # Ensure reads is integer
-    resmarker_data['Reads'] = resmarker_data['Reads'].astype(int)
-    return resmarker_data
-
-
-def main(args):
-
-    logging.debug(f"------ Start of `main` ------")
-    # READ DATA
-    allele_data = pd.read_csv(args.allele_data_path, sep='\t')
-    aligned_asv_data = pd.read_csv(args.aligned_asv_table_path, sep='\t')
-    res_markers_info = pd.read_csv(args.res_markers_info_path, sep='\t')
-    ref_sequences = SeqIO.to_dict(SeqIO.parse(args.refseq_path, 'fasta'))
-
-    # GET MASKED COORDS - these are 1-based
-    masked_coords_per_locus = create_masked_coordinate_table(allele_data)
-
-    # GET REFERENCE FOR MARKERS
-    ref_marker_table = extract_reference_per_marker(
-        res_markers_info[['gene_id', 'strand', 'Locus', 'CodonStart']], ref_sequences)
-
-    # MERGE DATA
-    # Merge allele data with resmarkers, only keeping the loci we need and markers with calls
-    allele_data_per_resmarker = allele_data.merge(
-        res_markers_info, on='Locus', how='inner')
-    # Merge with alignment data
-    allele_data_per_resmarker = allele_data_per_resmarker.merge(
-        aligned_asv_data, left_on=['SampleID', 'Locus', 'ASV'],
-        right_on=['sampleID', 'refid', 'asv'], how='left')
-
-    # GET TABLE TO EXTRACT INFO FROM
-    # Compile info for unique asv and markers
-    required_columns = ['Locus', 'ASV', 'PseudoCIGAR',
-                        'strand', 'gene_id', 'CodonStart', 'hapseq', 'refseq']
-    unique_asvs_to_process = allele_data_per_resmarker[required_columns].drop_duplicates(
-    )
-    unique_asvs_to_process = unique_asvs_to_process.merge(ref_marker_table, on=['gene_id', 'strand',
-                                                                                'Locus', 'CodonStart'], how='left')
-    unique_asvs_to_process = unique_asvs_to_process.merge(
-        masked_coords_per_locus, on='Locus', how='left')
-
-    # Get resmarker table
-    resmarker_data = generate_resmarker_table(
-        unique_asvs_to_process, allele_data_per_resmarker)
+        allele_data_per_resmarker[['SampleID', 'Locus', 'ASV', 'PseudoCIGAR', 'Reads', 'relativeCodonStart']], on=['Locus', 'ASV', 'PseudoCIGAR', 'relativeCodonStart'])
 
     # Create microhaplotype version
     mhap_table = generate_mhap_table(resmarker_data)
 
-    # Get all mutations
-    mutations_df = extract_mutations_from_df(
-        unique_asvs_to_process, ref_sequences)
-    all_mutations = allele_data.merge(mutations_df, on='PseudoCIGAR')[
-        ['SampleID', 'Locus', 'PseudoCIGAR', 'Position', 'Alt', 'Ref', 'Reads']]
-    all_mutations = all_mutations.groupby(['SampleID', 'Locus', 'PseudoCIGAR',
-                                           'Position', 'Alt', 'Ref']).Reads.sum().reset_index()
+    # Sum reads for duplicate codons
+    resmarker_data = resmarker_data.groupby(['SampleID', 'Locus', 'RefCodon', 'Codon', 'GeneID', 'Gene', 'CodonID',
+                                             'relativeCodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'strand']).Reads.sum().reset_index()
 
-    resmarker_data.to_csv('resmarker_table.txt', sep='\t', index=False)
+    # Ensure reads is integer
+    resmarker_data['Reads'] = resmarker_data['Reads'].astype(int)
+
+    # Sum reads for duplicate codons
+    mhap_table = mhap_table.groupby(['SampleID', 'Locus', 'GeneID', 'Gene', 'MicrohapIndex',
+                                    'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt']).Reads.sum().reset_index()
+
+    # Ensure reads is integer
+    mhap_table['Reads'] = mhap_table['Reads'].astype(int)
+
+    # Sort by CodonID, Gene, and SampleID (and Locus if applicable)
+    logging.debug(f"Sorting by columns")
+
+    resmarker_data.sort_values(
+        by=['SampleID', 'Locus', 'CodonID'], inplace=True)
+    # Order columns
+    resmarker_data = resmarker_data[['SampleID', 'Locus', 'GeneID', 'Gene', 'CodonID',
+                                     'RefCodon', 'Codon', 'relativeCodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'Reads']]
+
+    # Collapse markers on covered by tiled amplicons
+    resmarker_data_collapsed = resmarker_data.groupby(['SampleID', 'RefCodon', 'Codon', 'GeneID', 'Gene', 'CodonID',
+                                                       'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt',]).Reads.sum().reset_index()
+    resmarker_data_collapsed['MultipleLoci'] = resmarker_data.duplicated(
+        ['SampleID', 'RefCodon', 'Codon', 'GeneID', 'Gene', 'CodonID', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt'], keep=False)
+
+    # Get all mutations
+    all_mutations = generate_all_mutations_table(unique_asvs_per_resmarker_to_process[[
+        'Locus', 'ASV', 'PseudoCIGAR', 'strand', 'GeneID', 'Gene', 'hapseq', 'refseq']].drop_duplicates(), allele_data, ref_sequences)
+    # Ensure reads is integer
+    all_mutations['Reads'] = all_mutations['Reads'].astype(int)
+
+    resmarker_data_collapsed.to_csv('resmarker_table.txt',
+                                    sep='\t', index=False)
+    resmarker_data.rename(
+        columns={'relativeCodonStart': 'CodonStart'}, inplace=True
+    )
+    resmarker_data.to_csv('resmarker_table_by_locus.txt',
+                          sep='\t', index=False)
     mhap_table.to_csv('resmarker_microhap_table.txt', sep='\t', index=False)
     all_mutations.to_csv('discovery_table.txt', sep='\t', index=False)
 
@@ -373,10 +429,9 @@ if __name__ == "__main__":
         logging.shutdown()
 
 # TODO: Add logging back in with format
-# TODO: change AARefAlt to be ref alt instead of true false
 # TODO: format grouping of the outputs
 # TODO: turn these into classes
 # TODO: decide on position to show : either strand and position realtive to start or just the one in the other table (or both)
-# TODO: Decide on whether to have geneID split up
 # TODO: Check if masking works 0 based?
+# TODO: new mutations only include unmasked ones - so a masked resmarker wouldn't be in this file
 print(datetime.now() - startTime)
