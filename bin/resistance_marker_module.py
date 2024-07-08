@@ -6,13 +6,10 @@ from Bio import SeqIO
 from Bio.Seq import translate, Seq
 import argparse
 import re
-# from functools import partial
 import numpy as np
-# import json
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
-from datetime import datetime
 
 
 def read_allele_data(allele_data_path, aligned_asv_table_path):
