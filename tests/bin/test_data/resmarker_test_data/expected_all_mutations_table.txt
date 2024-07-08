@@ -1,0 +1,16 @@
+SampleID	Locus	GeneID	Gene	Position	Alt	Ref	Reads
+sample1	locus1	1	gene1	7	G	A	50
+sample1	locus2	2	gene2	7	G	A	5
+sample1	locus3	3	gene3	7	G	A	25
+sample1	locus4	4	gene4	3	TT	-	307
+sample2	locus1	1	gene1	4	-	A	30
+sample2	locus1	1	gene1	5	A	-	15
+sample2	locus1	1	gene1	7	G	A	45
+sample2	locus2	2	gene2	7	A	-	35
+sample2	locus2	2	gene2	7	G	A	35
+sample3	locus1	1	gene1	7	G	A	600
+sample3	locus1	1	gene1	9	-	G	500
+sample3	locus1	1	gene1	9	T	-	100
+sample3	locus2	2	gene2	7	-	A	105
+sample4	locus5	5	gene5	7	G	A	30
+sample4	locus7	7	gene7	7	-	C	2

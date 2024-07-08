@@ -6,15 +6,13 @@ from Bio import SeqIO
 from Bio.Seq import translate, Seq
 import argparse
 import re
-from functools import partial
+# from functools import partial
 import numpy as np
-import json
+# import json
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
 from datetime import datetime
-
-startTime = datetime.now()
 
 
 def read_allele_data(allele_data_path, aligned_asv_table_path):
@@ -64,6 +62,7 @@ class ProcessMarkerInfo:
             'CodonID': row.CodonID,
             'strand': strand,
             'Locus': locus,
+            'CodonStart': codon_start,
             'relativeCodonStart': relative_codon_start,
             'CodonEnd': codon_end,
             'RefCodon': ref_codon
@@ -76,24 +75,40 @@ class ProcessMarkerInfo:
         marker_info = res_marker_table.apply(self.extract_marker_info, axis=1)
         res_marker_table = pd.DataFrame(marker_info.tolist())
         res_marker_table['RefAA'] = res_marker_table['RefCodon'].apply(
-            lambda x: translate(x))
+            lambda x: 'X' if not translate(x) else translate(x)
+        )
         logging.info(
             "Position and reference information extracted successfully.")
         return res_marker_table
+
+    def check_if_marker_masked(self, resmarker_table, mask_coords_dict):
+        # Generate 1-based codon coordinates relative to forward strand
+        resmarker_table['CodonCoordinates'] = resmarker_table.apply(
+            lambda row: set(range(row.CodonStart - 1, row.CodonStart + 2)), axis=1)
+
+        # Function to check if codon is masked
+        def is_codon_masked(row):
+            mask_coords = mask_coords_dict.get(row.Locus, set())
+            return not mask_coords.isdisjoint(row.CodonCoordinates)
+
+        resmarker_table['CodonMasked'] = resmarker_table.apply(
+            is_codon_masked, axis=1)
+        resmarker_table.drop(columns=['CodonCoordinates'], inplace=True)
+        return resmarker_table
 
 
 class MaskCoordinatesExtractor:
     @staticmethod
     def mask_str_to_coordinates(mask_string):
-        """Converts a mask string to a list of masked coordinates."""
+        """Converts a mask string to a list of 1-based masked coordinates."""
         start, length = map(int, mask_string.strip('N').split('+'))
-        start = start - 1
+        start = start
         end = start + length
         return list(range(start, end))
 
     @staticmethod
     def pseudocigar_to_mask_coordinates(pseudo_cigar):
-        """Converts a pseudo CIGAR string to mask coordinates."""
+        """Converts a pseudo CIGAR string to 1-based mask coordinates."""
         logging.debug(
             f"Extracting masking coordinates from cigar {pseudo_cigar}.")
         masking_pattern = r'\d+\+\d+N'
@@ -105,15 +120,19 @@ class MaskCoordinatesExtractor:
         return set(mask_coordinates)
 
     @staticmethod
-    def create_masked_coordinate_table(allele_data):
-        """Creates a table of masked coordinates from allele data."""
+    def create_masked_coordinate_dict(allele_data):
+        """Creates a table of 1-based masked coordinates from allele data."""
         logging.info(f"Creating masked coordinate table for {
                      allele_data.Locus.nunique()} loci.")
         cigar_per_locus = allele_data.groupby('Locus', as_index=False).first()
         cigar_per_locus['masked_coords'] = cigar_per_locus['PseudoCIGAR'].apply(
             MaskCoordinatesExtractor.pseudocigar_to_mask_coordinates)
-        logging.info("Masked coordinate table created successfully.")
-        return cigar_per_locus[['Locus', 'masked_coords']]
+        # Create the dictionary
+        masked_coords_dict = cigar_per_locus.set_index(
+            'Locus')['masked_coords'].to_dict()
+        logging.info("Masked coordinate dictionary created successfully.")
+        print(masked_coords_dict)
+        return masked_coords_dict
 
 
 class CodonProcessor:
@@ -123,11 +142,11 @@ class CodonProcessor:
         return 'X' if '-' in codon or '-' in ref_codon else codon
 
     @staticmethod
-    def extract_codon_from_asv(reference, asv, mask_coordinates, start_position, end_position):
+    def extract_codon_from_asv(reference, asv, mask_coordinates, start_position):
         """Extracts codon from ASV sequence with respect to strand and indels."""
-        preceding_indel_present = False
+        follows_indel = False
         if '-' not in reference and '-' not in asv:
-            codon = asv[start_position:end_position]
+            codon = asv[start_position:start_position+3]
         else:
             index = 0
             while index < start_position:
@@ -136,19 +155,19 @@ class CodonProcessor:
                 if ref_base == '-':
                     start_position += 1
                     if index + 1 not in mask_coordinates:
-                        preceding_indel_present = True
+                        follows_indel = True
                 if seq_base == '-':
                     if index + 1 not in mask_coordinates:
-                        preceding_indel_present = True
+                        follows_indel = True
                 index += 1
-            codon = asv[start_position:end_position]
-            aligned_ref_codon = reference[start_position:end_position]
+            codon = asv[start_position:start_position+3]
+            aligned_ref_codon = reference[start_position:start_position+3]
             codon = CodonProcessor.set_codon_with_indel_as_undetermined(
                 codon, aligned_ref_codon)
-        return codon, preceding_indel_present
+        return codon, follows_indel
 
     @staticmethod
-    def get_codon_info_for_marker(marker_info):
+    def get_codon_info_for_marker(marker_info, masking_info):
         """Gets codon information for a marker."""
         logging.debug(f"Getting codon information for marker at position {
                       marker_info['relativeCodonStart']} to {marker_info['CodonEnd']} from {marker_info['hapseq']}")
@@ -157,30 +176,23 @@ class CodonProcessor:
         start_position = marker_info['relativeCodonStart']
         pseudo_cigar = marker_info['PseudoCIGAR']
         ref_codon = marker_info['RefCodon']
-        mask_coordinates = marker_info['masked_coords']
+        mask_coordinates = masking_info.get(marker_info.Locus, set())
         strand = marker_info['strand']
         end_position = marker_info['CodonEnd']
 
         if pseudo_cigar == '.':
             codon = ref_codon
-            codon_masked = False
-            preceding_indel_present = False
+            follows_indel = False
         else:
             if strand == '-':
                 sequence = Seq(sequence).reverse_complement()
                 reference = Seq(reference).reverse_complement()
-            codon_coordinates = list(range(start_position, start_position+3))
-
-            # Check if the codon is masked
-            codon_masked = bool(
-                mask_coordinates.intersection(codon_coordinates))
-
             # Get codon from asv
-            codon, preceding_indel_present = CodonProcessor.extract_codon_from_asv(
-                reference, sequence, mask_coordinates, start_position, end_position
+            codon, follows_indel = CodonProcessor.extract_codon_from_asv(
+                reference, sequence, mask_coordinates, start_position
             )
         marker_with_codon_info = (pd.concat([marker_info, pd.Series(
-            {'Codon': codon, 'codon_masked': codon_masked, 'preceding_indel_present': preceding_indel_present})]))
+            {'Codon': codon, 'FollowsIndel': follows_indel})]))
         return marker_with_codon_info
 
 
@@ -247,7 +259,11 @@ def extract_mutations_from_unique_pseudo_cigar(df, ref_sequences):
                 alt = alt.translate(transtab)
                 ref = ref.translate(transtab)
                 pos = len(ref_seq) - pos - 1
-
+            if op == 'D':
+                ref = alt
+                alt = '-'
+            elif op == 'I':
+                ref = '-'
             results.append({
                 'GeneID': row.GeneID,
                 'Gene': row.Gene,
@@ -261,23 +277,32 @@ def extract_mutations_from_unique_pseudo_cigar(df, ref_sequences):
     return pd.DataFrame(results)
 
 
+def assign_ref_alt(df, ref_colunn, data_column):
+    return np.where(
+        df[data_column] == 'X',
+        'X',
+        np.where(
+            df[ref_colunn] == df[data_column], 'REF', 'ALT'
+        )
+    )
+
+
 class ResmarkerTableGenerator:
     @staticmethod
     def generate_resmarker_table_for_unique_asv(unique_asvs_per_resmarker_to_process, masked_coords_table):
         """Build table of the resmarkers in each unique asv."""
         logging.info("Extracting resmarker info from unique ASVs.")
-        # Merge with masked coordinates
-        unique_asvs_per_resmarker_to_process = unique_asvs_per_resmarker_to_process.merge(
-            masked_coords_table, on='Locus', how='left')
         resmarker_per_unique_asv = unique_asvs_per_resmarker_to_process.apply(
-            CodonProcessor.get_codon_info_for_marker, axis=1)
+            CodonProcessor.get_codon_info_for_marker, masking_info=masked_coords_table,  axis=1)
         # Add on additional columns
         resmarker_per_unique_asv['AA'] = resmarker_per_unique_asv['Codon'].apply(
-            lambda x: translate(x))
-        resmarker_per_unique_asv['CodonRefAlt'] = np.where(
-            resmarker_per_unique_asv['RefCodon'] == resmarker_per_unique_asv['Codon'], 'REF', 'ALT')
-        resmarker_per_unique_asv['AARefAlt'] = np.where(
-            resmarker_per_unique_asv['RefAA'] == resmarker_per_unique_asv['AA'], 'REF', 'ALT')
+            lambda x: 'X' if not translate(x) else translate(x)
+        )
+        resmarker_per_unique_asv['CodonRefAlt'] = assign_ref_alt(
+            resmarker_per_unique_asv, 'RefCodon', 'Codon')
+
+        resmarker_per_unique_asv['AARefAlt'] = assign_ref_alt(
+            resmarker_per_unique_asv, 'RefAA', 'AA')
         return resmarker_per_unique_asv
 
     @staticmethod
@@ -287,28 +312,32 @@ class ResmarkerTableGenerator:
         # Merge back with sample data
         resmarker_data = resmarker_for_asv.merge(
             sample_allele_data[['SampleID', 'Locus', 'ASV', 'PseudoCIGAR', 'Reads', 'relativeCodonStart']], on=['Locus', 'ASV', 'PseudoCIGAR', 'relativeCodonStart'])
-
         # Sum reads for duplicate codons
         resmarker_data = resmarker_data.groupby(['SampleID', 'Locus', 'GeneID', 'Gene', 'CodonID', 'RefCodon',
-                                                'Codon', 'relativeCodonStart', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']).Reads.sum().reset_index()
+                                                'Codon', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'FollowsIndel', 'CodonMasked']).Reads.sum().reset_index()
         resmarker_data['Reads'] = resmarker_data['Reads'].astype(int)
         # Sort by CodonID, Gene, and SampleID (and Locus if applicable)
         logging.debug(f"Sorting by columns")
         resmarker_data.sort_values(
             by=['SampleID', 'Locus', 'CodonID'], inplace=True)
-
         return resmarker_data
 
     @staticmethod
     def collapse_resmarkers_on_tiled_amplicons(resmarker_table):
         """For markers present on multiple loci sum reads and flag from multiple loci"""
         logging.info("Collapsing tiled markers.")
-        columns_to_collapse = ['SampleID', 'GeneID', 'Gene', 'CodonID',
-                               'RefCodon', 'Codon', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt']
-        resmarker_data_collapsed = resmarker_table.groupby(
-            columns_to_collapse).Reads.sum().reset_index()
-        resmarker_data_collapsed['MultipleLoci'] = resmarker_table.duplicated(
+        resmarker_table_by_locus = resmarker_table.copy()
+        columns_to_collapse = ['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon',
+                               'Codon', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'FollowsIndel']
+        resmarker_table_by_locus['MultipleLoci'] = resmarker_table_by_locus.duplicated(
             columns_to_collapse, keep=False)
+        resmarker_data_collapsed = resmarker_table_by_locus.groupby(columns_to_collapse+['MultipleLoci']).agg({
+            'CodonMasked': 'any',
+            'Reads': 'sum'
+        }).reset_index()
+        # reorder columns
+        resmarker_data_collapsed = resmarker_data_collapsed[['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon',
+                                                             'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'FollowsIndel', 'CodonMasked', 'MultipleLoci', 'Reads']]
         return resmarker_data_collapsed
 
     @staticmethod
@@ -322,8 +351,8 @@ class ResmarkerTableGenerator:
             RefMicrohap=('RefAA', lambda x: '/'.join(map(str, x))),
             Microhaplotype=('AA', lambda x: '/'.join(map(str, x)))
         ).reset_index()
-        mhap_table['MicrohapRefAlt'] = np.where(
-            mhap_table['RefMicrohap'] == mhap_table['Microhaplotype'], 'REF', 'ALT')
+        mhap_table['MicrohapRefAlt'] = assign_ref_alt(
+            mhap_table, 'RefMicrohap', 'Microhaplotype')
         return mhap_table
 
     @staticmethod
@@ -351,15 +380,17 @@ class ResmarkerTableGenerator:
             ['SampleID', 'Locus', 'GeneID', 'Gene', 'Position', 'Alt', 'Ref']).Reads.sum().reset_index()
         # Ensure reads is integer
         all_mutations['Reads'] = all_mutations['Reads'].astype(int)
+        all_mutations.sort_values(
+            by=['SampleID', 'Locus', 'Position'], inplace=True)
         return all_mutations
 
     @staticmethod
-    def generate_resmarker_tables(unique_asvs_per_resmarker_df, allele_data_per_resmarker, allele_data, ref_sequences, masked_coords_table):
+    def generate_resmarker_tables(unique_asvs_per_resmarker_df, allele_data_per_resmarker, allele_data, ref_sequences, masked_coords):
         """Generate tables of resmarkers, mhaps, and all mutations."""
         logging.info("Generating resistance marker tables.")
         # resmarker table
         resmarker_per_unique_asv = ResmarkerTableGenerator.generate_resmarker_table_for_unique_asv(
-            unique_asvs_per_resmarker_df, masked_coords_table)
+            unique_asvs_per_resmarker_df, masked_coords)
         resmarker_data = ResmarkerTableGenerator.assign_resmarkers_to_samples(
             allele_data_per_resmarker, resmarker_per_unique_asv)
 
@@ -397,29 +428,28 @@ def main(args):
     marker_info_extractor = ProcessMarkerInfo(ref_sequences)
     res_markers_info = marker_info_extractor.extract_position_and_reference_for_markers(
         res_markers_info)
+
+    # Add flag if the marker is masked
+    masked_coords_dict = MaskCoordinatesExtractor.create_masked_coordinate_dict(
+        allele_data)
+    marker_info_extractor.check_if_marker_masked(
+        res_markers_info, masked_coords_dict)
     allele_data_per_resmarker = allele_data.merge(
         res_markers_info, on='Locus')
 
     # Get unique asv information to process
     required_columns = ['Locus', 'ASV', 'PseudoCIGAR', 'strand', 'GeneID', 'Gene', 'CodonID',
-                        'hapseq', 'refseq', 'relativeCodonStart', 'CodonEnd', 'RefCodon', 'RefAA',]
+                        'hapseq', 'refseq', 'CodonStart', 'relativeCodonStart', 'CodonEnd', 'RefCodon', 'RefAA', 'CodonMasked']
     unique_asvs_per_resmarker_df = allele_data_per_resmarker[required_columns].drop_duplicates(
     )
 
-    # Build table of masked coordinated for resmarker loci
-    masked_coords_table = MaskCoordinatesExtractor.create_masked_coordinate_table(
-        unique_asvs_per_resmarker_df)
-
     # Generate tables
     resmarker_data, mhap_table, resmarker_data_collapsed_tiled, all_mutations = ResmarkerTableGenerator.generate_resmarker_tables(
-        unique_asvs_per_resmarker_df, allele_data_per_resmarker, allele_data, ref_sequences, masked_coords_table)
+        unique_asvs_per_resmarker_df, allele_data_per_resmarker, allele_data, ref_sequences, masked_coords_dict)
 
     logging.info(f"Writing output data to files.")
     resmarker_data_collapsed_tiled.to_csv('resmarker_table.txt',
                                           sep='\t', index=False)
-    resmarker_data.rename(
-        columns={'relativeCodonStart': 'CodonStart'}, inplace=True
-    )
     resmarker_data.to_csv('resmarker_table_by_locus.txt',
                           sep='\t', index=False)
     mhap_table.to_csv('resmarker_microhap_table.txt', sep='\t', index=False)
@@ -477,5 +507,3 @@ if __name__ == "__main__":
     finally:
         logging.info("Program complete.")
         logging.shutdown()
-
-print(datetime.now() - startTime)

@@ -1,0 +1,12 @@
+SampleID	Locus	GeneID	Gene	MicrohapIndex	RefMicrohap	Microhaplotype	MicrohapRefAlt	Reads
+sample1	locus1	1	gene1	1	*	*	REF	60
+sample1	locus2	2	gene2	2	*	*	REF	5
+sample1	locus3	3	gene3	3	*	*	REF	25
+sample1	locus4	4	gene4	4	*	X	X	307
+sample2	locus1	1	gene1	1	*	*	REF	45
+sample2	locus2	2	gene2	2	*	X	X	35
+sample3	locus1	1	gene1	1	*	*	REF	600
+sample3	locus2	2	gene2	2	*	X	X	105
+sample4	locus5	5	gene5	5	*	*	REF	50
+sample4	locus6	5	gene5	5	*	*	REF	45
+sample4	locus7	7	gene7	7/9	S/S	S/N	ALT	184
