@@ -43,12 +43,12 @@ def helpMessage() {
       nextflow run main.nf --readDIR data/testdata --target v4
 
     Mandatory arguments:
-      --readDIR    Path to folder containing fastq files
-      --target     The amplicon panel version that was used. [Options: 4cast, ama1, v1, v2, v3, v4 (default)]
+      --readDIR		Path to folder containing fastq files
+      --target		The amplicon panel version that was used. [Options: 4cast, ama1, v1, v2, v3, v4]
+      --sequencer	The sequencer used to produce your data. [Options: miseq, nextseq]
 
     Optional arguments:
       --outDIR                  Path to folder to place final output [Default: results]
-      --sequencer               The sequencer used to produce your data. [Options: miseq, nextseq (default)]
       --QC_only                 Runs just the QC workflow when set [Default: Not set]
       --denoised_asvs           Path to denoised ASVs from DADA2. Used to only run the postprocessing workflow
 
@@ -111,6 +111,7 @@ workflow {
     // Make sure required inputs are present
     check_readdir_presence(should_exist: true)
     check_target()
+    check_sequencer()
 
     // Run QC Only Workflow
     QC_ONLY(params.reads)
@@ -130,6 +131,7 @@ workflow {
     // Make sure required inputs are present
     check_readdir_presence(should_exist: true)
     check_target()
+    check_sequencer()
 
     // Create read pairs channel from fastq data
     read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
@@ -265,5 +267,11 @@ def check_readdir_presence(should_exist) {
 def check_target() {
   if ( params.target == null ) {
     exit 0, log.error("`--target` must be specified.")
+  }
+}
+
+def check_sequencer() {
+  if ( params.sequencer == null ) {
+    exit 0, log.error("`--sequencer` must be specified.")
   }
 }
