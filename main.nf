@@ -60,7 +60,7 @@ def helpMessage() {
       --omega_a                 Level of statistical evidence required for DADA2 to infer a new ASV [Default: 1e-120]
       --pool                    Pooling method for DADA2 to process ASVs [pseudo (default), true, false]
       --band_size               Limit on the net cumulative number of insertions of one sequence relative to the other in DADA2 [Default: 16]
-      --maxEE                   Limit on number of expected errors within a read during filtering and trimming within DADA2 [Default: 2]
+      --maxEE                   Limit on number of expected errors within a read during filtering and trimming within DADA2 [Default: 3]
 
       (Post processing parameters)
       --concat_non_overlaps     Whether to concatenate or discard any sequences that DADA2 was unable to be merge 
