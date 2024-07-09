@@ -111,6 +111,7 @@ workflow {
     // Make sure required inputs are present
     check_readdir_presence(should_exist: true)
     check_target()
+    check_sequencer()
 
     // Run QC Only Workflow
     QC_ONLY(params.reads)
@@ -130,6 +131,7 @@ workflow {
     // Make sure required inputs are present
     check_readdir_presence(should_exist: true)
     check_target()
+    check_sequencer()
 
     // Create read pairs channel from fastq data
     read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
@@ -265,5 +267,11 @@ def check_readdir_presence(should_exist) {
 def check_target() {
   if ( params.target == null ) {
     exit 0, log.error("`--target` must be specified.")
+  }
+}
+
+def check_sequencer() {
+  if ( params.sequencer == null ) {
+    exit 0, log.error("`--sequencer` must be specified.")
   }
 }
