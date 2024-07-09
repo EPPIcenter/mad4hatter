@@ -214,7 +214,6 @@ def pseudo_cigar_to_mutations(pseudo_cigar):
 
     for match in matches:
         position, operation, value = match
-        position = int(position) - 1  # use base 0 indexing
         logging.debug(f"Processing match: original position={match[0]}, adjusted position={
                       position}, operation={operation}, value={value}")
 
@@ -246,16 +245,16 @@ def extract_mutations_from_unique_pseudo_cigar(df, ref_sequences):
         if pseudo_cigar == ".":
             continue
 
-        # returns 0-based position
+        # returns 1-based position
         changes = pseudo_cigar_to_mutations(pseudo_cigar)
 
         ref_seq = ref_sequences[locus].seq
         for pos, op, alt in changes:
-            ref = ref_seq[int(pos)]
+            pos = int(pos)
+            ref = ref_seq[pos-1]
             if strand == '-':
                 alt = alt.translate(transtab)
                 ref = ref.translate(transtab)
-                pos = len(ref_seq) - pos - 1
             if op == 'D':
                 ref = alt
                 alt = '-'
@@ -266,7 +265,7 @@ def extract_mutations_from_unique_pseudo_cigar(df, ref_sequences):
                 'Gene': row.Gene,
                 'Locus': locus,
                 'PseudoCIGAR': pseudo_cigar,
-                'Position': pos,
+                'LocusPosition': pos,
                 'Alt': alt,
                 'Ref': ref,
             })
@@ -310,7 +309,7 @@ class ResmarkerTableGenerator:
         resmarker_data = resmarker_for_asv.merge(
             sample_allele_data[['SampleID', 'Locus', 'ASV', 'PseudoCIGAR', 'Reads', 'relativeCodonStart']], on=['Locus', 'ASV', 'PseudoCIGAR', 'relativeCodonStart'])
         # Sum reads for duplicate codons
-        resmarker_data = resmarker_data.groupby(['SampleID', 'Locus', 'GeneID', 'Gene', 'CodonID', 'RefCodon',
+        resmarker_data = resmarker_data.groupby(['SampleID', 'GeneID', 'Gene', 'Locus', 'CodonID', 'RefCodon',
                                                 'Codon', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'FollowsIndel', 'CodonMasked']).Reads.sum().reset_index()
         resmarker_data['Reads'] = resmarker_data['Reads'].astype(int)
         # Sort by CodonID, Gene, and SampleID (and Locus if applicable)
@@ -342,9 +341,9 @@ class ResmarkerTableGenerator:
         """Generate a table of microhaplotypes for markers on locus for each unique asv."""
         logging.info("Compiling microhaplotype of resmarkers for unique ASVs.")
         resmarker_table = resmarker_table.sort_values(by='relativeCodonStart')
-        mhap_table = resmarker_table.groupby(['Locus', 'ASV', 'GeneID', 'Gene', 'PseudoCIGAR']).agg(
-            MicrohapIndex=('CodonID',
-                           lambda x: '/'.join(map(str, x))),
+        mhap_table = resmarker_table.groupby(['ASV', 'Locus', 'GeneID', 'Gene', 'PseudoCIGAR']).agg(
+            MicrohaplotypeCodonIDs=('CodonID',
+                                    lambda x: '/'.join(map(str, x))),
             RefMicrohap=('RefAA', lambda x: '/'.join(map(str, x))),
             Microhaplotype=('AA', lambda x: '/'.join(map(str, x)))
         ).reset_index()
@@ -358,7 +357,7 @@ class ResmarkerTableGenerator:
         logging.info("Merging microhaplotype information with samples.")
         mhap_table = mhap_for_asv.merge(
             sample_allele_data[['SampleID', 'Locus', 'ASV', 'PseudoCIGAR', 'Reads']], on=['Locus', 'ASV', 'PseudoCIGAR'])
-        mhap_table = mhap_table.groupby(['SampleID', 'Locus', 'GeneID', 'Gene', 'MicrohapIndex',
+        mhap_table = mhap_table.groupby(['SampleID',  'GeneID',  'Gene', 'Locus', 'MicrohaplotypeCodonIDs',
                                         'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt']).Reads.sum().reset_index()
         mhap_table['Reads'] = mhap_table['Reads'].astype(int)
         return mhap_table
@@ -372,13 +371,13 @@ class ResmarkerTableGenerator:
         mutations_df = extract_mutations_from_unique_pseudo_cigar(
             unique_pseudo_cigars, ref_sequences)
         all_mutations = allele_data.merge(mutations_df, on=['Locus', 'PseudoCIGAR'])[
-            ['SampleID', 'Locus', 'GeneID', 'Gene', 'PseudoCIGAR', 'Position', 'Alt', 'Ref', 'Reads']]
+            ['SampleID', 'Locus', 'GeneID', 'Gene', 'PseudoCIGAR', 'LocusPosition', 'Alt', 'Ref', 'Reads']]
         all_mutations = all_mutations.groupby(
-            ['SampleID', 'Locus', 'GeneID', 'Gene', 'Position', 'Alt', 'Ref']).Reads.sum().reset_index()
+            ['SampleID', 'GeneID', 'Gene', 'Locus', 'LocusPosition', 'Alt', 'Ref']).Reads.sum().reset_index()
         # Ensure reads is integer
         all_mutations['Reads'] = all_mutations['Reads'].astype(int)
         all_mutations.sort_values(
-            by=['SampleID', 'Locus', 'Position'], inplace=True)
+            by=['SampleID', 'Locus', 'LocusPosition'], inplace=True)
         return all_mutations
 
     @staticmethod
@@ -449,7 +448,8 @@ def main(args):
                                           sep='\t', index=False)
     resmarker_data.to_csv('resmarker_table_by_locus.txt',
                           sep='\t', index=False)
-    mhap_table.to_csv('resmarker_microhap_table.txt', sep='\t', index=False)
+    mhap_table.to_csv('resmarker_microhaplotype_table.txt',
+                      sep='\t', index=False)
     all_mutations.to_csv('all_mutations_table.txt', sep='\t', index=False)
     logging.info(f"Finished writing outputs.")
 
