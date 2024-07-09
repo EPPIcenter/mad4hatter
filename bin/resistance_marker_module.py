@@ -14,8 +14,8 @@ import traceback
 
 def read_allele_data(allele_data_path, aligned_asv_table_path):
     """Reads and merges allele data with aligned ASV data."""
-    logging.info(f"Reading allele data from {
-                 allele_data_path} and aligned ASV data from {aligned_asv_table_path}.")
+    logging.info(
+        f"Reading allele data from {allele_data_path} and aligned ASV data from {aligned_asv_table_path}.")
     try:
         allele_data = pd.read_csv(allele_data_path, sep='\t')
         aligned_asv_data = pd.read_csv(aligned_asv_table_path, sep='\t')
@@ -119,8 +119,8 @@ class MaskCoordinatesExtractor:
     @staticmethod
     def create_masked_coordinate_dict(allele_data):
         """Creates a table of 1-based masked coordinates from allele data."""
-        logging.info(f"Creating masked coordinate table for {
-                     allele_data.Locus.nunique()} loci.")
+        logging.info(
+            f"Creating masked coordinate table for {allele_data.Locus.nunique()} loci.")
         cigar_per_locus = allele_data.groupby('Locus', as_index=False).first()
         cigar_per_locus['masked_coords'] = cigar_per_locus['PseudoCIGAR'].apply(
             MaskCoordinatesExtractor.pseudocigar_to_mask_coordinates)
@@ -166,8 +166,8 @@ class CodonProcessor:
     @staticmethod
     def get_codon_info_for_marker(marker_info, masking_info):
         """Gets codon information for a marker."""
-        logging.debug(f"Getting codon information for marker at position {
-                      marker_info['relativeCodonStart']} to {marker_info['CodonEnd']} from {marker_info['hapseq']}")
+        logging.debug(
+            f"Getting codon information for marker at position {marker_info['relativeCodonStart']} to {marker_info['CodonEnd']} from {marker_info['hapseq']}")
         reference = marker_info['refseq']
         sequence = marker_info['hapseq']
         start_position = marker_info['relativeCodonStart']
@@ -198,10 +198,10 @@ def pseudo_cigar_to_mutations(pseudo_cigar):
     logging.debug(f"Entering `parse_pseudo_cigar` with string={pseudo_cigar}")
 
     if not isinstance(pseudo_cigar, str):
-        logging.error(f"Expected a string for `parse_pseudo_cigar` but got {
-                      type(pseudo_cigar)}. Value: {pseudo_cigar}")
-        raise TypeError(f"Expected a string for `parse_pseudo_cigar` but got {
-                        type(pseudo_cigar)}. Value: {pseudo_cigar}")
+        logging.error(
+            f"Expected a string for `parse_pseudo_cigar` but got {type(pseudo_cigar)}. Value: {pseudo_cigar}")
+        raise TypeError(
+            f"Expected a string for `parse_pseudo_cigar` but got {type(pseudo_cigar)}. Value: {pseudo_cigar}")
 
     pseudo_cigar = pseudo_cigar.replace("=", "")  # Remove the "=" separator
     logging.debug(f"Removed '=' separator. Modified string={pseudo_cigar}")
@@ -214,8 +214,8 @@ def pseudo_cigar_to_mutations(pseudo_cigar):
 
     for match in matches:
         position, operation, value = match
-        logging.debug(f"Processing match: original position={match[0]}, adjusted position={
-                      position}, operation={operation}, value={value}")
+        logging.debug(
+            f"Processing match: original position={match[0]}, adjusted position={position}, operation={operation}, value={value}")
 
         # Handle mask
         if operation == "+":
@@ -224,11 +224,11 @@ def pseudo_cigar_to_mutations(pseudo_cigar):
         else:
             tuples.append((position, None if operation ==
                           '' else operation, value))
-            logging.debug(f"Added tuple to result: {
-                          (position, None if operation == '' else operation, value)}")
+            logging.debug(
+                f"Added tuple to result: {(position, None if operation == '' else operation, value)}")
 
-    logging.debug(f"Exiting `parse_pseudo_cigar` with {
-                  len(tuples)} tuples generated")
+    logging.debug(
+        f"Exiting `parse_pseudo_cigar` with {len(tuples)} tuples generated")
     return tuples
 
 
@@ -497,8 +497,8 @@ if __name__ == "__main__":
         logging.info("Program start.")
         main(args)
     except Exception as e:
-        logging.error(f"An error of type {
-                      type(e).__name__} occurred. Message: {e}")
+        logging.error(
+            f"An error of type {type(e).__name__} occurred. Message: {e}")
         logging.error(traceback.format_exc())  # Log the full traceback
         raise e
     finally:
