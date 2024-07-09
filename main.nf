@@ -44,7 +44,7 @@ def helpMessage() {
 
     Mandatory arguments:
       --readDIR		Path to folder containing fastq files
-      --target		The amplicon panel version that was used. [Options: 4cast, ama1, v1, v2, v3, v4 (default)]
+      --target		The amplicon panel version that was used. [Options: 4cast, ama1, v1, v2, v3, v4]
       --sequencer	The sequencer used to produce your data. [Options: miseq, nextseq]
 
     Optional arguments:
