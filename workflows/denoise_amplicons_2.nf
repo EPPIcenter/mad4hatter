@@ -37,24 +37,22 @@ workflow DENOISE_AMPLICONS_2 {
   FILTER_ASVS(
     ALIGN_TO_REFERENCE.out.alignments
   )
+  alignment_table_ch = ALIGN_TO_REFERENCE.out.alignments
 
   if (params.masked_fasta == null && (params.mask_tandem_repeats || params.mask_homopolymers)) {
     MASK_LOW_COMPLEXITY_REGIONS(
       reference,
       FILTER_ASVS.out.filtered_alignments_ch
     )
+    alignment_table_ch = MASK_LOW_COMPLEXITY_REGIONS.out.masked_alignments
+  } 
 
-    BUILD_PSEUDOCIGAR(
-      MASK_LOW_COMPLEXITY_REGIONS.out.masked_alignments
-    )
-  } else {
-    // Build the pseudocigar string from the unmasked alignments
-    BUILD_PSEUDOCIGAR(
-      FILTER_ASVS.out.filtered_alignments_ch
-    )
-  }
-
+  BUILD_PSEUDOCIGAR(
+    alignment_table_ch
+  )
+  
   emit:
   results_ch = BUILD_PSEUDOCIGAR.out.pseudocigar
   reference_ch = reference
+  aligned_asv_table = alignment_table_ch
 }

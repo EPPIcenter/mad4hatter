@@ -166,6 +166,7 @@ workflow {
     if (params.target == "v4") {
       RESISTANCE_MARKER_MODULE(
         BUILD_ALLELETABLE.out.alleledata,
+        DENOISE_AMPLICONS_2.out.aligned_asv_table,
         DENOISE_AMPLICONS_2.out.reference_ch
       )
     }

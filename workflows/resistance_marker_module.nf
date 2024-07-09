@@ -12,6 +12,7 @@ workflow RESISTANCE_MARKER_MODULE {
     take:
 
     allele_data
+    alignment_data
     reference
 
     main:
@@ -19,6 +20,7 @@ workflow RESISTANCE_MARKER_MODULE {
     // Additional Modules (not part of the main workflow)
     BUILD_RESISTANCE_TABLE(
         allele_data,
+        alignment_data,
         params.resmarkers_amplicon,
         reference
     )
