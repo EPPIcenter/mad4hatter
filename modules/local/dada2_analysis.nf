@@ -15,7 +15,7 @@ process DADA2_ANALYSIS {
   )
 
   input:
-  path (demultiplexed_fastqs, stageAs: "demuliplexed_fastqs?")
+  path (demultiplexed_fastqs, stageAs: "demultiplexed_fastqs?")
   path amplicon_info
   val pool
   val band_size
