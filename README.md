@@ -18,7 +18,7 @@ Below are parameters that are essential to running the pipeline. You will need t
 |---|---|
 |readDIR|The folder that contains all the fastq files (*required*)|
 |outDIR|The folder where you want the resulting data to be save (default 'results')|
-|sequencer|The sequencer used to produce your data (default 'nextseq')|
+|sequencer|The sequencer used to produce your data (*required*)|
 |QC_only|Whether to only run QC related workflows or all workflows|
 |target|The amplicon panel that was used to create your sequencing data (*required*)|
 |profile|The infrastructure you wish to run the pipeline on. The different profiles are listed below under `Runtime Profiles`, including any setup that is required. **Please read that section for more details.**|

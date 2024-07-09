@@ -43,12 +43,12 @@ def helpMessage() {
       nextflow run main.nf --readDIR data/testdata --target v4
 
     Mandatory arguments:
-      --readDIR    Path to folder containing fastq files
-      --target     The amplicon panel version that was used. [Options: 4cast, ama1, v1, v2, v3, v4 (default)]
+      --readDIR		Path to folder containing fastq files
+      --target		The amplicon panel version that was used. [Options: 4cast, ama1, v1, v2, v3, v4 (default)]
+      --sequencer	The sequencer used to produce your data. [Options: miseq, nextseq]
 
     Optional arguments:
       --outDIR                  Path to folder to place final output [Default: results]
-      --sequencer               The sequencer used to produce your data. [Options: miseq, nextseq (default)]
       --QC_only                 Runs just the QC workflow when set [Default: Not set]
       --denoised_asvs           Path to denoised ASVs from DADA2. Used to only run the postprocessing workflow
 
