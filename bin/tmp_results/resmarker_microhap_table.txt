@@ -1,2 +1,0 @@
-SampleID	Locus	GeneID	Gene	MicrohapIndex	RefMicrohap	Microhaplotype	MicrohapRefAlt	Reads
-GM-1B-D4-100-P2-3_S22_L001	Pf3D7_04_v3-748105-748359-1B	0417200	dhfr	16	K	K	REF	44
