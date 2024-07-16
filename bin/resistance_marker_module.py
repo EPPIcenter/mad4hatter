@@ -370,14 +370,18 @@ class ResmarkerTableGenerator:
         # Get all mutations
         mutations_df = extract_mutations_from_unique_pseudo_cigar(
             unique_pseudo_cigars, ref_sequences)
-        all_mutations = allele_data.merge(mutations_df, on=['Locus', 'PseudoCIGAR'])[
-            ['SampleID', 'Locus', 'GeneID', 'Gene', 'PseudoCIGAR', 'LocusPosition', 'Alt', 'Ref', 'Reads']]
-        all_mutations = all_mutations.groupby(
-            ['SampleID', 'GeneID', 'Gene', 'Locus', 'LocusPosition', 'Alt', 'Ref']).Reads.sum().reset_index()
-        # Ensure reads is integer
-        all_mutations['Reads'] = all_mutations['Reads'].astype(int)
-        all_mutations.sort_values(
-            by=['SampleID', 'Locus', 'LocusPosition'], inplace=True)
+        if mutations_df.shape[0] > 0:
+            all_mutations = allele_data.merge(mutations_df, on=['Locus', 'PseudoCIGAR'])[
+                ['SampleID', 'Locus', 'GeneID', 'Gene', 'PseudoCIGAR', 'LocusPosition', 'Alt', 'Ref', 'Reads']]
+            all_mutations = all_mutations.groupby(
+                ['SampleID', 'GeneID', 'Gene', 'Locus', 'LocusPosition', 'Alt', 'Ref']).Reads.sum().reset_index()
+            # Ensure reads is integer
+            all_mutations['Reads'] = all_mutations['Reads'].astype(int)
+            all_mutations.sort_values(
+                by=['SampleID', 'Locus', 'LocusPosition'], inplace=True)
+        else:
+            all_mutations = pd.DataFrame(
+                data={'SampleID': [], 'GeneID': [], 'Gene': [], 'Locus': [], 'LocusPosition': [], 'Alt': [], 'Ref': [], 'Reads': []})
         return all_mutations
 
     @staticmethod
