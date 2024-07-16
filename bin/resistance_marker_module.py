@@ -128,7 +128,6 @@ class MaskCoordinatesExtractor:
         masked_coords_dict = cigar_per_locus.set_index(
             'Locus')['masked_coords'].to_dict()
         logging.info("Masked coordinate dictionary created successfully.")
-        print(masked_coords_dict)
         return masked_coords_dict
 
 
@@ -251,15 +250,16 @@ def extract_mutations_from_unique_pseudo_cigar(df, ref_sequences):
         ref_seq = ref_sequences[locus].seq
         for pos, op, alt in changes:
             pos = int(pos)
-            ref = ref_seq[pos-1]
-            if strand == '-':
-                alt = alt.translate(transtab)
-                ref = ref.translate(transtab)
             if op == 'D':
                 ref = alt
                 alt = '-'
             elif op == 'I':
                 ref = '-'
+            else:
+                ref = ref_seq[pos-1]
+            if strand == '-':
+                alt = alt.translate(transtab)
+                ref = ref.translate(transtab)
             results.append({
                 'GeneID': row.GeneID,
                 'Gene': row.Gene,
