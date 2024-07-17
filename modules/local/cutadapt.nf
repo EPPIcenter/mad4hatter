@@ -10,30 +10,37 @@ process CUTADAPT {
   label 'process_low'
   conda 'envs/cutadapt-env.yml'
 
-    input:
-    file fwd_primers
-    file rev_primers
-    tuple val(pair_id), file(reads)
-    val cutadapt_minlen
-    val sequencer
-    val allowed_errors
+  publishDir(
+    path: "${params.outDIR}/cutadapt",
+    mode: 'copy',
+    pattern: 'too_short_output/*'
+  )
 
-    output:
-    path("*.SAMPLEsummary.txt"), emit: sample_summary
-    path("*.AMPLICONsummary.txt"), emit: amplicon_summary
-    path('demultiplexed_fastqs'), emit: demultiplexed_fastqs
+  input:
+  file fwd_primers
+  file rev_primers
+  tuple val(pair_id), file(reads)
+  val cutadapt_minlen
+  val sequencer
+  val allowed_errors
 
-    script:
-    """
-    bash cutadapt_process.sh \
-        -1 ${reads[0]} \
-        -2 ${reads[1]} \
-        -r ${rev_primers} \
-        -f ${fwd_primers} \
-        -m ${cutadapt_minlen} \
-        -s ${sequencer} \
-        -e ${allowed_errors} \
-        -c ${task.cpus} \
-        -o demultiplexed_fastqs
-    """
+  output:
+  path("*.SAMPLEsummary.txt"), emit: sample_summary
+  path("*.AMPLICONsummary.txt"), emit: amplicon_summary
+  path('demultiplexed_fastqs'), emit: demultiplexed_fastqs
+  path('too_short_output/*'), emit: too_short_output
+
+  script:
+  """
+  bash cutadapt_process.sh \
+      -1 ${reads[0]} \
+      -2 ${reads[1]} \
+      -r ${rev_primers} \
+      -f ${fwd_primers} \
+      -m ${cutadapt_minlen} \
+      -s ${sequencer} \
+      -e ${allowed_errors} \
+      -c ${task.cpus} \
+      -o demultiplexed_fastqs
+  """
 }

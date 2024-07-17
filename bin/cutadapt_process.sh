@@ -75,11 +75,14 @@ test -d $adapter_dimers || mkdir -p $adapter_dimers
 no_adapter_dimers="no_adapter_dimers"
 test -d $no_adapter_dimers || mkdir -p $no_adapter_dimers
 
+too_short_output="too_short_output"
+test -d $too_short_output || mkdir -p $too_short_output
+
 # cutadapt_json=$(mktemp)
 cutadapt_json="cutadapt.json"
 
 # Delete the directories on exit if specified on the command line
-trap "rm -rf '$adapter_dimers' '$no_adapter_dimers'" EXIT
+# trap "rm -rf '$adapter_dimers' '$no_adapter_dimers'" EXIT
 
 # get the sample id
 sample_id=$(basename "$forward_read" | sed 's/_R[12].*//')
@@ -125,6 +128,8 @@ cutadapt \
     --no-indels \
     ${qualfilter} \
     --minimum-length ${cutadapt_minlen} \
+    --too-short-output ${too_short_output}/${sample_id}_too_short_R1.fastq.gz \
+    --too-short-paired-output ${too_short_output}/${sample_id}_too_short_R2.fastq.gz \
     -o ${trimmed_demuxed_fastqs}/{name}_${sample_id}_trimmed_R1.fastq.gz \
     -p ${trimmed_demuxed_fastqs}/{name}_${sample_id}_trimmed_R2.fastq.gz \
     --untrimmed-output ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_R1.fastq.gz \
