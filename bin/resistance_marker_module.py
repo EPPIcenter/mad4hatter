@@ -128,7 +128,6 @@ class MaskCoordinatesExtractor:
         masked_coords_dict = cigar_per_locus.set_index(
             'Locus')['masked_coords'].to_dict()
         logging.info("Masked coordinate dictionary created successfully.")
-        print(masked_coords_dict)
         return masked_coords_dict
 
 
@@ -251,15 +250,16 @@ def extract_mutations_from_unique_pseudo_cigar(df, ref_sequences):
         ref_seq = ref_sequences[locus].seq
         for pos, op, alt in changes:
             pos = int(pos)
-            ref = ref_seq[pos-1]
-            if strand == '-':
-                alt = alt.translate(transtab)
-                ref = ref.translate(transtab)
             if op == 'D':
                 ref = alt
                 alt = '-'
             elif op == 'I':
                 ref = '-'
+            else:
+                ref = ref_seq[pos-1]
+            if strand == '-':
+                alt = alt.translate(transtab)
+                ref = ref.translate(transtab)
             results.append({
                 'GeneID': row.GeneID,
                 'Gene': row.Gene,
@@ -370,14 +370,18 @@ class ResmarkerTableGenerator:
         # Get all mutations
         mutations_df = extract_mutations_from_unique_pseudo_cigar(
             unique_pseudo_cigars, ref_sequences)
-        all_mutations = allele_data.merge(mutations_df, on=['Locus', 'PseudoCIGAR'])[
-            ['SampleID', 'Locus', 'GeneID', 'Gene', 'PseudoCIGAR', 'LocusPosition', 'Alt', 'Ref', 'Reads']]
-        all_mutations = all_mutations.groupby(
-            ['SampleID', 'GeneID', 'Gene', 'Locus', 'LocusPosition', 'Alt', 'Ref']).Reads.sum().reset_index()
-        # Ensure reads is integer
-        all_mutations['Reads'] = all_mutations['Reads'].astype(int)
-        all_mutations.sort_values(
-            by=['SampleID', 'Locus', 'LocusPosition'], inplace=True)
+        if mutations_df.shape[0] > 0:
+            all_mutations = allele_data.merge(mutations_df, on=['Locus', 'PseudoCIGAR'])[
+                ['SampleID', 'Locus', 'GeneID', 'Gene', 'PseudoCIGAR', 'LocusPosition', 'Alt', 'Ref', 'Reads']]
+            all_mutations = all_mutations.groupby(
+                ['SampleID', 'GeneID', 'Gene', 'Locus', 'LocusPosition', 'Alt', 'Ref']).Reads.sum().reset_index()
+            # Ensure reads is integer
+            all_mutations['Reads'] = all_mutations['Reads'].astype(int)
+            all_mutations.sort_values(
+                by=['SampleID', 'Locus', 'LocusPosition'], inplace=True)
+        else:
+            all_mutations = pd.DataFrame(
+                data={'SampleID': [], 'GeneID': [], 'Gene': [], 'Locus': [], 'LocusPosition': [], 'Alt': [], 'Ref': [], 'Reads': []})
         return all_mutations
 
     @staticmethod
