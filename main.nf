@@ -34,9 +34,12 @@ include { POSTPROC_ONLY } from './workflows/postproc_only.nf'
 
 // modules
 include { BUILD_ALLELETABLE } from './modules/local/build_alleletable.nf'
+include { PROCESS_INPUTS } from './modules/local/process_inputs.nf'
 
 // main workflow
 workflow {
+
+  // Process amplicon info file 
 
   if (params.QC_only) {
 
