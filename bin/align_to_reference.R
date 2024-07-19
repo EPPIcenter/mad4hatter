@@ -22,21 +22,11 @@ library(ggplot2)
 library(Biostrings)
 library(magrittr)
 
-## FOR DEUBGING
-# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/48/4bb9040a0aa3b2febe32ce38f4e3bd")
-# args=list()
-# args$clusters="clusters.concatenated.collapsed.txt"
-# args$refseq_fasta="v4_reference.fasta"
-# args$parallel=TRUE
-# args$n_cores=2
-# args$amplicon_table="v4_amplicon_table.tsv"
-
-clusters=read.table(args$clusters, header=T)
-
 # register number of cores to use
 registerDoMC(args$n_cores)
 
 # read the sequences from the reference genome (already extracted into a fasta file)
+clusters <- read.table(args$clusters, header = TRUE)
 ref_sequences <- readDNAStringSet(args$refseq_fasta)
 
 # DADA2 should have corrected any substitution errors during sequencing. Therefore, any 
@@ -45,25 +35,30 @@ ref_sequences <- readDNAStringSet(args$refseq_fasta)
 # help filter sequences that are truly different from the reference. 
 sigma <- nucleotideSubstitutionMatrix(match = 2, mismatch = -1, baseOnly = TRUE)
 
-#########  IMPORTANT: NON PF SEQUENCES NEED TO BE INCLUDED IN REFERENCE!
+# Perform alignment by unique ASV by locus
+unique_clusters <- clusters %>%
+  distinct(locus, asv)
 
-# This object contains the aligned ASV sequences
-df_aln <- foreach(seq1 = 1:nrow(clusters), .combine = "bind_rows") %dopar% {
+df_aln <- foreach(ii = 1:nrow(unique_clusters), .combine = "bind_rows") %dopar% {
   # the alignment is performed only with the reference sequence for the corresponding locus as we have this information from the demultiplexing step
-  refseq.seq1 = ref_sequences[clusters$locus[seq1]] #commenting out next lines as I concatenated all genomes
-  aln <- pairwiseAlignment(refseq.seq1, str_remove_all(clusters$asv[seq1],"N"), substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
+  refseq <- ref_sequences[unique_clusters$locus[ii]]
+  aln <- pairwiseAlignment(refseq, str_remove_all(unique_clusters$asv[ii], "N"), substitutionMatrix = sigma, gapOpening = -8, gapExtension = -5, scoreOnly = FALSE)
   patt <- c(alignedPattern(aln), alignedSubject(aln))
-  ind <- sum(str_count(as.character(patt),"-"))
+  ind <- sum(str_count(as.character(patt), "-"))
   data.frame(
-    sampleID = clusters$sampleID[seq1],
-    asv = clusters$asv[seq1],
+    locus = unique_clusters$locus[ii],
+    asv = unique_clusters$asv[ii],
     hapseq = as.character(patt)[2],
     refseq = as.character(patt)[1],
-    refid = clusters$locus[seq1],
     score = score(aln),
     indels = ind
   )
 }
 
+# Merge the alignment results back to the original clusters data
+df_aln_merged <- clusters %>%
+  dplyr::left_join(df_aln, by = c("locus", "asv")) %>%
+  dplyr::rename(refid = locus) %>%
+  dplyr::select(sampleID, asv, hapseq, refseq, refid, score, indels)
 
-write.table(df_aln,file="alignments.txt",quote=F,sep="\t",col.names=T,row.names=F)
+write.table(df_aln_merged, file = "alignments.txt", quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)

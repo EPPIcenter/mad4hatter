@@ -13,7 +13,7 @@ parser$add_argument("--band-size", type = "integer", default = 16)
 parser$add_argument("--omega-a", type = "double", default = 1e-120)
 parser$add_argument("--concat-non-overlaps", action = "store_true")
 parser$add_argument("--use-quals", type = "character", default = "false")
-parser$add_argument("--maxEE", type = "integer", default = 2)
+parser$add_argument("--maxEE", type = "integer", default = 3)
 parser$add_argument("--self-consist", action = "store_true")
 parser$add_argument("--omega-c", type = "double", default = 1e-40)
 parser$add_argument("--cores", type = "integer", default = 1)
@@ -22,26 +22,8 @@ parser$add_argument("--cores", type = "integer", default = 1)
 args <- parser$parse_args()
 print(args)
 
-# setwd("~/Documents/GitHub/mad4hatter/work/70/97ca171c7057f885c5372d6c2fdc6e")
-# args=list()
-# args$trimmed_path = list.files(pattern="trimmed_demuxed*",full.names = T)
-# args$dada2_rdada_output = "dada2.seqtab.RDS"
-# args$pool = "pseudo"
-# args$band_size = -1
-# args$omega_a = 1e-120
-# args$concat_non_overlaps = T
-# args$use_quals="false"
-# args$maxEE = 2
-# args$ampliconFILE = "v4_amplicon_info.tsv"
-# args$omega_c=1e-40
-# args$self_consist=T
-
-
 fnFs <- sort(list.files(path = args$trimmed_path, pattern = "_R1.fastq.gz", recursive = T, full.names = TRUE))
 fnRs <- sort(list.files(path = args$trimmed_path, pattern = "_R2.fastq.gz", recursive = T, full.names = TRUE))
-
-# fnFs = sort(grep("_R1.fastq.gz",trimmed_path,value=T))
-# fnRs = sort(grep("_R2.fastq.gz",trimmed_path,value=T))
 
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample.names <- sapply(strsplit(basename(fnFs), "_R1"), `[`, 1)
@@ -50,13 +32,9 @@ print(sample.names)
 filtFs <- paste0(args$trimmed_path, "/filtered/", sample.names, "_F_filt.fastq.gz")
 filtRs <- paste0(args$trimmed_path, "/filtered/", sample.names, "_R_filt.fastq.gz")
 
-# filtFs <- paste0(dirname(trimmed_path),"/filtered/",sample.names,"_F_filt.fastq.gz")
-# filtRs <- paste0(dirname(trimmed_path),"/filtered/",sample.names,"_R_filt.fastq.gz")
-
 
 names(filtFs) <- sample.names
 names(filtRs) <- sample.names
-#
 
 out <- filterAndTrim(
   fnFs, filtFs, fnRs, filtRs,
@@ -64,7 +42,6 @@ out <- filterAndTrim(
   compress = TRUE, multithread = args$cores,
   trimRight = c(0, 0), trimLeft = 1, minLen = 75, matchIDs = TRUE
 )
-head(out)
 
 filtered_Fs <- filtFs[out[, 2] > 0]
 filtered_Rs <- filtRs[out[, 2] > 0]
@@ -97,8 +74,6 @@ if (args$concat_non_overlaps) {
         select(amplicon, ampInsert_length),
       by = c("amplicon")
     ) %>%
-    # mutate(Pool=sapply(str_split(Amplicon,'-'),tail,1)) %>%
-    # mutate(Amplicon=unlist(lapply(str_split(Amplicon,'-'), function(x) { paste(x[1:2], collapse = "-") })))
     select(amplicon, ampInsert_length) %>%
     mutate(
       sum.mean.length.reads = sapply(sapply(unlist(lapply(dadaFs, "[", "sequence"), recursive = F), nchar), mean) +
@@ -106,9 +81,6 @@ if (args$concat_non_overlaps) {
     )
 
   rownames(amplicon.info) <- names(dadaFs)
-
-  #  sample.names.no.overlap = sample.names[as.numeric(sapply(strsplit(sample.names ,"-"),"[",3)) - as.numeric(sapply(strsplit(sample.names ,"-"),"[",2))>275]
-  #  sample.names.overlap = sample.names[as.numeric(sapply(strsplit(sample.names ,"-"),"[",3)) - as.numeric(sapply(strsplit(sample.names ,"-"),"[",2))<276]
 
   mergers.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) < sum.mean.length.reads))],
     filtered_Fs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) < sum.mean.length.reads))],
