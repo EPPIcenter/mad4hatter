@@ -32,17 +32,17 @@ do
             rev_primers_file=$OPTARG
             ;;
         e)
-			allowed_errors=$OPTARG
-			;;
+            allowed_errors=$OPTARG
+            ;;
         s)
             sequencer=$OPTARG
             ;;
         c)
-			cores=$OPTARG
-			;;
-		o)
-			trimmed_demuxed_fastqs=$OPTARG
-			;;
+            cores=$OPTARG
+            ;;
+        o)
+            trimmed_demuxed_fastqs=$OPTARG
+            ;;
         h)
             usage
             ;;
@@ -57,34 +57,20 @@ if [[ -z "$forward_read" || -z "$reverse_read" || -z "$cutadapt_minlen" || -z "$
     usage
 fi
 
-# this is the directory that will contain forward and reverse
-# reads that have been quality filtered and their primers removed
+# Create necessary directories
 test -d $trimmed_demuxed_fastqs || mkdir -p $trimmed_demuxed_fastqs
-
-# The remaining reads that could not be demultiplexed
-# trimmed_demuxed_unknown_fastqs=$(mktemp -d)
 trimmed_demuxed_unknown_fastqs="trimmed_demuxed_unknown_fastqs"
 test -d $trimmed_demuxed_unknown_fastqs || mkdir -p $trimmed_demuxed_unknown_fastqs
-
-# Create intermediate directories and files
-# adapter_dimers=$(mktemp -d)
 adapter_dimers="adapter_dimers"
 test -d $adapter_dimers || mkdir -p $adapter_dimers
-
-# no_adapter_dimers=$(mktemp -d)
 no_adapter_dimers="no_adapter_dimers"
 test -d $no_adapter_dimers || mkdir -p $no_adapter_dimers
-
 too_short_output="too_short_output"
 test -d $too_short_output || mkdir -p $too_short_output
+too_short_demux="too_short_demux"
+test -d $too_short_demux || mkdir -p $too_short_demux
 
-# cutadapt_json=$(mktemp)
-cutadapt_json="cutadapt.json"
-
-# Delete the directories on exit if specified on the command line
-# trap "rm -rf '$adapter_dimers' '$no_adapter_dimers'" EXIT
-
-# get the sample id
+# Get the sample id
 sample_id=$(basename "$forward_read" | sed 's/_R[12].*//')
 
 # Remove all adapter dimers
@@ -100,16 +86,16 @@ cutadapt \
     --cores ${cores} \
     --untrimmed-output ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     --untrimmed-paired-output ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz \
-    --json=${cutadapt_json} \
     --compression-level=1 \
     --quiet \
     ${forward_read} \
     ${reverse_read} > /dev/null
 
-
 # Get the total number of reads with adapters
-total_pairs=$(jq '.read_counts.input' ${cutadapt_json})
-no_dimers=$(jq '.read_counts.filtered.discard_untrimmed' ${cutadapt_json})
+total_pairs=$(zcat ${forward_read} | wc -l)
+total_pairs=$((total_pairs / 4))
+no_dimers=$(zcat ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz | wc -l)
+no_dimers=$((no_dimers / 4))
 printf "%s\t%s\n" "Input" ${total_pairs} > ${sample_id}.SAMPLEsummary.txt
 printf "%s\t%s\n" "No Dimers" ${no_dimers} >> ${sample_id}.SAMPLEsummary.txt
 
@@ -134,19 +120,37 @@ cutadapt \
     -p ${trimmed_demuxed_fastqs}/{name}_${sample_id}_trimmed_R2.fastq.gz \
     --untrimmed-output ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_R1.fastq.gz \
     --untrimmed-paired-output ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_R2.fastq.gz \
-    --json=${cutadapt_json} \
     --compression-level=1 \
     --quiet \
     ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
 
+# Demultiplex the too short reads
+cutadapt \
+    --action=trim \
+    -g file:${fwd_primers_file} \
+    -G file:${rev_primers_file} \
+    --pair-adapters \
+    -e ${allowed_errors} \
+    --no-indels \
+    ${qualfilter} \
+    --minimum-length ${cutadapt_minlen} \
+    -o ${too_short_demux}/{name}_${sample_id}_too_short_trimmed_R1.fastq.gz \
+    -p ${too_short_demux}/{name}_${sample_id}_too_short_trimmed_R2.fastq.gz \
+    --untrimmed-output ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_too_short_R1.fastq.gz \
+    --untrimmed-paired-output ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_too_short_R2.fastq.gz \
+    --compression-level=1 \
+    --quiet \
+    ${too_short_output}/${sample_id}_too_short_R1.fastq.gz \
+    ${too_short_output}/${sample_id}_too_short_R2.fastq.gz > /dev/null
 
 # Count reads in each demultiplexed fastq file using zgrep
 amplicon_counts=${sample_id}.AMPLICONsummary.txt
 sample_counts=${sample_id}.SAMPLEsummary.txt
+too_short_counts=${sample_id}.TOOSHORTsummary.txt
 total_count=0
 
-touch $amplicon_counts $sample_counts
+touch $amplicon_counts $sample_counts $too_short_counts
 
 while read -r amplicon_name; do
     fastq_file="${trimmed_demuxed_fastqs}/${amplicon_name}_${sample_id}_trimmed_R1.fastq.gz"
@@ -165,8 +169,26 @@ while read -r amplicon_name; do
 
     total_count=$((total_count + read_count))
     echo -e "${amplicon_name}\t${read_count}" >> $amplicon_counts
+
+    unset zgrep_exit_status
     
-    # unset the status variable
+    # Demultiplex too short reads
+    too_short_file="${too_short_demux}/${amplicon_name}_${sample_id}_too_short_trimmed_R1.fastq.gz"
+    if [[ -f $too_short_file ]]; then
+        too_short_count=$(zgrep -c ^@ $too_short_file) || zgrep_exit_status=$?
+        zgrep_exit_status=${zgrep_exit_status:-0}
+        if [[ $zgrep_exit_status -eq 1 ]]; then
+            too_short_count=0
+        elif [[ $zgrep_exit_status -ne 0 ]]; then
+            echo "Error: could not calculate too short amplicons for $too_short_file"
+            exit $zgrep_exit_status
+        fi
+    else
+        too_short_count=0
+    fi
+    
+    echo -e "${amplicon_name}\t${too_short_count}" >> $too_short_counts
+
     unset zgrep_exit_status
 
 done < <(grep '^>' $fwd_primers_file | sed 's/^>//')

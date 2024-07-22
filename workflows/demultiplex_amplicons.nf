@@ -22,5 +22,6 @@ workflow DEMULTIPLEX_AMPLICONS {
   sample_summary_ch = CUTADAPT.out.sample_summary
   amplicon_summary_ch = CUTADAPT.out.amplicon_summary
   demux_fastqs_ch = CUTADAPT.out.demultiplexed_fastqs
+  too_short_summary_ch = CUTADAPT.out.too_short_summary
 }
 

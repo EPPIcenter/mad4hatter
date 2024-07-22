@@ -10,6 +10,7 @@ workflow QUALITY_CONTROL {
     take:
     sample_coverage_files
     amplicon_coverage_files
+    too_short_coverage_files
     alleledata
     clusters
 
@@ -18,11 +19,13 @@ workflow QUALITY_CONTROL {
     // Assuming 'sampleFiles' and 'ampliconFiles' are your channels for individual files
     sample_combined = sample_coverage_files.collect()
     amplicon_combined = amplicon_coverage_files.collect()
+    too_short_combined = too_short_coverage_files.collect()
 
     // Initial Preprocessing
     PREPROCESS_COVERAGE(
         sample_combined,
-        amplicon_combined
+        amplicon_combined,
+        too_short_combined
     )
 
     // If postprocessing coverage is provided, run the postprocessing workflow
@@ -44,6 +47,7 @@ workflow QUALITY_CONTROL {
     QUALITY_REPORT(
         sample_coverage_ch,
         amplicon_coverage_ch,
+        PREPROCESS_COVERAGE.out.too_short_coverage
         params.amplicon_info
     )
 }

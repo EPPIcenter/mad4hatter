@@ -159,6 +159,7 @@ workflow {
     QUALITY_CONTROL(
       DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
       DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
+      DEMULTIPLEX_AMPLICONS.out.too_short_summary_ch,
       BUILD_ALLELETABLE.out.alleledata,
       DENOISE_AMPLICONS_1.out.denoise_ch
     )
