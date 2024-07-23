@@ -5,14 +5,12 @@ process PREPROCESS_COVERAGE {
   label 'process_single'
 
   input:
-  path too_short_coverages
   path sample_coverages
   path amplicon_coverages
   
   output:
   path 'sample_coverage.txt', emit: sample_coverage
   path 'amplicon_coverage.txt', emit: amplicon_coverage
-  path 'too_short.txt', emit: too_short_coverage
 
   script:
   """
@@ -31,11 +29,6 @@ process PREPROCESS_COVERAGE {
   for file in \$(ls $amplicon_coverages)
   do
       add_sample_name_column \$file >> amplicon_coverage.txt
-  done
-
-  for file in \$(ls $too_short_coverages)
-  do
-      add_sample_name_column \$file >> too_short.txt
   done
   """
 }
