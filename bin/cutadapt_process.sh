@@ -140,35 +140,8 @@ cutadapt \
     ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
 
+amplicons=$(jq '.read_counts.output' ${cutadapt_json})
+printf "%s\t%s\n" "Amplicons" ${amplicons} >> ${sample_id}.SAMPLEsummary.txt
 
-# Count reads in each demultiplexed fastq file using zgrep
-amplicon_counts=${sample_id}.AMPLICONsummary.txt
-sample_counts=${sample_id}.SAMPLEsummary.txt
-total_count=0
-
-touch $amplicon_counts $sample_counts
-
-while read -r amplicon_name; do
-    fastq_file="${trimmed_demuxed_fastqs}/${amplicon_name}_${sample_id}_trimmed_R1.fastq.gz"
-    if [[ -f $fastq_file ]]; then
-        read_count=$(zgrep -c ^@ $fastq_file) || zgrep_exit_status=$?
-        zgrep_exit_status=${zgrep_exit_status:-0}
-        if [[ $zgrep_exit_status -eq 1 ]]; then
-            read_count=0
-        elif [[ $zgrep_exit_status -ne 0 ]]; then
-            echo "Error: could not calculate amplicons for $fastq_file"
-            exit $zgrep_exit_status
-        fi
-    else
-        read_count=0
-    fi
-
-    total_count=$((total_count + read_count))
-    echo -e "${amplicon_name}\t${read_count}" >> $amplicon_counts
-    
-    # unset the status variable
-    unset zgrep_exit_status
-
-done < <(grep '^>' $fwd_primers_file | sed 's/^>//')
-
-printf "%s\t%s\n" "Amplicons" ${total_count} >> ${sample_counts}
+# Get amplicons specific reads
+jq -r '.adapters_read1[] | [.name, .total_matches] | @tsv' ${cutadapt_json} > ${sample_id}.AMPLICONsummary.txt
