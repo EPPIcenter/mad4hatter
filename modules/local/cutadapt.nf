@@ -16,6 +16,12 @@ process CUTADAPT {
     pattern: 'too_short_output/*'
   )
 
+  publishDir(
+    path: "${params.outDIR}/unknown",
+    mode: 'copy',
+    pattern: 'trimmed_demuxed_unknown_fastqs/*'
+  )
+
   input:
   file fwd_primers
   file rev_primers
