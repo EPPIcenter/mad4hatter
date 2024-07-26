@@ -31,7 +31,8 @@ def read_allele_data(allele_data_path, aligned_asv_table_path):
 
 
 class ProcessMarkerInfo:
-    def __init__(self, ref_sequences):
+    def __init__(self, resmarker_table, ref_sequences):
+        self.resmarker_table = resmarker_table
         self.ref_sequences = ref_sequences
 
     def extract_marker_info(self, row):
@@ -47,9 +48,9 @@ class ProcessMarkerInfo:
         if strand == '-':
             refseq_len = len(ref_seq)
             ref_seq = ref_seq.reverse_complement()
-            relative_codon_start = refseq_len - codon_start - 2
+            relative_codon_start = refseq_len - codon_start - 2  # 0-based, relative to strand
         else:
-            relative_codon_start = codon_start - 1
+            relative_codon_start = codon_start - 1  # 0-based, relative to strand
 
         codon_end = relative_codon_start + 3
         ref_codon = str(ref_seq[relative_codon_start: codon_end])
@@ -65,22 +66,23 @@ class ProcessMarkerInfo:
             'RefCodon': ref_codon
         }
 
-    def extract_position_and_reference_for_markers(self, res_marker_table):
+    def extract_position_and_reference_for_markers(self):
         """Extracts position and reference information for markers."""
         logging.info(
-            f"Extracting position and reference information for {len(res_marker_table)} markers.")
-        marker_info = res_marker_table.apply(self.extract_marker_info, axis=1)
-        res_marker_table = pd.DataFrame(marker_info.tolist())
-        res_marker_table['RefAA'] = res_marker_table['RefCodon'].apply(
+            f"Extracting position and reference information for {len(self.resmarker_table)} markers.")
+        marker_info = self.resmarker_table.apply(
+            self.extract_marker_info, axis=1)
+        self.resmarker_table = pd.DataFrame(marker_info.tolist())
+        self.resmarker_table['RefAA'] = self.resmarker_table['RefCodon'].apply(
             lambda x: 'X' if not translate(x) else translate(x)
         )
         logging.info(
             "Position and reference information extracted successfully.")
-        return res_marker_table
+        return self.resmarker_table
 
-    def check_if_marker_masked(self, resmarker_table, mask_coords_dict):
+    def check_if_marker_masked(self, mask_coords_dict):
         # Generate 1-based codon coordinates relative to forward strand
-        resmarker_table['CodonCoordinates'] = resmarker_table.apply(
+        self.resmarker_table['CodonCoordinates'] = self.resmarker_table.apply(
             lambda row: set(range(row.CodonStart - 1, row.CodonStart + 2)), axis=1)
 
         # Function to check if codon is masked
@@ -88,10 +90,10 @@ class ProcessMarkerInfo:
             mask_coords = mask_coords_dict.get(row.Locus, set())
             return not mask_coords.isdisjoint(row.CodonCoordinates)
 
-        resmarker_table['CodonMasked'] = resmarker_table.apply(
+        self.resmarker_table['CodonMasked'] = self.resmarker_table.apply(
             is_codon_masked, axis=1)
-        resmarker_table.drop(columns=['CodonCoordinates'], inplace=True)
-        return resmarker_table
+        self.resmarker_table.drop(columns=['CodonCoordinates'], inplace=True)
+        return self.resmarker_table
 
 
 class MaskCoordinatesExtractor:
@@ -236,7 +238,7 @@ def extract_mutations_from_unique_pseudo_cigar(df, ref_sequences):
     logging.info("Extracting mutations from unique pseudo CIGAR strings.")
     results = []
     transtab = str.maketrans("TACG", "ATGC")
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         pseudo_cigar = row['PseudoCIGAR']
         locus = row['Locus']
         strand = row['strand']
@@ -425,23 +427,21 @@ def main(args):
                                    'GeneID': str}, sep='\t')
 
     # Add on reference codon and amino acid and position relative to strand
-    marker_info_extractor = ProcessMarkerInfo(ref_sequences)
-    res_markers_info = marker_info_extractor.extract_position_and_reference_for_markers(
-        res_markers_info)
+    marker_info_extractor = ProcessMarkerInfo(res_markers_info, ref_sequences)
+    marker_info_extractor.extract_position_and_reference_for_markers()
 
     # Add flag if the marker is masked
     masked_coords_dict = MaskCoordinatesExtractor.create_masked_coordinate_dict(
         allele_data)
-    marker_info_extractor.check_if_marker_masked(
-        res_markers_info, masked_coords_dict)
+    res_markers_info = marker_info_extractor.check_if_marker_masked(
+        masked_coords_dict)
     allele_data_per_resmarker = allele_data.merge(
         res_markers_info, on='Locus')
 
     # Get unique asv information to process
-    required_columns = ['Locus', 'ASV', 'PseudoCIGAR', 'strand', 'GeneID', 'Gene', 'CodonID',
-                        'hapseq', 'refseq', 'CodonStart', 'relativeCodonStart', 'CodonEnd', 'RefCodon', 'RefAA', 'CodonMasked']
-    unique_asvs_per_resmarker_df = allele_data_per_resmarker[required_columns].drop_duplicates(
-    )
+    required_columns = ['Locus', 'ASV', 'PseudoCIGAR', 'strand', 'GeneID', 'Gene', 'CodonID', 'hapseq',
+                        'refseq', 'CodonStart', 'relativeCodonStart', 'CodonEnd', 'RefCodon', 'RefAA', 'CodonMasked']
+    unique_asvs_per_resmarker_df = allele_data_per_resmarker[required_columns].drop_duplicates()
 
     # Generate tables
     resmarker_data, mhap_table, resmarker_data_collapsed_tiled, all_mutations = ResmarkerTableGenerator.generate_resmarker_tables(
