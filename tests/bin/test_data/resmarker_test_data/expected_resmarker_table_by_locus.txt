@@ -1,0 +1,17 @@
+SampleID	GeneID	Gene	Locus	CodonID	RefCodon	Codon	CodonRefAlt	RefAA	AA	AARefAlt	FollowsIndel	CodonMasked	Reads
+sample1	1	gene1	locus1	1	TAA	TAA	REF	*	*	REF	False	False	10
+sample1	1	gene1	locus1	1	TAA	TGA	ALT	*	*	REF	False	False	50
+sample1	2	gene2	locus2	2	TAA	TGA	ALT	*	*	REF	False	True	5
+sample1	3	gene3	locus3	3	TAA	TGA	ALT	*	*	REF	False	True	25
+sample1	4	gene4	locus4	4	TAA	X	X	*	X	X	True	True	307
+sample2	1	gene1	locus1	1	TAA	TGA	ALT	*	*	REF	True	False	45
+sample2	2	gene2	locus2	2	TAA	X	X	*	X	X	False	True	35
+sample3	1	gene1	locus1	1	TAA	TGA	ALT	*	*	REF	False	False	600
+sample3	2	gene2	locus2	2	TAA	X	X	*	X	X	False	True	105
+sample4	5	gene5	locus5	5	TAA	TAA	REF	*	*	REF	False	False	20
+sample4	5	gene5	locus5	5	TAA	TGA	ALT	*	*	REF	False	False	30
+sample4	5	gene5	locus6	5	TAA	TAA	REF	*	*	REF	False	True	30
+sample4	5	gene5	locus6	5	TAA	TGA	ALT	*	*	REF	False	True	15
+sample4	7	gene7	locus7	7	AGT	AGT	REF	S	S	REF	False	False	92
+sample4	7	gene7	locus7	9	AGT	AAT	ALT	S	N	ALT	False	True	90
+sample4	7	gene7	locus7	9	AGT	AAT	ALT	S	N	ALT	True	True	2
