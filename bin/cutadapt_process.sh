@@ -120,7 +120,6 @@ cutadapt \
     --action=trim \
     -g file:${fwd_primers_file} \
     -G file:${rev_primers_file} \
-    --pair-adapters \
     -e ${allowed_errors} \
     --no-indels \
     ${qualfilter} \
