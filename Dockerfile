@@ -41,7 +41,7 @@ RUN Rscript -e 'install.packages("remotes")'
 RUN Rscript -e 'remotes::install_cran(c("ggbeeswarm", "gridExtra", "rmarkdown", "foreach", "doMC", "argparse"), upgrade = "never")'
 
 # Bioconductor packages
-RUN Rscript -e 'if (!require("BiocManager", quietly = TRUE)) { install.packages("BiocManager"); }; BiocManager::install(version = "3.17");'
+RUN Rscript -e 'if (!require("BiocManager", quietly = TRUE)) { install.packages("BiocManager"); }; BiocManager::install(version = "3.18");'
 RUN Rscript -e 'BiocManager::install("dada2", ask = FALSE)'
 RUN Rscript -e 'BiocManager::install("muscle", ask = FALSE)'
 RUN Rscript -e 'BiocManager::install("BSgenome", ask = FALSE)'
