@@ -50,7 +50,7 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
       summarise(OutputPostprocessing = sum(Reads)), by = c("SampleID")
     )  %>%
     mutate(across(everything(), as.character)) %>%    
-    pivot_longer(cols = c(Input, `No Dimers`, Amplicons, OutputDada2, OutputPostprocessing))
+    pivot_longer(cols = c(Input, `No Dimers`, `Too Short Reads`, `Unknown Reads`, Amplicons, OutputDada2, OutputPostprocessing))
 
   qc.postproc %<>% dplyr::rename("Stage" = "name", "Reads" = "value")
   qc.postproc$Reads[is.na(qc.postproc$Reads)] <- 0
