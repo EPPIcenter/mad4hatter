@@ -46,25 +46,6 @@ out <- filterAndTrim(
 filtered_Fs <- filtFs[out[, 2] > 0]
 filtered_Rs <- filtRs[out[, 2] > 0]
 
-# Function to count reads ending with 5 or more 'G's
-count_reads_with_Gs <- function(fastq_file) {
-  reads <- ShortRead::readFastq(fastq_file)
-  seqs <- ShortRead::sread(reads)
-  gg_counts <- sum(grepl("GGGGG$", as.character(seqs)))
-  return(gg_counts)
-}
-
-# Create a table of counts
-read_counts <- data.frame(
-  Sample = names(filtered_Fs),
-  GGGGG_Reads = sapply(filtered_Fs, count_reads_with_Gs)
-)
-
-# Write the table to a CSV file
-write_csv(read_counts, "GGGGG_read_counts.csv")
-
-print("Read counts table has been written to GGGGG_read_counts.csv")
-
 errF <- learnErrors(filtered_Fs, multithread = args$cores, MAX_CONSIST = 10, randomize = TRUE)
 errR <- learnErrors(filtered_Rs, multithread = args$cores, MAX_CONSIST = 10, randomize = TRUE)
 
