@@ -13,7 +13,7 @@ cores=1
 allowed_errors=0 # allow no mismatches in the adapter sequence
 
 # Parse command-line options
-while getopts "1:2:m:f:r:q:h:s:e:c:o:" OPTION
+while getopts "1:2:m:f:r:s:e:c:o:" OPTION
 do
     case $OPTION in
         1)
@@ -32,17 +32,17 @@ do
             rev_primers_file=$OPTARG
             ;;
         e)
-			allowed_errors=$OPTARG
-			;;
+            allowed_errors=$OPTARG
+            ;;
         s)
             sequencer=$OPTARG
             ;;
         c)
-			cores=$OPTARG
-			;;
-		o)
-			trimmed_demuxed_fastqs=$OPTARG
-			;;
+            cores=$OPTARG
+            ;;
+        o)
+            trimmed_demuxed_fastqs=$OPTARG
+            ;;
         h)
             usage
             ;;
@@ -62,24 +62,23 @@ fi
 test -d $trimmed_demuxed_fastqs || mkdir -p $trimmed_demuxed_fastqs
 
 # The remaining reads that could not be demultiplexed
-# trimmed_demuxed_unknown_fastqs=$(mktemp -d)
 trimmed_demuxed_unknown_fastqs="trimmed_demuxed_unknown_fastqs"
 test -d $trimmed_demuxed_unknown_fastqs || mkdir -p $trimmed_demuxed_unknown_fastqs
 
 # Create intermediate directories and files
-# adapter_dimers=$(mktemp -d)
 adapter_dimers="adapter_dimers"
 test -d $adapter_dimers || mkdir -p $adapter_dimers
 
-# no_adapter_dimers=$(mktemp -d)
 no_adapter_dimers="no_adapter_dimers"
 test -d $no_adapter_dimers || mkdir -p $no_adapter_dimers
 
-# cutadapt_json=$(mktemp)
+too_short="too_short"
+test -d $too_short || mkdir -p $too_short
+
 cutadapt_json="cutadapt.json"
 
 # Delete the directories on exit if specified on the command line
-trap "rm -rf '$adapter_dimers' '$no_adapter_dimers'" EXIT
+# trap "rm -rf '$adapter_dimers' '$no_adapter_dimers'" EXIT
 
 # get the sample id
 sample_id=$(basename "$forward_read" | sed 's/_R[12].*//')
@@ -103,7 +102,6 @@ cutadapt \
     ${forward_read} \
     ${reverse_read} > /dev/null
 
-
 # Get the total number of reads with adapters
 total_pairs=$(jq '.read_counts.input' ${cutadapt_json})
 no_dimers=$(jq '.read_counts.filtered.discard_untrimmed' ${cutadapt_json})
@@ -112,8 +110,11 @@ printf "%s\t%s\n" "No Dimers" ${no_dimers} >> ${sample_id}.SAMPLEsummary.txt
 
 if [ "$sequencer" == "miseq" ]; then
     qualfilter="--trim-n -q 10"
-else
+elif [ "$sequencer" == "nextseq" ]; then
     qualfilter="--nextseq-trim=20"
+else
+    echo "Sequencer not recognized"
+    exit 1
 fi
 
 cutadapt \
@@ -131,10 +132,36 @@ cutadapt \
     --untrimmed-paired-output ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_R2.fastq.gz \
     --json=${cutadapt_json} \
     --compression-level=1 \
+    --too-short-output ${too_short}/${sample_id}_too_short_R1.fastq.gz \
+    --too-short-paired-output ${too_short}/${sample_id}_too_short_R2.fastq.gz \
     --quiet \
     ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
 
+# Extract read counts from cutadapt JSON
+too_short_count=$(jq '.read_counts.filtered.too_short' ${cutadapt_json})
+
+# Count reads in each forward (F) file in trimmed_demuxed_unknown_fastqs
+unknown_count=0
+for file in ${trimmed_demuxed_unknown_fastqs}/*_unknown_R1.fastq.gz; do
+    if [[ -f $file ]]; then
+        read_count=$(zgrep -c ^@ $file) || zgrep_exit_status=$?
+        zgrep_exit_status=${zgrep_exit_status:-0}
+        if [[ $zgrep_exit_status -eq 1 ]]; then
+            read_count=0
+        elif [[ $zgrep_exit_status -ne 0 ]]; then
+            echo "Error: could not count reads for $file"
+            exit $zgrep_exit_status
+        fi
+        unknown_count=$((unknown_count + read_count))
+    fi
+
+    # unset the status variable
+    unset zgrep_exit_status
+done
+
+printf "%s\t%s\n" "Too Short Reads" ${too_short_count} >> ${sample_id}.SAMPLEsummary.txt
+printf "%s\t%s\n" "Unknown Reads" ${unknown_count} >> ${sample_id}.SAMPLEsummary.txt
 
 # Count reads in each demultiplexed fastq file using zgrep
 amplicon_counts=${sample_id}.AMPLICONsummary.txt

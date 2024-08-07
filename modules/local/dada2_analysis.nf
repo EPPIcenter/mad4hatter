@@ -13,6 +13,11 @@ process DADA2_ANALYSIS {
     mode: 'copy',
     pattern: 'dada2.clusters.txt'
   )
+  publishDir(
+    path: "${params.outDIR}/raw_dada2_output",
+    mode: 'copy',
+    pattern: 'GGGGG_read_counts.csv'
+  )
 
   input:
   path (demultiplexed_fastqs, stageAs: "demultiplexed_fastqs?")
