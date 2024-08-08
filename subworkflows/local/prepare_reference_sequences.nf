@@ -2,6 +2,9 @@
 include { CREATE_REFERENCE_FROM_GENOMES } from '../../modules/local/create_reference_from_genomes.nf'
 
 workflow PREPARE_REFERENCE_SEQUENCES {
+  
+  take: 
+  amplicon_info
 
   main:
   if (params.genome == null) {
@@ -31,7 +34,7 @@ workflow PREPARE_REFERENCE_SEQUENCES {
 
   CREATE_REFERENCE_FROM_GENOMES(
     genome,
-    params.amplicon_info,
+    amplicon_info,
     "${params.target}_reference.fasta" // could allow this to be customizable
   )
 

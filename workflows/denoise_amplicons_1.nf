@@ -10,6 +10,7 @@ include { DADA2_ANALYSIS } from '../modules/local/dada2_analysis.nf'
 workflow DENOISE_AMPLICONS_1 {
 
   take:
+  amplicon_info
   demultiplexed_fastqs
 
   main:
@@ -17,7 +18,7 @@ workflow DENOISE_AMPLICONS_1 {
   // This module takes all amplicon-demultiplexed fastqs and runs DADA2
   DADA2_ANALYSIS(
     demultiplexed_fastqs.collect(),
-    params.amplicon_info,
+    amplicon_info,
     params.pool,
     params.band_size,
     params.omega_a,

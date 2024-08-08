@@ -5,10 +5,11 @@ include { QUALITY_REPORT } from '../modules/local/quality_report.nf'
 workflow DEMULTIPLEX_AMPLICONS {
 
   take: 
+  amplicon_info
   read_pairs
 
   main:
-  CREATE_PRIMER_FILES(params.amplicon_info)
+  CREATE_PRIMER_FILES(amplicon_info)
   CUTADAPT(
     CREATE_PRIMER_FILES.out.fwd_primers,
     CREATE_PRIMER_FILES.out.rev_primers,

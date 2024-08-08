@@ -9,7 +9,7 @@ readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home")
 // Set boilerplate parameters
 params.QC_only         = false
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
-params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
+// params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
 params.resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_${params.target}.txt"
 params.help	       = false
 
@@ -27,6 +27,7 @@ include { DENOISE_AMPLICONS_1 } from './workflows/denoise_amplicons_1.nf'
 include { DENOISE_AMPLICONS_2 } from './workflows/denoise_amplicons_2.nf'
 include { RESISTANCE_MARKER_MODULE } from './workflows/resistance_marker_module.nf'
 include { QUALITY_CONTROL} from './workflows/quality_control.nf'
+include { GENERATE_AMPLICON_INFO } from './workflows/process_inputs.nf'
 
 // workflows
 include { QC_ONLY } from './workflows/qc_only.nf'
@@ -104,7 +105,10 @@ workflow {
   if (params.help) {
       helpMessage()
       exit 0
-}
+  }
+
+  // def amplicon_info = (params.amplicon_info == null) ? GENERATE_AMPLICON_INFO().amplicon_info_ch : params.amplicon_info
+  def amplicon_info = GENERATE_AMPLICON_INFO().amplicon_info_ch
 
   if (params.QC_only) {
 
@@ -114,7 +118,7 @@ workflow {
     check_sequencer()
 
     // Run QC Only Workflow
-    QC_ONLY(params.reads)
+    QC_ONLY(amplicon_info, params.reads)
 
   } else if (params.denoised_asvs != null) {
 
@@ -124,7 +128,7 @@ workflow {
     check_target()
 
     // Run Postprocessing only
-    POSTPROC_ONLY(params.denoised_asvs)
+    POSTPROC_ONLY(amplicon_info, params.denoised_asvs)
 
   } else {
 
@@ -137,15 +141,17 @@ workflow {
     read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
 
     // Trim and demultiplex amplicons by amplicon
-    DEMULTIPLEX_AMPLICONS(read_pairs)
+    DEMULTIPLEX_AMPLICONS(amplicon_info, read_pairs)
 
     // Denoising (DADA specific)
     DENOISE_AMPLICONS_1(
+      amplicon_info,
       DEMULTIPLEX_AMPLICONS.out.demux_fastqs_ch
     )
 
     // Masking, collapsing ASVs
     DENOISE_AMPLICONS_2(
+      amplicon_info,
       DENOISE_AMPLICONS_1.out.denoise_ch
     )
 
@@ -157,6 +163,7 @@ workflow {
 
     // Create the quality report now
     QUALITY_CONTROL(
+      amplicon_info,
       DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
       DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
       BUILD_ALLELETABLE.out.alleledata,
