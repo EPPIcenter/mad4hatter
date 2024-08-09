@@ -1,7 +1,7 @@
 #!/usr/bin/env nextflow
 
 nextflow.enable.dsl = 2
-print(params)
+
 // Expand user directory if exists
 outDIR = "${params.outDIR}".replaceFirst("^~", System.getProperty("user.home"))
 readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home"))
@@ -109,32 +109,14 @@ workflow {
   def workflow = params.workflow?.toLowerCase()
 
   if (workflow=='qc') {
-
-    // Make sure required inputs are present
-    check_readdir_presence(should_exist: true)
-    check_target()
-    check_sequencer()
-
     // Run QC Only Workflow
     QC_ONLY(amplicon_info, params.reads)
 
   } else if (workflow=='postprocessing') {
-
-    check_readdir_presence(should_exist: false)
-
-    // Make sure the target is specified
-    check_target()
-
     // Run Postprocessing only
     POSTPROC_ONLY(amplicon_info, params.denoised_asvs)
 
   } else if (workflow=='complete'){
-
-    // Make sure required inputs are present
-    check_readdir_presence(should_exist: true)
-    check_target()
-    check_sequencer()
-
     // Create read pairs channel from fastq data
     read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
 
