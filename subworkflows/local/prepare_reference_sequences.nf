@@ -34,7 +34,7 @@ workflow PREPARE_REFERENCE_SEQUENCES {
   CREATE_REFERENCE_FROM_GENOMES(
     genome,
     amplicon_info,
-    "${params.target}_reference.fasta" // could allow this to be customizable
+    "reference.fasta" // TODO: update this to include pool names 
   )
 
   emit:

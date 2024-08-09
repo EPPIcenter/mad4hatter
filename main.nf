@@ -1,7 +1,7 @@
 #!/usr/bin/env nextflow
 
 nextflow.enable.dsl = 2
-
+print(params)
 // Expand user directory if exists
 outDIR = "${params.outDIR}".replaceFirst("^~", System.getProperty("user.home"))
 readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home"))
@@ -10,11 +10,8 @@ readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home")
 params.QC_only         = false
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
 // params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
-params.resmarkers_amplicon    = "$projectDir/resources/${params.target}/resistance_markers_amplicon_${params.target}.txt"
+params.resmarkers_amplicon    = "$projectDir/resources/v4/resistance_markers_amplicon_v4.txt" //TODO: get rid of this line
 params.help	       = false
-
-// Files
-cutadapt_minlen = params.cutadapt_minlen
 
 /*
 Create 'read_pairs' channel that emits for each read pair a
@@ -98,7 +95,6 @@ def helpMessage() {
         """.stripIndent()
 }
 
-
 // main workflow
 workflow {
   // Print help if requested
@@ -106,11 +102,13 @@ workflow {
       helpMessage()
       exit 0
   }
-  VALIDATE_INPUTS()
-  // def amplicon_info = (params.amplicon_info == null) ? GENERATE_AMPLICON_INFO().amplicon_info_ch : params.amplicon_info
-  def amplicon_info = GENERATE_AMPLICON_INFO().amplicon_info_ch
 
-  if (params.QC_only) {
+  VALIDATE_INPUTS()
+  def amplicon_info = (params.amplicon_info == null) ? GENERATE_AMPLICON_INFO().amplicon_info_ch : params.amplicon_info
+  // def amplicon_info = GENERATE_AMPLICON_INFO().amplicon_info_ch
+  def workflow = params.workflow?.toLowerCase()
+
+  if (workflow=='qc') {
 
     // Make sure required inputs are present
     check_readdir_presence(should_exist: true)
@@ -120,7 +118,7 @@ workflow {
     // Run QC Only Workflow
     QC_ONLY(amplicon_info, params.reads)
 
-  } else if (params.denoised_asvs != null) {
+  } else if (workflow=='postprocessing') {
 
     check_readdir_presence(should_exist: false)
 
@@ -130,7 +128,7 @@ workflow {
     // Run Postprocessing only
     POSTPROC_ONLY(amplicon_info, params.denoised_asvs)
 
-  } else {
+  } else if (workflow=='complete'){
 
     // Make sure required inputs are present
     check_readdir_presence(should_exist: true)
@@ -172,13 +170,14 @@ workflow {
 
     // By default, run the resistance marker module in the main workflow
     // Only panel V4 is supported at the moment
-    if (params.target == "v4") {
-      RESISTANCE_MARKER_MODULE(
-        BUILD_ALLELETABLE.out.alleledata,
-        DENOISE_AMPLICONS_2.out.aligned_asv_table,
-        DENOISE_AMPLICONS_2.out.reference_ch
-      )
-    }
+    // TODO : make this handle if no markers are covered 
+    RESISTANCE_MARKER_MODULE(
+      BUILD_ALLELETABLE.out.alleledata,
+      DENOISE_AMPLICONS_2.out.aligned_asv_table,
+      DENOISE_AMPLICONS_2.out.reference_ch
+    )
+  } else {
+    exit 0, log.error("`--workflow` invalid.")
   }
 }
 
@@ -269,17 +268,4 @@ def check_readdir_presence(should_exist) {
   if ( should_exist.containsValue(false) && params.readDIR != null ) {
     exit 0, log.error("`--readDIR` must not be specified but is present.")
   }  
-}
-
-
-def check_target() {
-  if ( params.target == null ) {
-    exit 0, log.error("`--target` must be specified.")
-  }
-}
-
-def check_sequencer() {
-  if ( params.sequencer == null ) {
-    exit 0, log.error("`--sequencer` must be specified.")
-  }
 }
