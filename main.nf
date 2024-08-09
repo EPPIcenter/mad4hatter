@@ -28,7 +28,7 @@ include { DENOISE_AMPLICONS_2 } from './workflows/denoise_amplicons_2.nf'
 include { RESISTANCE_MARKER_MODULE } from './workflows/resistance_marker_module.nf'
 include { QUALITY_CONTROL} from './workflows/quality_control.nf'
 include { GENERATE_AMPLICON_INFO } from './workflows/process_inputs.nf'
-
+include { VALIDATE_INPUTS } from './workflows/validate_inputs.nf'
 // workflows
 include { QC_ONLY } from './workflows/qc_only.nf'
 include { POSTPROC_ONLY } from './workflows/postproc_only.nf'
@@ -106,7 +106,7 @@ workflow {
       helpMessage()
       exit 0
   }
-
+  VALIDATE_INPUTS()
   // def amplicon_info = (params.amplicon_info == null) ? GENERATE_AMPLICON_INFO().amplicon_info_ch : params.amplicon_info
   def amplicon_info = GENERATE_AMPLICON_INFO().amplicon_info_ch
 

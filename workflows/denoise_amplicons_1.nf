@@ -19,7 +19,7 @@ workflow DENOISE_AMPLICONS_1 {
   DADA2_ANALYSIS(
     demultiplexed_fastqs.collect(),
     amplicon_info,
-    params.pool,
+    params.dada2_pool,
     params.band_size,
     params.omega_a,
     params.maxEE,

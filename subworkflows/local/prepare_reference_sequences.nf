@@ -2,10 +2,9 @@
 include { CREATE_REFERENCE_FROM_GENOMES } from '../../modules/local/create_reference_from_genomes.nf'
 
 workflow PREPARE_REFERENCE_SEQUENCES {
-  
   take: 
   amplicon_info
-
+  
   main:
   if (params.genome == null) {
     exit 1, log.error("You must specify a genome file.")

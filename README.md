@@ -150,3 +150,7 @@ To use conda, you must first install either [conda](https://docs.conda.io/en/lat
 ```bash
 nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results -profile conda --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --target v4 -config conf/custom.config
 ```
+
+ TODO: update pool to dada2_pool 
+ TODO: get rid of workflow 
+ TODO: add in pool 
