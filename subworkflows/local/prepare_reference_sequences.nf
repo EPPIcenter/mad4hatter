@@ -1,21 +1,14 @@
 
 include { CREATE_REFERENCE_FROM_GENOMES } from '../../modules/local/create_reference_from_genomes.nf'
+include { CONCATENATE_TARGETED_REFERENCE } from '../../workflows/process_inputs.nf'
 
 workflow PREPARE_REFERENCE_SEQUENCES {
   take: 
   amplicon_info
   
   main:
-  if (params.genome == null) {
-    exit 1, log.error("You must specify a genome file.")
-  }
-
-  def genome = null
-
-  if (params.genomes.containsKey(params.genome)) {
-    // Use a predefined genome
-    genome = params.genomes[params.genome].fasta
-  } else {
+  if (params.genome) {
+    def genome = null
     // Read in genome file provided by the user 
     File genome_file = new File(params.genome).absoluteFile
     if(!genome_file.exists()) {
@@ -29,16 +22,17 @@ workflow PREPARE_REFERENCE_SEQUENCES {
 
     // Create the Nextflow Channel
     genome = Channel.fromPath(genome_file)   
+
+    CREATE_REFERENCE_FROM_GENOMES(
+      genome,
+      amplicon_info,
+      "reference.fasta" // TODO: update this to include pool names 
+    )
+  } else {
+    CONCATENATE_TARGETED_REFERENCE()
   }
-
-  CREATE_REFERENCE_FROM_GENOMES(
-    genome,
-    amplicon_info,
-    "reference.fasta" // TODO: update this to include pool names 
-  )
-
   emit:
-  reference_ch = (params.refseq_fasta == null) ? 
-    CREATE_REFERENCE_FROM_GENOMES.out.reference_fasta :
-    params.refseq_fasta
+  reference_ch = (params.genome == null) ? 
+    CONCATENATE_TARGETED_REFERENCE.out.reference_fasta :
+    CREATE_REFERENCE_FROM_GENOMES.out.reference_fasta 
 }

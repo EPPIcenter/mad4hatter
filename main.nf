@@ -104,8 +104,9 @@ workflow {
   }
 
   VALIDATE_INPUTS()
+
   def amplicon_info = (params.amplicon_info == null) ? GENERATE_AMPLICON_INFO().amplicon_info_ch : params.amplicon_info
-  // def amplicon_info = GENERATE_AMPLICON_INFO().amplicon_info_ch
+  // Convert workflow to lowercase
   def workflow = params.workflow?.toLowerCase()
 
   if (workflow=='qc') {

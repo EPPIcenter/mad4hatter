@@ -20,3 +20,21 @@ process BUILD_AMPLICON_INFO {
         --amplicon_info_output_path ${amplicon_info_output}
     """
 }
+
+process BUILD_TARGETED_REFERENCE {
+    input:
+    val reference_input_paths
+    val reference_output_path
+
+    publishDir(
+        path: "${params.outDIR}/panel_information",
+        mode: 'copy'
+    )
+    output:
+        path "${reference_output_path}", emit: reference_fasta
+
+    script:
+    """
+    cat ${reference_input_paths} > reference.fasta
+    """
+}
