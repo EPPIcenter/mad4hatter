@@ -1,0 +1,14 @@
+Aug-09 19:14:40.837 [main] DEBUG nextflow.cli.Launcher - $> nextflow run main.nf --readDIR /Users/kmurie/Documents/git_projects/test_madhatter_release/mad4hatter/data/testdata -profile docker --pools 5 --sequencer nextseq
+Aug-09 19:14:40.867 [main] INFO  nextflow.cli.CmdRun - N E X T F L O W  ~  version 23.10.0
+Aug-09 19:14:40.880 [main] DEBUG nextflow.plugin.PluginsFacade - Setting up plugin manager > mode=prod; embedded=false; plugins-dir=/Users/kmurie/.nextflow/plugins; core-plugins: nf-amazon@2.1.4,nf-azure@1.3.2,nf-cloudcache@0.3.0,nf-codecommit@0.1.5,nf-console@1.0.6,nf-ga4gh@1.1.0,nf-google@1.8.3,nf-tower@1.6.3,nf-wave@1.0.0
+Aug-09 19:14:40.886 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Enabled plugins: []
+Aug-09 19:14:40.887 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Disabled plugins: []
+Aug-09 19:14:40.888 [main] INFO  org.pf4j.DefaultPluginManager - PF4J version 3.4.1 in 'deployment' mode
+Aug-09 19:14:40.894 [main] INFO  org.pf4j.AbstractPluginManager - No plugins
+Aug-09 19:14:40.903 [main] DEBUG nextflow.scm.ProviderConfig - Using SCM config path: /Users/kmurie/.nextflow/scm
+Aug-09 19:14:40.908 [main] DEBUG nextflow.cli.Launcher - Operation aborted
+nextflow.exception.AbortOperationException: Cannot find script file: main.nf
+	at nextflow.cli.CmdRun.getScriptFile(CmdRun.groovy:466)
+	at nextflow.cli.CmdRun.run(CmdRun.groovy:317)
+	at nextflow.cli.Launcher.run(Launcher.groovy:499)
+	at nextflow.cli.Launcher.main(Launcher.groovy:670)

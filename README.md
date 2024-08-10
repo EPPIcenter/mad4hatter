@@ -4,6 +4,8 @@
 
 The mad4hatter pipeline uses [nextflow](https://www.nextflow.io/) and will need to be installed prior to using the pipeline. Information about how to [install](https://www.nextflow.io/) and use the [command line tool](https://www.nextflow.io/docs/latest/cli.html) can be found on their [website](https://www.nextflow.io/). The tool is also available from other package managers such as [conda](https://anaconda.org/bioconda/nextflow) if you would like an alternative installation pathway. 
 
+One of the useful features of Nextflow is that it caches your job history, so if for any reason your pipeline fails midway you can make changes to fix the failure and use the `-resume` flag to pick up where you left off. See more information [here](https://www.nextflow.io/blog/2019/demystifying-nextflow-resume.html)
+
 ### Setting Parameters
 
 To view the parameters and examples on the command line run:
