@@ -9,8 +9,6 @@ readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home")
 // Set boilerplate parameters
 params.QC_only         = false
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
-// params.amplicon_info   = "$projectDir/resources/${params.target}/${params.target}_amplicon_info.tsv"
-params.resmarkers_amplicon    = "$projectDir/resources/v4/resistance_markers_amplicon_v4.txt" //TODO: get rid of this line
 params.help	       = false
 
 /*
