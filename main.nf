@@ -41,14 +41,18 @@ def helpMessage() {
       nextflow run main.nf --readDIR data/testdata --target v4
 
     Mandatory arguments:
-      --readDIR		Path to folder containing fastq files
-      --target		The amplicon panel version that was used. [Options: 4cast, ama1, v1, v2, v3, v4]
+      --pools     The pools that were used for sequencing. [Options: 1A,1B,2,5]
       --sequencer	The sequencer used to produce your data. [Options: miseq, nextseq]
+
+    Mandatory for `complete` (default) or `qc` workflow: 
+      --readDIR		Path to folder containing fastq files
+
+    Mandatory for `postprocessing` workflow: 
+      --denoised_asvs           Path to denoised ASVs from DADA2. Used to only run the postprocessing workflow
 
     Optional arguments:
       --outDIR                  Path to folder to place final output [Default: results]
-      --QC_only                 Runs just the QC workflow when set [Default: Not set]
-      --denoised_asvs           Path to denoised ASVs from DADA2. Used to only run the postprocessing workflow
+      --workflow                Workflow option to be run [Options: complete (default), qc, postprocessing]
 
       (Nextflow parameters. Note the flags have "-" and not "--" at the start) 
       -profile                  Runtime profile [Options: sge,apptainer, docker, conda]
@@ -56,7 +60,7 @@ def helpMessage() {
 
       (DADA2 parameters)
       --omega_a                 Level of statistical evidence required for DADA2 to infer a new ASV [Default: 1e-120]
-      --pool                    Pooling method for DADA2 to process ASVs [pseudo (default), true, false]
+      --pool                    Pooling method for DADA2 to process ASVs [Options: pseudo (default), true, false]
       --band_size               Limit on the net cumulative number of insertions of one sequence relative to the other in DADA2 [Default: 16]
       --maxEE                   Limit on number of expected errors within a read during filtering and trimming within DADA2 [Default: 3]
 
@@ -70,28 +74,28 @@ def helpMessage() {
 
     Examples:
       More advanced usage 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --sequencer nextseq -config custom.config
+      nnextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --sequencer nextseq -config custom.config
 
       Change runtime param to use Docker
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 -profile docker
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 -profile docker
       
       Only run the QC workflow
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --QC_only
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --workflow qc
       
       Only run the Postprocessing workflow
-      nextflow run main.nf --outDIR postprocessing_results --target v4 --denoised_asvs results/raw_dada2_output/dada2.clusters.txt
+      nextflow run main.nf --workflow postprocessing --pools 1A,1B,2 --denoised_asvs results/raw_dada2_output/dada2.clusters.txt --outDIR postprocessing_results
       
       Alter Dada2 params 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --omega_a 1e-40 --pool false --band_size 20 --maxEE 4
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --omega_a 1e-40 --pool false --band_size 20 --maxEE 4
       
       Set full genome 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --genome data/reference/v1/PkPfPmPoPv.fasta
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --genome data/reference/v1/PkPfPmPoPv.fasta
       
       Set targeted reference 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --refseq_fasta resources/v4/v4_reference.fasta
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --refseq_fasta resources/v4/v4_reference.fasta
       
       Alter Masking parameters 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --homopolymer_threshold 2 --trf_min_score 30 --trf_max_period 5
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --homopolymer_threshold 2 --trf_min_score 30 --trf_max_period 5
         """.stripIndent()
 }
 

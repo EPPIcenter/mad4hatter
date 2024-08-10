@@ -12,22 +12,62 @@ To view the parameters and examples on the command line run:
 nextflow run main.nf --help 
 ```
 
-Below are parameters that are essential to running the pipeline. You will need to specify where your `fastq` files will be read from, what sequencer was used to generate the data, and what amplicon panel was used. You may optionally include a destination folder where you would like final pipeline output to go, or choose to only run the QC portion of the pipeline. 
+There are 3 workflows available that we will describe below. They can be specified using the `--workflow` flag. If --workflow is not specified then `complete` will run as default.
+* `qc` : Only runs the QC portion of the pipeline.
+* `complete` : Runs the pipeline end-to-end, including analysing resmarkers. 
+* `postprocessing` : Only runs the postprocessing steps to denoise asvs further. 
+
+#### Mandatory Parameters 
+
+Below are the parameters that are essential for running the pipeline. 
+|Parameter|Description|
+|---|---|
+|pools|The pools that were used for sequencing. [Options: 1A,1B,2,5]|
+|sequencer|The sequencer used to produce your data. [Options: miseq, nextseq]|
+
+To run the qc (`--workflow qc`) or complete (`--workflow complete`(default)) workflow the below parameters are required. 
+|Parameter|Description|
+|---|---|
+|readDIR|Path to folder containing fastq files|
+Here is an example of running the complete workflow: 
+
+```bash
+nextflow run main.nf --readDIR /path/to/data --pools 1A,1B,5 -profile sge,apptainer --sequencer miseq
+``` 
+
+Here is an example of running the qc workflow: 
+
+```bash
+nextflow run main.nf --readDIR /path/to/data --pools 1A,1B,5 -profile sge,apptainer --sequencer miseq --workflow qc
+``` 
+
+To run the postprocessing workflow (`--workflow postprocessing`) the below parameters are required. 
+|Parameter|Description|
+|---|---|
+|denoised_asvs|Path to denoised ASVs from DADA2, if you have run the pipeline previously run the pipeline it can be found under the `raw_dada2_output` directory in the results. Used to only run the postprocessing workflow|
+
+Here is an example of running the postprocessing workflow: 
+
+```bash
+nextflow run main.nf --denoised_asvs /path/to/denoised_asvs/dada2_clusters.txt --pools 1A,1B,5 -profile sge,apptainer --sequencer nextseq --workflow postprocessing
+``` 
+
+#### Optional Parameters 
+
+Below are parameters that are optional to running the pipeline.
 
 |Parameter|Description|
 |---|---|
-|readDIR|The folder that contains all the fastq files (*required*)|
 |outDIR|The folder where you want the resulting data to be save (default 'results')|
-|sequencer|The sequencer used to produce your data (*required*)|
-|QC_only|Whether to only run QC related workflows or all workflows|
-|target|The amplicon panel that was used to create your sequencing data (*required*)|
+|workflow|Workflow option to be run [Options: complete (default), qc, postprocessing]|
+|Nextflow parameters|---|
 |profile|The infrastructure you wish to run the pipeline on. The different profiles are listed below under `Runtime Profiles`, including any setup that is required. **Please read that section for more details.**|
 |config|Resource configurations for each process that will override any defaults set in the pipeline. It is recommend to use the provided `custom.config` file to make these resource modifications.|
 
 Below is an example of how you may run the pipeline setting the above parameters. 
 
 ```bash
-nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results --target v4 -profile sge,apptainer --sequencer miseq --QC_only -config conf/custom.config 
+nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results --pools 1A,1B,5 -profile docker --sequencer miseq --workflow qc -config conf/custom.config 
 ``` 
 
 ### DADA parameters
@@ -70,7 +110,7 @@ Below are parameters that you can set to control the postprocessing module.
 
 |Parameter|Description|
 |---|---|
-|refseq_fasta **or** genome|Path to reference sequences **or** a specified genome target that is registered in the pipeline. Additionally you can specify a path to genome (*one* is **required**). This is required in order to map DADA sequences to their respective amplicons and to identify off target sequences|
+|refseq_fasta **or** genome|Path to targeted reference sequence **or** a specified genome that covers all targets. If neither are specified then a reference will be built from the fasta files under `panel_information` based on the pools supplied.|
 |homopolymer_threshold|Homopolymers greater than this threshold will be masked (default `5`)|
 |trf_min_score|Used by Tandem Repeat Finder. This will control the alignment score required to call a sequence a tandem repeat and mask it (default `25`)|
 |trf_max_period|Used by Tandem Repeat Finder. This will limit the range of the pattern size of a tandem repeat to be masked(default `3`)|
