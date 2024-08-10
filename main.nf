@@ -26,6 +26,8 @@ include { RESISTANCE_MARKER_MODULE } from './workflows/resistance_marker_module.
 include { QUALITY_CONTROL} from './workflows/quality_control.nf'
 include { GENERATE_AMPLICON_INFO } from './workflows/process_inputs.nf'
 include { VALIDATE_INPUTS } from './workflows/validate_inputs.nf'
+include { BUILD_RESMARKER_INFO } from './modules/local/build_resources.nf'
+
 // workflows
 include { QC_ONLY } from './workflows/qc_only.nf'
 include { POSTPROC_ONLY } from './workflows/postproc_only.nf'
@@ -150,11 +152,19 @@ workflow {
       BUILD_ALLELETABLE.out.alleledata,
       DENOISE_AMPLICONS_1.out.denoise_ch
     )
+    // // RESMARKER
+    // def resmarkers_amplicon = null
+    // if ( params.resmarker_info == null ) {
+    //     BUILD_RESMARKER_INFO(amplicon_info, params.principal_resmarkers, 'resmarker_info.tsv')
+    //     resmarkers_amplicon = BUILD_RESMARKER_INFO.out.resmarker_info
+    // }
+    // else {
+    //     resmarkers_amplicon = params.resmarkers_amplicon
+    // }
 
-    // By default, run the resistance marker module in the main workflow
-    // Only panel V4 is supported at the moment
-    // TODO : make this handle if no markers are covered 
     RESISTANCE_MARKER_MODULE(
+      // resmarkers_amplicon,
+      amplicon_info,
       BUILD_ALLELETABLE.out.alleledata,
       DENOISE_AMPLICONS_2.out.aligned_asv_table,
       DENOISE_AMPLICONS_2.out.reference_ch
@@ -232,23 +242,4 @@ def record_runtime() {
     output.append("NextflowBuild\t${nextflow.build}\n")
     output.append("NextflowTimestamp\t${nextflow.timestamp}\n")
     output.append("NextflowVersion\t${nextflow.version}\n")
-}
-
-
-/* Parameter check helper functions
- *
- * Check the readDIR and target parameters before executing the workflow
- *
- */
-def check_readdir_presence(should_exist) {
-
-  // If readDIR MUST be provided and is not, exit with an error
-  if ( should_exist.containsValue(true) && params.readDIR == null ) {
-    exit 0, log.error("`--readDIR` must be specified but is missing.")
-  }
-
-  // If readDIR MUST NOT be provided and is, exit with an error
-  if ( should_exist.containsValue(false) && params.readDIR != null ) {
-    exit 0, log.error("`--readDIR` must not be specified but is present.")
-  }  
 }
