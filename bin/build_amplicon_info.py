@@ -22,8 +22,6 @@ def concatenate_tables(paths, pools):
     for i in range(len(paths)):
         file = paths[i]
         pool = pools[i]
-        print(pool)
-        print(file)
         if file == 'null':
             pass
         elif not os.path.exists(file):
