@@ -22,6 +22,20 @@ process CUTADAPT {
     path("*.SAMPLEsummary.txt"), emit: sample_summary
     path("*.AMPLICONsummary.txt"), emit: amplicon_summary
     path('demultiplexed_fastqs'), emit: demultiplexed_fastqs
+    path('adapter_dimers/*'), emit: adapter_dimers
+    path('no_adapter_dimers/*'), emit: no_adapter_dimers
+
+    publishDir(
+      path: "${params.outDIR}/cutadapt",
+      mode: 'copy',
+      pattern: 'adapter_dimers/*'
+    )
+
+    publishDir(
+      path: "${params.outDIR}/cutadapt",
+      mode: 'copy',
+      pattern: 'no_adapter_dimers/*'
+    )
 
     script:
     """
