@@ -20,7 +20,7 @@ workflow VALIDATE_INPUTS {
     // Check params based on workflow
     if (workflow == 'complete' || workflow == 'qc') {
         check_readdir_presence()
-    } else if (workflow == 'postprocessing' && params.denoised_asvs != null) {
+    } else if (workflow == 'postprocessing') {
         check_denoised_asvs_presence()
     }
 }

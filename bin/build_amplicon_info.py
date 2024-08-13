@@ -3,8 +3,6 @@ import argparse
 import os
 import pandas as pd
 
-# TODO: Change to dictionary
-
 
 def parse_args_build_amplicon_info():
     parser = argparse.ArgumentParser()

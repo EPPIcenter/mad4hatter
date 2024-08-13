@@ -59,7 +59,7 @@ def helpMessage() {
 
       (DADA2 parameters)
       --omega_a                 Level of statistical evidence required for DADA2 to infer a new ASV [Default: 1e-120]
-      --pool                    Pooling method for DADA2 to process ASVs [Options: pseudo (default), true, false]
+      --dada2_pool              Pooling method for DADA2 to process ASVs [Options: pseudo (default), true, false]
       --band_size               Limit on the net cumulative number of insertions of one sequence relative to the other in DADA2 [Default: 16]
       --maxEE                   Limit on number of expected errors within a read during filtering and trimming within DADA2 [Default: 3]
 
@@ -85,7 +85,7 @@ def helpMessage() {
       nextflow run main.nf --workflow postprocessing --pools 1A,1B,2 --denoised_asvs results/raw_dada2_output/dada2.clusters.txt --outDIR postprocessing_results
       
       Alter Dada2 params 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --omega_a 1e-40 --pool false --band_size 20 --maxEE 4
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --omega_a 1e-40 --dada2_pool false --band_size 20 --maxEE 4
       
       Set full genome 
       nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --genome data/reference/v1/PkPfPmPoPv.fasta
