@@ -17,8 +17,10 @@ def parse_args_build_resmarker_info():
 def build_resmarker_info():
     args = parse_args_build_resmarker_info()
 
-    panel_info_df = pd.read_csv(args.amplicon_info, sep='\t')
-    full_resmarker_df = pd.read_csv(args.principal_resmarkers, sep='\t')
+    panel_info_df = pd.read_csv(args.amplicon_info, dtype={
+                                'GeneID': str}, sep='\t')
+    full_resmarker_df = pd.read_csv(args.principal_resmarkers, dtype={
+        'GeneID': str}, sep='\t')
 
     data = {'GeneID': [], 'Gene': [], 'CodonID': [], 'chr': [], 'start': [], 'stop': [
     ], 'strand': [], 'Locus': [], 'amplicon_length': [], 'ampInsert_length': [], 'CodonStart': []}
@@ -46,7 +48,7 @@ def build_resmarker_info():
                 data['CodonStart'].append(codon_start)
     resmarker_df = pd.DataFrame(data=data)
     resmarker_df.drop_duplicates(inplace=True)
-    resmarker_df.reset_index(inplace=True)
+    resmarker_df.reset_index(inplace=True, drop=True)
     if not resmarker_df.empty:
         resmarker_df.to_csv(
             args.resmarker_info_output_path, index=False, sep='\t')

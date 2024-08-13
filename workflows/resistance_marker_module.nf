@@ -11,7 +11,6 @@ include { BUILD_RESMARKER_INFO } from '../modules/local/build_resources.nf'
 workflow RESISTANCE_MARKER_MODULE {
 
     take:
-    // resmarkers_amplicon
     amplicon_info
     allele_data
     alignment_data

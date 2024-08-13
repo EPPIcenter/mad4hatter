@@ -7,9 +7,8 @@ outDIR = "${params.outDIR}".replaceFirst("^~", System.getProperty("user.home"))
 readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home"))
 
 // Set boilerplate parameters
-params.QC_only         = false
 params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
-params.help	       = false
+params.help       = false
 
 /*
 Create 'read_pairs' channel that emits for each read pair a
@@ -154,18 +153,8 @@ workflow {
       BUILD_ALLELETABLE.out.alleledata,
       DENOISE_AMPLICONS_1.out.denoise_ch
     )
-    // // RESMARKER
-    // def resmarkers_amplicon = null
-    // if ( params.resmarker_info == null ) {
-    //     BUILD_RESMARKER_INFO(amplicon_info, params.principal_resmarkers, 'resmarker_info.tsv')
-    //     resmarkers_amplicon = BUILD_RESMARKER_INFO.out.resmarker_info
-    // }
-    // else {
-    //     resmarkers_amplicon = params.resmarkers_amplicon
-    // }
 
     RESISTANCE_MARKER_MODULE(
-      // resmarkers_amplicon,
       amplicon_info,
       BUILD_ALLELETABLE.out.alleledata,
       DENOISE_AMPLICONS_2.out.aligned_asv_table,
