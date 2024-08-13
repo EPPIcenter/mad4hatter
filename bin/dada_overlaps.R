@@ -121,7 +121,7 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 0
+    maxMismatch = 1
   )
 }
 
