@@ -3,17 +3,12 @@
 nextflow.enable.dsl = 2
 
 // Expand user directory if exists
-outDIR = "${params.outDIR}".replaceFirst("^~", System.getProperty("user.home"))
+outDIR  = "${params.outDIR}".replaceFirst("^~", System.getProperty("user.home"))
 readDIR = "${params.readDIR}".replaceFirst("^~", System.getProperty("user.home"))
 
 // Set boilerplate parameters
-params.reads           = "${readDIR}/*_R{1,2}*.fastq.gz"
-params.help       = false
-
-/*
-Create 'read_pairs' channel that emits for each read pair a
-tuple containing 3 elements: pair_id, R1, R2
-*/
+params.reads  = "${readDIR}/*_R{1,2}*.fastq.gz"
+params.help   = false
 
 // workflows
 include { DEMULTIPLEX_AMPLICONS } from './workflows/demultiplex_amplicons.nf'
@@ -28,7 +23,6 @@ include { BUILD_RESMARKER_INFO } from './modules/local/build_resources.nf'
 // workflows
 include { QC_ONLY } from './workflows/qc_only.nf'
 include { POSTPROC_ONLY } from './workflows/postproc_only.nf'
-
 
 // modules
 include { BUILD_ALLELETABLE } from './modules/local/build_alleletable.nf'
@@ -141,6 +135,7 @@ workflow {
 
     // Finally create the final allele table
     BUILD_ALLELETABLE(
+      amplicon_info,
       DENOISE_AMPLICONS_1.out.denoise_ch,
       DENOISE_AMPLICONS_2.out.results_ch
     )

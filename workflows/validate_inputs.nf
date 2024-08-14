@@ -14,12 +14,11 @@ workflow VALIDATE_INPUTS {
     // Check pools input
     check_pools()
 
-    // Check sequencer input
-    check_sequencer()
-
     // Check params based on workflow
     if (workflow == 'complete' || workflow == 'qc') {
         check_readdir_presence()
+        // Check sequencer input
+        check_sequencer()
     } else if (workflow == 'postprocessing') {
         check_denoised_asvs_presence()
     }
