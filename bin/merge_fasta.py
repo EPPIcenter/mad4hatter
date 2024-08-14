@@ -3,7 +3,6 @@ import argparse
 from Bio import SeqIO
 import sys
 import os
-# TODO: Change to dictionary
 
 
 def parse_args_merge_fasta():

@@ -10,7 +10,7 @@ process BUILD_RESISTANCE_TABLE {
 
   publishDir(
     path: "${params.outDIR}/resistance_marker_module",
-    mode: 'copy',
+    mode: 'copy'
   )
 
   input:
