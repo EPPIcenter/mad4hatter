@@ -30,6 +30,24 @@ def check_pools() {
         log.error "`--pools` must be specified."
         exit 1
     }
+
+    def legacy_pools = [
+        '1A': 'D1 or D1.1',
+        '1B': 'R1.1',
+        '2' : 'R2 or R2.1',
+        '5' : 'R1.2'
+    ]
+    def warnings = []
+
+    legacy_pools.each { legacy, current ->
+        if (params.pools.contains(legacy)) {
+            warnings << "You have input a legacy pool name: ${legacy}. Current name would be ${current}."
+        }
+    }
+
+    if (!warnings.isEmpty()) {
+        warnings.each { warning -> log.warn warning }
+    }
 }
 
 // Helper function to check if sequencer parameter is provided
