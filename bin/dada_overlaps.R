@@ -29,8 +29,9 @@ fnRs <- sort(list.files(path = args$trimmed_path, pattern = "_R2.fastq.gz", recu
 sample.names <- sapply(strsplit(basename(fnFs), "_R1"), `[`, 1)
 print(sample.names)
 
-filtFs <- file.path('filtered', paste0(sample.names, "_F_filt.fastq.gz"))
-filtRs <- file.path('filtered', paste0(sample.names, "_R_filt.fastq.gz"))
+filtFs <- paste0(args$trimmed_path, "/filtered/", sample.names, "_F_filt.fastq.gz")
+filtRs <- paste0(args$trimmed_path, "/filtered/", sample.names, "_R_filt.fastq.gz")
+
 
 names(filtFs) <- sample.names
 names(filtRs) <- sample.names
@@ -41,8 +42,6 @@ out <- filterAndTrim(
   compress = TRUE, multithread = args$cores,
   trimRight = c(0, 0), trimLeft = 1, minLen = 75, matchIDs = TRUE
 )
-
-write.csv(out, file = "filtered_and_trimmed.csv")
 
 filtered_Fs <- filtFs[out[, 2] > 0]
 filtered_Rs <- filtRs[out[, 2] > 0]
