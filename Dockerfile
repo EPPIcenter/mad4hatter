@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pandoc \
     jq \
     parallel \
+    fastp \
     && rm -rf /var/lib/apt/lists/*
 
 # Python dependencies
@@ -45,3 +46,9 @@ RUN Rscript -e 'if (!require("BiocManager", quietly = TRUE)) { install.packages(
 RUN Rscript -e 'BiocManager::install("dada2", ask = FALSE)'
 RUN Rscript -e 'BiocManager::install("muscle", ask = FALSE)'
 RUN Rscript -e 'BiocManager::install("BSgenome", ask = FALSE)'
+
+# Install additional tools needed for the analysis
+RUN Rscript -e 'BiocManager::install(c("ShortRead", "GenomicRanges", "IRanges"), ask = FALSE)'
+
+# Ensure the locale is set to UTF-8
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8

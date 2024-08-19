@@ -57,33 +57,24 @@ if [[ -z "$forward_read" || -z "$reverse_read" || -z "$cutadapt_minlen" || -z "$
     usage
 fi
 
-# this is the directory that will contain forward and reverse
-# reads that have been quality filtered and their primers removed
-test -d $trimmed_demuxed_fastqs || mkdir -p $trimmed_demuxed_fastqs
-
-# The remaining reads that could not be demultiplexed
-trimmed_demuxed_unknown_fastqs="trimmed_demuxed_unknown_fastqs"
-test -d $trimmed_demuxed_unknown_fastqs || mkdir -p $trimmed_demuxed_unknown_fastqs
-
-# Create intermediate directories and files
+# Intermediate directories for different stages
 adapter_dimers="adapter_dimers"
-test -d $adapter_dimers || mkdir -p $adapter_dimers
-
 no_adapter_dimers="no_adapter_dimers"
-test -d $no_adapter_dimers || mkdir -p $no_adapter_dimers
-
 too_short="too_short"
-test -d $too_short || mkdir -p $too_short
+fastp_output="fastp_reports"
+trimmed_demuxed_unknown_fastqs="trimmed_demuxed_unknown_fastqs"
+
+# Create directories
+for dir in $adapter_dimers $no_adapter_dimers $too_short $fastp_output $trimmed_demuxed_unknown_fastqs; do
+    test -d $dir || mkdir -p $dir
+done
 
 cutadapt_json="cutadapt.json"
 
-# Delete the directories on exit if specified on the command line
-# trap "rm -rf '$adapter_dimers' '$no_adapter_dimers'" EXIT
-
-# get the sample id
+# Sample ID extraction
 sample_id=$(basename "$forward_read" | sed 's/_R[12].*//')
 
-# Remove all adapter dimers
+# Step 1: Adapter trimming with relaxed criteria
 cutadapt \
     --action=trim \
     -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC \
@@ -102,24 +93,20 @@ cutadapt \
     ${forward_read} \
     ${reverse_read} > /dev/null
 
-# Get the total number of reads with adapters
-total_pairs=$(jq '.read_counts.input' ${cutadapt_json})
-no_dimers=$(jq '.read_counts.filtered.discard_untrimmed' ${cutadapt_json})
-printf "%s\t%s\n" "Input" ${total_pairs} > ${sample_id}.SAMPLEsummary.txt
-printf "%s\t%s\n" "No Dimers" ${no_dimers} >> ${sample_id}.SAMPLEsummary.txt
+# Step 2: Quality control before further processing
+fastp \
+    -i ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
+    -I ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz \
+    -o ${no_adapter_dimers}/${sample_id}_filtered_R1_qc.fastq.gz \
+    -O ${no_adapter_dimers}/${sample_id}_filtered_R2_qc.fastq.gz \
+    --json ${fastp_output}/${sample_id}_before_trim.json \
+    --html ${fastp_output}/${sample_id}_before_trim.html \
+    --report_title "Before Trimming - ${sample_id}" \
+    --detect_adapter_for_pe \
+    --overrepresentation_analysis \
+    --thread ${cores}
 
-if [ "$sequencer" == "miseq" ]; then
-    qualfilter="--trim-n -q 10"
-elif [ "$sequencer" == "nextseq" ]; then
-    qualfilter="--nextseq-trim=20"
-elif [ "$sequencer" == "no-filter" ]; then
-    echo "No filter applied"
-    unset qualfilter
-else
-    echo "Sequencer not recognized"
-    exit 1
-fi
-
+# Step 3: Primer removal and demultiplexing
 cutadapt \
     --action=trim \
     -g file:${fwd_primers_file} \
@@ -137,11 +124,25 @@ cutadapt \
     --too-short-output ${too_short}/${sample_id}_too_short_R1.fastq.gz \
     --too-short-paired-output ${too_short}/${sample_id}_too_short_R2.fastq.gz \
     --quiet \
-    ${qualfilter} \
-    ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
-    ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
+    ${no_adapter_dimers}/${sample_id}_filtered_R1_qc.fastq.gz \
+    ${no_adapter_dimers}/${sample_id}_filtered_R2_qc.fastq.gz > /dev/null
+
+# Step 4: Quality control after primer removal
+fastp \
+    -i ${trimmed_demuxed_fastqs}/*_${sample_id}_trimmed_R1.fastq.gz \
+    -I ${trimmed_demuxed_fastqs}/*_${sample_id}_trimmed_R2.fastq.gz \
+    -o ${trimmed_demuxed_fastqs}/${sample_id}_final_R1.fastq.gz \
+    -O ${trimmed_demuxed_fastqs}/${sample_id}_final_R2.fastq.gz \
+    --json ${fastp_output}/${sample_id}_after_trim.json \
+    --html ${fastp_output}/${sample_id}_after_trim.html \
+    --report_title "After Trimming - ${sample_id}" \
+    --detect_adapter_for_pe \
+    --overrepresentation_analysis \
+    --thread ${cores}
 
 # Extract read counts from cutadapt JSON
+total_pairs=$(jq '.read_counts.input' ${cutadapt_json})
+no_dimers=$(jq '.read_counts.filtered.discard_untrimmed' ${cutadapt_json})
 too_short_count=$(jq '.read_counts.filtered.too_short' ${cutadapt_json})
 
 # Count reads in each forward (F) file in trimmed_demuxed_unknown_fastqs
@@ -163,15 +164,17 @@ for file in ${trimmed_demuxed_unknown_fastqs}/*_unknown_R1.fastq.gz; do
     unset zgrep_exit_status
 done
 
+# Summary of reads at different stages
+printf "%s\t%s\n" "Input" ${total_pairs} > ${sample_id}.SAMPLEsummary.txt
+printf "%s\t%s\n" "No Dimers" ${no_dimers} >> ${sample_id}.SAMPLEsummary.txt
 printf "%s\t%s\n" "Too Short Reads" ${too_short_count} >> ${sample_id}.SAMPLEsummary.txt
 printf "%s\t%s\n" "Unknown Reads" ${unknown_count} >> ${sample_id}.SAMPLEsummary.txt
 
 # Count reads in each demultiplexed fastq file using zgrep
 amplicon_counts=${sample_id}.AMPLICONsummary.txt
-sample_counts=${sample_id}.SAMPLEsummary.txt
 total_count=0
 
-touch $amplicon_counts $sample_counts
+touch $amplicon_counts
 
 while read -r amplicon_name; do
     fastq_file="${trimmed_demuxed_fastqs}/${amplicon_name}_${sample_id}_trimmed_R1.fastq.gz"
@@ -196,4 +199,4 @@ while read -r amplicon_name; do
 
 done < <(grep '^>' $fwd_primers_file | sed 's/^>//')
 
-printf "%s\t%s\n" "Amplicons" ${total_count} >> ${sample_counts}
+printf "%s\t%s\n" "Amplicons" ${total_count} >> ${sample_id}.SAMPLEsummary.txt
