@@ -24,24 +24,24 @@ process CUTADAPT {
   path('demultiplexed_fastqs'), emit: demultiplexed_fastqs
   path('adapter_dimers/*'), emit: adapter_dimers
   path('no_adapter_dimers/*'), emit: no_adapter_dimers
-  path('fastp_reports/*'), emit: fastp_reports
+  path('fastp_reports/**'), emit: fastp_reports
 
   publishDir(
-    path: "${params.outDIR}/cutadapt",
+    path: "${params.outDIR}/cutadapt/${pair_id}",
     mode: 'copy',
     pattern: 'adapter_dimers/*'
   )
 
   publishDir(
-    path: "${params.outDIR}/cutadapt",
+    path: "${params.outDIR}/cutadapt/${pair_id}",
     mode: 'copy',
     pattern: 'no_adapter_dimers/*'
   )
 
   publishDir(
-    path: "${params.outDIR}/fastp_reports",
+    path: "${params.outDIR}/fastp_reports/${pair_id}",
     mode: 'copy',
-    pattern: 'fastp_reports/*'
+    pattern: 'fastp_reports/**'
   )
 
   script:
