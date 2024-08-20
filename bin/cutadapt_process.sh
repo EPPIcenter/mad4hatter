@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 # Function to print help
 usage() {
@@ -13,42 +13,19 @@ cores=1
 allowed_errors=0 # allow no mismatches in the adapter sequence
 
 # Parse command-line options
-while getopts "1:2:m:f:r:s:e:c:o:" OPTION
-do
+while getopts "1:2:m:f:r:s:e:c:o:" OPTION; do
     case $OPTION in
-        1)
-            forward_read=$OPTARG
-            ;;
-        2)
-            reverse_read=$OPTARG
-            ;;
-        m)
-            cutadapt_minlen=$OPTARG
-            ;;
-        f)
-            fwd_primers_file=$OPTARG
-            ;;
-        r)
-            rev_primers_file=$OPTARG
-            ;;
-        e)
-            allowed_errors=$OPTARG
-            ;;
-        s)
-            sequencer=$OPTARG
-            ;;
-        c)
-            cores=$OPTARG
-            ;;
-        o)
-            trimmed_demuxed_fastqs=$OPTARG
-            ;;
-        h)
-            usage
-            ;;
-        ?)
-            usage
-            ;;
+        1) forward_read=$OPTARG ;;
+        2) reverse_read=$OPTARG ;;
+        m) cutadapt_minlen=$OPTARG ;;
+        f) fwd_primers_file=$OPTARG ;;
+        r) rev_primers_file=$OPTARG ;;
+        e) allowed_errors=$OPTARG ;;
+        s) sequencer=$OPTARG ;;
+        c) cores=$OPTARG ;;
+        o) trimmed_demuxed_fastqs=$OPTARG ;;
+        h) usage ;;
+        ?) usage ;;
     esac
 done
 
@@ -61,11 +38,12 @@ fi
 adapter_dimers="adapter_dimers"
 no_adapter_dimers="no_adapter_dimers"
 too_short="too_short"
-fastp_output="fastp_reports"
+fastp_output_preprocess="fastp_reports/preprocess"
+fastp_output_postprocess="fastp_reports/postprocess"
 trimmed_demuxed_unknown_fastqs="trimmed_demuxed_unknown_fastqs"
 
 # Create directories
-for dir in $adapter_dimers $no_adapter_dimers $too_short $fastp_output $trimmed_demuxed_unknown_fastqs; do
+for dir in $adapter_dimers $no_adapter_dimers $too_short $fastp_output_preprocess $fastp_output_postprocess $trimmed_demuxed_unknown_fastqs $trimmed_demuxed_fastqs; do
     test -d $dir || mkdir -p $dir
 done
 
@@ -73,6 +51,20 @@ cutadapt_json="cutadapt.json"
 
 # Sample ID extraction
 sample_id=$(basename "$forward_read" | sed 's/_R[12].*//')
+
+# Step 0: Quality control before further processing
+fastp \
+    -i ${forward_read} \
+    -I ${reverse_read} \
+    -o ${adapter_dimers}/${sample_id}_R1.fastq.gz \
+    -O ${adapter_dimers}/${sample_id}_R2.fastq.gz \
+    --json ${fastp_output_preprocess}/${sample_id}_before_trim.json \
+    --html ${fastp_output_preprocess}/${sample_id}_before_trim.html \
+    --report_title "Before Trimming - ${sample_id}" \
+    --detect_adapter_for_pe \
+    --overrepresentation_analysis \
+    --thread ${cores} \
+    -Q
 
 # Step 1: Adapter trimming with relaxed criteria
 cutadapt \
@@ -90,21 +82,22 @@ cutadapt \
     --json=${cutadapt_json} \
     --compression-level=1 \
     --quiet \
-    ${forward_read} \
-    ${reverse_read} > /dev/null
+    ${adapter_dimers}/${sample_id}_R1.fastq.gz \
+    ${adapter_dimers}/${sample_id}_R2.fastq.gz > /dev/null
 
-# Step 2: Quality control before further processing
+# Step 2: Quality control after adapter trimming
 fastp \
     -i ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     -I ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz \
-    -o ${no_adapter_dimers}/${sample_id}_filtered_R1_qc.fastq.gz \
-    -O ${no_adapter_dimers}/${sample_id}_filtered_R2_qc.fastq.gz \
-    --json ${fastp_output}/${sample_id}_before_trim.json \
-    --html ${fastp_output}/${sample_id}_before_trim.html \
-    --report_title "Before Trimming - ${sample_id}" \
+    -o ${fastp_output_postprocess}/${sample_id}_filtered_R1_qc.fastq.gz \
+    -O ${fastp_output_postprocess}/${sample_id}_filtered_R2_qc.fastq.gz \
+    --json ${fastp_output_postprocess}/${sample_id}_after_trim.json \
+    --html ${fastp_output_postprocess}/${sample_id}_after_trim.html \
+    --report_title "After Trimming - ${sample_id}" \
     --detect_adapter_for_pe \
     --overrepresentation_analysis \
-    --thread ${cores}
+    --thread ${cores} \
+    -Q
 
 # Step 3: Primer removal and demultiplexing
 cutadapt \
@@ -124,21 +117,8 @@ cutadapt \
     --too-short-output ${too_short}/${sample_id}_too_short_R1.fastq.gz \
     --too-short-paired-output ${too_short}/${sample_id}_too_short_R2.fastq.gz \
     --quiet \
-    ${no_adapter_dimers}/${sample_id}_filtered_R1_qc.fastq.gz \
-    ${no_adapter_dimers}/${sample_id}_filtered_R2_qc.fastq.gz > /dev/null
-
-# Step 4: Quality control after primer removal
-fastp \
-    -i ${trimmed_demuxed_fastqs}/*_${sample_id}_trimmed_R1.fastq.gz \
-    -I ${trimmed_demuxed_fastqs}/*_${sample_id}_trimmed_R2.fastq.gz \
-    -o ${trimmed_demuxed_fastqs}/${sample_id}_final_R1.fastq.gz \
-    -O ${trimmed_demuxed_fastqs}/${sample_id}_final_R2.fastq.gz \
-    --json ${fastp_output}/${sample_id}_after_trim.json \
-    --html ${fastp_output}/${sample_id}_after_trim.html \
-    --report_title "After Trimming - ${sample_id}" \
-    --detect_adapter_for_pe \
-    --overrepresentation_analysis \
-    --thread ${cores}
+    ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
+    ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
 
 # Extract read counts from cutadapt JSON
 total_pairs=$(jq '.read_counts.input' ${cutadapt_json})
