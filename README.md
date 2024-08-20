@@ -14,7 +14,7 @@ To view the parameters and examples on the command line run:
 nextflow run main.nf --help 
 ```
 
-There are 3 workflows available that we will describe below. They can be specified using the `--workflow` flag. If --workflow is not specified then `complete` will run as default.
+There are 3 workflows available that we will describe below. They can be specified using the `--workflow` flag. If `--workflow` is not specified then `complete` will run as default.
 * `qc` : Only runs the QC portion of the pipeline.
 * `complete` : Runs the pipeline end-to-end, including analysing resmarkers. 
 * `postprocessing` : Only runs the postprocessing steps to denoise asvs further. 
@@ -27,10 +27,12 @@ Below are the parameters that are essential for running the pipeline, regardless
 |pools|The pools that were used for sequencing. [Options: 1A,1B,2,5]|
 |sequencer|The sequencer used to produce your data. [Options: miseq, nextseq]|
 
-To run the qc (`--workflow qc`) or complete (`--workflow complete`(default)) workflow the below parameters are required. 
+##### QC and complete workflows 
+To run the qc (`--workflow qc`) or complete (`--workflow complete` (default)) workflow the below parameters are required. 
 |Parameter|Description|
 |---|---|
 |readDIR|Path to folder containing fastq files|
+
 Here is an example of running the complete workflow: 
 
 ```bash
@@ -42,6 +44,7 @@ Here is an example of running the qc workflow:
 ```bash
 nextflow run main.nf --readDIR /path/to/data --pools 1A,1B,5 -profile sge,apptainer --sequencer miseq --workflow qc
 ``` 
+##### postprocessing workflows 
 
 To run the postprocessing workflow (`--workflow postprocessing`) the below parameters are required. 
 |Parameter|Description|
@@ -62,7 +65,7 @@ Below are parameters that are optional to running the pipeline.
 |---|---|
 |outDIR|The folder where you want the resulting data to be save (default 'results')|
 |workflow|Workflow option to be run [Options: complete (default), qc, postprocessing]|
-|Nextflow parameters|---|
+|**Nextflow parameters**||
 |profile|The infrastructure you wish to run the pipeline on. The different profiles are listed below under `Runtime Profiles`, including any setup that is required. **Please read that section for more details.**|
 |config|Resource configurations for each process that will override any defaults set in the pipeline. It is recommend to use the provided `custom.config` file to make these resource modifications.|
 
