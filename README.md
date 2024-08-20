@@ -44,7 +44,7 @@ Here is an example of running the qc workflow:
 ```bash
 nextflow run main.nf --readDIR /path/to/data --pools 1A,1B,5 -profile sge,apptainer --sequencer miseq --workflow qc
 ``` 
-##### postprocessing workflows 
+##### postprocessing workflow
 
 To run the postprocessing workflow (`--workflow postprocessing`) the below parameters are required. 
 |Parameter|Description|
