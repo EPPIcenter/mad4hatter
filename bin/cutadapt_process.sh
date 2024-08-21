@@ -34,6 +34,17 @@ if [[ -z "$forward_read" || -z "$reverse_read" || -z "$cutadapt_minlen" || -z "$
     usage
 fi
 
+# Check if input files exist
+if [[ ! -f "$forward_read" ]]; then
+    echo "Error: Forward read file ($forward_read) does not exist." >&2
+    exit 2
+fi
+
+if [[ ! -f "$reverse_read" ]]; then
+    echo "Error: Reverse read file ($reverse_read) does not exist." >&2
+    exit 2
+fi
+
 # Intermediate directories for different stages
 adapter_dimers="adapter_dimers"
 no_adapter_dimers="no_adapter_dimers"
@@ -64,7 +75,10 @@ fastp \
     --detect_adapter_for_pe \
     --overrepresentation_analysis \
     --thread ${cores} \
-    -Q
+    -Q \
+    -L \
+    -G \
+    -A
 
 # Step 1: Adapter trimming with relaxed criteria
 cutadapt \
@@ -89,15 +103,16 @@ cutadapt \
 fastp \
     -i ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     -I ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz \
-    -o ${fastp_output_postprocess}/${sample_id}_filtered_R1_qc.fastq.gz \
-    -O ${fastp_output_postprocess}/${sample_id}_filtered_R2_qc.fastq.gz \
     --json ${fastp_output_postprocess}/${sample_id}_after_trim.json \
     --html ${fastp_output_postprocess}/${sample_id}_after_trim.html \
     --report_title "After Trimming - ${sample_id}" \
     --detect_adapter_for_pe \
     --overrepresentation_analysis \
     --thread ${cores} \
-    -Q
+    -Q \
+    -L \
+    -G \
+    -A
 
 # Step 3: Primer removal and demultiplexing
 cutadapt \
@@ -119,6 +134,25 @@ cutadapt \
     --quiet \
     ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
+
+# Step 4: Quality control on demultiplexed FASTQs
+for fastq_file in ${trimmed_demuxed_fastqs}/*_trimmed_R1.fastq.gz; do
+    base_name=$(basename $fastq_file _trimmed_R1.fastq.gz)
+    fastp \
+        -i ${trimmed_demuxed_fastqs}/${base_name}_trimmed_R1.fastq.gz \
+        -I ${trimmed_demuxed_fastqs}/${base_name}_trimmed_R2.fastq.gz \
+        --json ${fastp_output_postprocess}/${base_name}_demuxed.json \
+        --html ${fastp_output_postprocess}/${base_name}_demuxed.html \
+        --report_title "Demultiplexed - ${base_name}" \
+        --detect_adapter_for_pe \
+        --overrepresentation_analysis \
+        --thread ${cores} \
+        -Q \
+        -L \
+        -G \
+        -A \
+        -P 1 
+done
 
 # Extract read counts from cutadapt JSON
 total_pairs=$(jq '.read_counts.input' ${cutadapt_json})

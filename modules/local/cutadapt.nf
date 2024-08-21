@@ -58,4 +58,3 @@ process CUTADAPT {
       -o demultiplexed_fastqs
   """
 }
-
