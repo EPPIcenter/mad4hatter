@@ -1,6 +1,8 @@
 library(tidyverse)
 library(dada2)
 library(argparse)
+library(foreach)
+library(doMC)
 
 parser <- ArgumentParser(prog = "DADA2 Workflow", description = "DADA2 workflow script")
 parser$add_argument("--trimmed-path",
@@ -21,6 +23,17 @@ parser$add_argument("--cores", type = "integer", default = 1)
 
 args <- parser$parse_args()
 print(args)
+# args <- list()
+# setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/7f/8fe17229f4d1ad377213c89e0ad81a")
+# args$trimmed_path <- list.dirs(full.names = TRUE, recursive = FALSE)
+# args$maxEE <- 2
+# args$cores <- 4
+# args$pool <- "pseudo"
+# args$band_size <- 16
+# args$omega_a <- 1e-120
+# args$concat_non_overlaps <- TRUE
+# args$ampliconFILE <- "v4_amplicon_info.tsv"
+# args$self_consist <- FALSE
 
 fnFs <- sort(list.files(path = args$trimmed_path, pattern = "_R1.fastq.gz", recursive = T, full.names = TRUE))
 fnRs <- sort(list.files(path = args$trimmed_path, pattern = "_R2.fastq.gz", recursive = T, full.names = TRUE))
@@ -29,9 +42,8 @@ fnRs <- sort(list.files(path = args$trimmed_path, pattern = "_R2.fastq.gz", recu
 sample.names <- sapply(strsplit(basename(fnFs), "_R1"), `[`, 1)
 print(sample.names)
 
-filtFs <- paste0(args$trimmed_path, "/filtered/", sample.names, "_F_filt.fastq.gz")
-filtRs <- paste0(args$trimmed_path, "/filtered/", sample.names, "_R_filt.fastq.gz")
-
+filtFs <- file.path('.', 'filtered', paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path('.', 'filtered', paste0(sample.names, "_R_filt.fastq.gz"))
 
 names(filtFs) <- sample.names
 names(filtRs) <- sample.names
@@ -56,8 +68,8 @@ pool <- switch(args$pool,
   "pseudo" = "pseudo"
 )
 
-dadaFs <- dada(filtered_Fs, err = errF, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a)
-dadaRs <- dada(filtered_Rs, err = errR, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a)
+dadaFs <- dada(filtered_Fs, err = errF, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a, HOMOPOLYMER_GAP_PENALTY = -8)
+dadaRs <- dada(filtered_Rs, err = errR, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a, HOMOPOLYMER_GAP_PENALTY = -8)
 
 if (args$concat_non_overlaps) {
   amplicon.info <- data.frame(
@@ -90,7 +102,8 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = 1,
+    propagateCol = c("n0", "n1", "nunq", "pval")
   )
 
   mergers.no.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
@@ -98,7 +111,8 @@ if (args$concat_non_overlaps) {
     dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
     filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
     verbose = TRUE,
-    justConcatenate = TRUE
+    justConcatenate = TRUE,
+    propagateCol = c("n0", "n1", "nunq", "pval")
   )
 
 
@@ -111,7 +125,6 @@ if (args$concat_non_overlaps) {
   }
 
   mergers <- c(mergers.overlap, mergers.no.overlap)[names(dadaFs)]
-  save(file = "mergers.rda", mergers, mergers.overlap, mergers.no.overlap, amplicon.info, dadaFs, dadaRs, args)
 } else {
   mergers <- mergePairs(dadaFs,
     filtered_Fs,
@@ -121,11 +134,12 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = 1,
+    propagateCol = c("n0", "n1", "nunq", "pval")
   )
 }
 
-rm(dadaFs, dadaRs)
+# rm(dadaFs, dadaRs)
 
 seqtab <- makeSequenceTable(mergers)
 seqtab.nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = TRUE, verbose = TRUE)
@@ -135,7 +149,7 @@ seqtab.nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = 
 seqtab.nochim.df <- as.data.frame(seqtab.nochim)
 seqtab.nochim.df$sample <- rownames(seqtab.nochim)
 
-rm(seqtab.nochim)
+# rm(seqtab.nochim)
 
 seqtab.nochim.df[seqtab.nochim.df == 0] <- NA
 
@@ -171,4 +185,60 @@ allele.data <- seqtab.nochim.df %>%
   mutate(n.alleles = n()) %>%
   ungroup()
 
+# After the merging process and calculating overlap information
+
+registerDoMC(cores = args$cores)
+
+# Modify the script to correctly extract information from mergePairs output
+merged_with_overlaps <- foreach(sampleID = names(mergers), .combine = "bind_rows") %dopar% {
+
+  df <- mergers[[sampleID]]
+  cat("Processing sample: ", sampleID, "\n")
+
+  df <- df %>%
+    mutate(
+      L_fwd = nchar(dadaFs[[sampleID]]$sequence),
+      L_rev = nchar(dadaRs[[sampleID]]$sequence),
+      L_merged = nchar(sequence),
+      L_overlap = (L_fwd + L_rev) - L_merged,
+      sequenceF = dadaFs[[sampleID]]$sequence,
+      sequenceR = dadaRs[[sampleID]]$sequence
+    ) %>%
+    mutate(
+      sampleID = sampleID,
+      sequence = unlist(sequence),
+      locus = str_extract(sampleID, pat),
+      sampleID = str_remove_all(sampleID, pat.sampleID),
+      sampleID = str_remove_all(sampleID, pat = "_trimmed")
+    )
+
+  # Calculate start and stop positions for forward and reverse reads in the merged sequence
+  df <- df %>%
+    mutate(
+      startF = 1,
+      endR = L_fwd - (L_overlap - nindel),
+      endF = L_merged - (L_rev - (L_overlap - nindel)) + 1,
+      startR = L_merged
+    )
+
+  cat("Number of rows in df: ", nrow(df), "\n")
+
+  return(df)
+}
+
+# Add overlap information to allele.data
+allele.data <- allele.data %>%
+  left_join(merged_with_overlaps, by = c("sampleID", "locus", "asv"="sequence"))
+
+# NOTE TO SELF (maybe check on this):
+# L_overlap is the length of the overlap region between the forward and reverse reads.
+# If there are indels then it's possible that there was a deletion on the prefered strand
+# if the overlap region equals the number of matches.
+# StartF and EndF are inclusive, you can see that when the matches equal the calculated
+# L_fwd.
+
+# Write the updated allele data to the dada2.clusters.txt file
 write.table(allele.data, file = "dada2.clusters.txt", quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
+
+# Save overlap information and other relevant objects
+save(file = "mergers.rda", mergers, mergers.overlap, mergers.no.overlap, amplicon.info, dadaFs, dadaRs, args, merged_with_overlaps, allele.data)

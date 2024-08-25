@@ -16,7 +16,7 @@ process DADA2_ANALYSIS {
   publishDir(
     path: "${params.outDIR}/raw_dada2_output",
     mode: 'copy',
-    pattern: 'GGGGG_read_counts.csv'
+    pattern: 'filtered/**'
   )
 
   input:
@@ -30,6 +30,7 @@ process DADA2_ANALYSIS {
 
   output:
   path 'dada2.clusters.txt', emit: dada2_clusters
+  path 'filtered/**', emit: filtered_directory
   
   script:
   
