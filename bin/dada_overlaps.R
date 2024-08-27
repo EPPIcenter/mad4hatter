@@ -140,6 +140,7 @@ if (args$concat_non_overlaps) {
 }
 
 # rm(dadaFs, dadaRs)
+saveRDS(file = "mergers.RDS", mergers)
 
 seqtab <- makeSequenceTable(mergers)
 seqtab.nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = TRUE, verbose = TRUE)
@@ -185,51 +186,6 @@ allele.data <- seqtab.nochim.df %>%
   mutate(n.alleles = n()) %>%
   ungroup()
 
-# After the merging process and calculating overlap information
-
-registerDoMC(cores = args$cores)
-
-# Modify the script to correctly extract information from mergePairs output
-merged_with_overlaps <- foreach(sampleID = names(mergers), .combine = "bind_rows") %dopar% {
-
-  df <- mergers[[sampleID]]
-  cat("Processing sample: ", sampleID, "\n")
-
-  df <- df %>%
-    mutate(
-      L_fwd = nchar(dadaFs[[sampleID]]$sequence),
-      L_rev = nchar(dadaRs[[sampleID]]$sequence),
-      L_merged = nchar(sequence),
-      L_overlap = (L_fwd + L_rev) - L_merged,
-      sequenceF = dadaFs[[sampleID]]$sequence,
-      sequenceR = dadaRs[[sampleID]]$sequence
-    ) %>%
-    mutate(
-      sampleID = sampleID,
-      sequence = unlist(sequence),
-      locus = str_extract(sampleID, pat),
-      sampleID = str_remove_all(sampleID, pat.sampleID),
-      sampleID = str_remove_all(sampleID, pat = "_trimmed")
-    )
-
-  # Calculate start and stop positions for forward and reverse reads in the merged sequence
-  df <- df %>%
-    mutate(
-      startF = 1,
-      endR = L_fwd - (L_overlap - nindel),
-      endF = L_merged - (L_rev - (L_overlap - nindel)) + 1,
-      startR = L_merged
-    )
-
-  cat("Number of rows in df: ", nrow(df), "\n")
-
-  return(df)
-}
-
-# Add overlap information to allele.data
-allele.data <- allele.data %>%
-  left_join(merged_with_overlaps, by = c("sampleID", "locus", "asv"="sequence"))
-
 # NOTE TO SELF (maybe check on this):
 # L_overlap is the length of the overlap region between the forward and reverse reads.
 # If there are indels then it's possible that there was a deletion on the prefered strand
@@ -241,4 +197,4 @@ allele.data <- allele.data %>%
 write.table(allele.data, file = "dada2.clusters.txt", quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
 
 # Save overlap information and other relevant objects
-save(file = "mergers.rda", mergers, mergers.overlap, mergers.no.overlap, amplicon.info, dadaFs, dadaRs, args, merged_with_overlaps, allele.data)
+# save(file = "mergers.rda", mergers, mergers.overlap, mergers.no.overlap, amplicon.info, dadaFs, dadaRs, args, merged_with_overlaps, allele.data)

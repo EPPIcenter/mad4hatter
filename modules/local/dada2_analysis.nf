@@ -1,8 +1,3 @@
-/*
- * STEP - DADA2_ANALYSIS
- * Denoise the demultiplexed amplicon fastqs 
- */
-
 process DADA2_ANALYSIS {
 
   label 'process_high'
@@ -11,16 +6,11 @@ process DADA2_ANALYSIS {
   publishDir(
     path: "${params.outDIR}/raw_dada2_output",
     mode: 'copy',
-    pattern: 'dada2.clusters.txt'
-  )
-  publishDir(
-    path: "${params.outDIR}/raw_dada2_output",
-    mode: 'copy',
-    pattern: 'filtered/**'
+    pattern: '{dada2.clusters.txt,*.RDS,filtered/**}'
   )
 
   input:
-  path (demultiplexed_fastqs, stageAs: "demultiplexed_fastqs?")
+  path demultiplexed_fastqs, stageAs: "demultiplexed_fastqs?"
   path amplicon_info
   val pool
   val band_size
@@ -31,6 +21,7 @@ process DADA2_ANALYSIS {
   output:
   path 'dada2.clusters.txt', emit: dada2_clusters
   path 'filtered/**', emit: filtered_directory
+  path '*.RDS', emit: rds_files  // Make sure to emit this output
   
   script:
   
@@ -45,6 +36,9 @@ process DADA2_ANALYSIS {
     --omega-a ${params.omega_a} \
     --maxEE ${params.maxEE} \
     --cores ${task.cpus} \
-    ${concatenate} 
+    ${concatenate}
+
+  # Logging to check the existence of files
+  ls -l # List files in the current directory to check if mergers.RDS is there
   """
 }
