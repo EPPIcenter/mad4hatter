@@ -141,6 +141,8 @@ if (args$concat_non_overlaps) {
 
 # rm(dadaFs, dadaRs)
 saveRDS(file = "mergers.RDS", mergers)
+saveRDS(file = "dadaFs.RDS", dadaFs)
+saveRDS(file = "dadaRs.RDS", dadaRs)
 
 seqtab <- makeSequenceTable(mergers)
 seqtab.nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = TRUE, verbose = TRUE)
