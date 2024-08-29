@@ -56,8 +56,8 @@ pool <- switch(args$pool,
   "pseudo" = "pseudo"
 )
 
-dadaFs <- dada(filtered_Fs, err = errF, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a,PSEUDO_ABUNDANCE=100,PSEUDO_PREVALENCE=100)
-dadaRs <- dada(filtered_Rs, err = errR, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a,PSEUDO_ABUNDANCE=100,PSEUDO_PREVALENCE=100)
+dadaFs <- dada(filtered_Fs, err = errF, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a,PSEUDO_ABUNDANCE=100,PSEUDO_PREVALENCE=50)
+dadaRs <- dada(filtered_Rs, err = errR, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a,PSEUDO_ABUNDANCE=100,PSEUDO_PREVALENCE=50)
 
 if (args$concat_non_overlaps) {
   amplicon.info <- data.frame(
