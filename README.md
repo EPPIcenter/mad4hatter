@@ -1,6 +1,6 @@
 # MAD4HATTER Amplicon Sequencing Pipeline
 
-MAD4HATTER is a bioinformatics analysis pipeline used to process amplicon sequencing data. More information can be found below and [here](eppicenter.github.io/mad4hatter/).
+MAD4HATTER is a bioinformatics analysis pipeline used to process amplicon sequencing data. More information can be found below and [here](https://eppicenter.github.io/mad4hatter/).
 
 ## Contents
 
