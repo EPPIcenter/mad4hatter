@@ -24,7 +24,7 @@ There are 3 workflows available that we will describe below. They can be specifi
 Below are the parameters that are essential for running the pipeline, regardless of workflow. 
 |Parameter|Description|
 |---|---|
-|pools|The pools that were used for sequencing. [Options: 1A,1B,2,5]|
+|pools|The pools that were used for sequencing. [Options: D1,R1,R2 - check panel.config for more options]|
 |sequencer|The sequencer used to produce your data. [Options: miseq, nextseq]|
 
 ##### QC and complete workflows 
@@ -36,13 +36,13 @@ To run the qc (`--workflow qc`) or complete (`--workflow complete` (default)) wo
 Here is an example of running the complete workflow: 
 
 ```bash
-nextflow run main.nf --readDIR /path/to/data --pools 1A,1B,5 -profile sge,apptainer --sequencer miseq
+nextflow run main.nf --readDIR /path/to/data --pools D1,R1,R2 -profile sge,apptainer --sequencer miseq
 ``` 
 
 Here is an example of running the qc workflow: 
 
 ```bash
-nextflow run main.nf --readDIR /path/to/data --pools 1A,1B,5 -profile sge,apptainer --sequencer miseq --workflow qc
+nextflow run main.nf --readDIR /path/to/data --pools D1,R1,R2 -profile sge,apptainer --sequencer miseq --workflow qc
 ``` 
 ##### postprocessing workflow
 
@@ -54,7 +54,7 @@ To run the postprocessing workflow (`--workflow postprocessing`) the below param
 Here is an example of running the postprocessing workflow: 
 
 ```bash
-nextflow run main.nf --denoised_asvs /path/to/denoised_asvs/dada2_clusters.txt --pools 1A,1B,5 -profile sge,apptainer --sequencer nextseq --workflow postprocessing
+nextflow run main.nf --denoised_asvs /path/to/denoised_asvs/dada2_clusters.txt --pools D1,R1,R2 -profile sge,apptainer --sequencer nextseq --workflow postprocessing
 ``` 
 
 #### Optional Parameters 
@@ -72,7 +72,7 @@ Below are parameters that are optional to running the pipeline.
 Below is an example of how you may run the pipeline setting the above parameters. 
 
 ```bash
-nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results --pools 1A,1B,5 -profile docker --sequencer miseq --workflow qc -config conf/custom.config 
+nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results --pools D1,R1,R2 -profile docker --sequencer miseq --workflow qc -config conf/custom.config 
 ``` 
 
 ### DADA parameters
@@ -92,7 +92,7 @@ For more information about DADA2 and the parameters that can be set, please refe
 Below is an example of how you may use the above parameters on the command line:
 
 ```bash
-nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile docker --pools 1A,1B,2 -config conf/custom.config --omega_a 1e-120 --band_size 16 --dada2_pool pseudo
+nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile docker --pools D1,R1,R2 -config conf/custom.config --omega_a 1e-120 --band_size 16 --dada2_pool pseudo
 ```
 
 ### Post processing parameters
@@ -123,11 +123,11 @@ Below are parameters that you can set to control the postprocessing module.
 Below is a continuation of the example above that shows how these parameters may be modified on the command line. Note that `--refseq_fasta` OR `--genome` OR no flag can be set to provide a reference. If no reference is provided (neither `--refseq_fasta` OR `--genome` are set) then the pipeline will build a targeted reference from the reference for each pool, stored under the resources directory. 
 
 ```bash
-nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile sge,apptainer --refseq_fasta /path/to/targeted_reference --pools 1A,5,2 -config conf/custom.config --omega_a 1e-120 --band_size 16 --dada2_pool pseudo --trf_min_score 25 --trf_max_period 3
+nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile sge,apptainer --refseq_fasta /path/to/targeted_reference --pools D1,R1,R2 -config conf/custom.config --omega_a 1e-120 --band_size 16 --dada2_pool pseudo --trf_min_score 25 --trf_max_period 3
 ```
 
 ```bash
-nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile sge,apptainer --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --pools 1A,5,2 -config conf/custom.config --omega_a 1e-120 --band_size 16 --dada2_pool pseudo --trf_min_score 25 --trf_max_period 3
+nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile sge,apptainer --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --pools D1,R1,R2 -config conf/custom.config --omega_a 1e-120 --band_size 16 --dada2_pool pseudo --trf_min_score 25 --trf_max_period 3
 ```
 
 ## Runtime Profiles
@@ -139,7 +139,7 @@ Currently, [Sun Grid Engine (SGE)](http://star.mit.edu/cluster/docs/0.93.3/guide
 Continuing with our example above, the below could be used to run the pipeline using the SGE scheduler.
 
 ```bash
-nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results -profile sge,apptainer --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --pools 1A,1B,2 -config conf/custom.config --omega_a 1e-120 --band_size 16 --dada2_pool pseudo --trf_min_score 25 --trf_max_period 3
+nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results -profile sge,apptainer --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --pools D1,R1,R2 -config conf/custom.config --omega_a 1e-120 --band_size 16 --dada2_pool pseudo --trf_min_score 25 --trf_max_period 3
 ```
 
 ### Apptainer
@@ -163,7 +163,7 @@ Once you have the image, you must include the `apptainer` profile on the command
 *Note: you should also include the job scheduler you will be using. In this case, `sge` is the job scheduler that will be used. Contact your system administrator if you are unsure about this setting.*
 
 ```bash
-nextflow run main.nf --readDIR single --refseq_fasta v4_refseq.fasta --pools 1A,1B,2 -profile sge,apptainer -c conf/custom.config
+nextflow run main.nf --readDIR single --refseq_fasta v4_refseq.fasta --pools D1,R1,R2 -profile sge,apptainer -c conf/custom.config
 ```
 
 ### Docker
@@ -177,7 +177,7 @@ The EPPIcenter has a repository for images, and the docker image for the pipelin
 To run the  with docker, simply add `-profile docker` in your command. 
 
 ```bash
-nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results -profile docker --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --pools 1A,1B,2 -config conf/custom.config
+nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results -profile docker --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --pools D1,R1,R2 -config conf/custom.config
 ```
 
 Alternatively, you can build the docker image on your machine using the Dockerfile recipe, although this is not the recommended way to set up the docker image.
@@ -193,5 +193,5 @@ docker build -t eppicenter/mad4hatter:latest .
 To use conda, you must first install either [conda](https://docs.conda.io/en/latest/) or [miniconda](https://docs.conda.io/en/latest/miniconda.html). Once installed, include the `conda` profile on the command line.
 
 ```bash
-nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results -profile conda --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --pools 1A,1B,2 -config conf/custom.config
+nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results -profile conda --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --pools D1,R1,R2 -config conf/custom.config
 ```

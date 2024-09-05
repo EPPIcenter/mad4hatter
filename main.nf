@@ -34,7 +34,7 @@ def helpMessage() {
       nextflow run main.nf --readDIR data/testdata --target v4
 
     Mandatory arguments:
-      --pools     The pools that were used for sequencing. [Options: 1A,1B,2,5]
+      --pools     The pools that were used for sequencing. [Options: D1,R1,R2 - see panel.config for more options]
       --sequencer	The sequencer used to produce your data. [Options: miseq, nextseq]
 
     Mandatory for `complete` (default) or `qc` workflow: 
@@ -67,28 +67,28 @@ def helpMessage() {
 
     Examples:
       More advanced usage 
-      nnextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --sequencer nextseq -config custom.config
+      nnextflow run main.nf --readDIR data/testdata --outDIR results --pools D1,R1,R2 --sequencer nextseq -config custom.config
 
       Change runtime param to use Docker
-      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 -profile docker
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools D1,R1,R2 -profile docker
       
       Only run the QC workflow
-      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --workflow qc
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools D1,R1,R2 --workflow qc
       
       Only run the Postprocessing workflow
-      nextflow run main.nf --workflow postprocessing --pools 1A,1B,2 --denoised_asvs results/raw_dada2_output/dada2.clusters.txt --outDIR postprocessing_results
+      nextflow run main.nf --workflow postprocessing --pools D1,R1,R2 --denoised_asvs results/raw_dada2_output/dada2.clusters.txt --outDIR postprocessing_results
       
       Alter Dada2 params 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --omega_a 1e-40 --dada2_pool false --band_size 20 --maxEE 4
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools D1,R1,R2 --omega_a 1e-40 --dada2_pool false --band_size 20 --maxEE 4
       
       Set full genome 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --genome data/reference/v1/PkPfPmPoPv.fasta
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools D1,R1,R2 --genome data/reference/v1/PkPfPmPoPv.fasta
       
       Set targeted reference 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --refseq_fasta resources/v4/v4_reference.fasta
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools D1,R1,R2 --refseq_fasta resources/v4/v4_reference.fasta
       
       Alter Masking parameters 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --pools 1A,1B,2 --homopolymer_threshold 2 --trf_min_score 30 --trf_max_period 5
+      nextflow run main.nf --readDIR data/testdata --outDIR results --pools D1,R1,R2 --homopolymer_threshold 2 --trf_min_score 30 --trf_max_period 5
         """.stripIndent()
 }
 

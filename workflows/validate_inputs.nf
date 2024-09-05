@@ -35,7 +35,7 @@ def check_pools() {
         '1A': 'D1 or D1.1',
         '1B': 'R1.1',
         '2' : 'R2 or R2.1',
-        '5' : 'R1.2'
+        '5' : 'R1 or R1.2'
     ]
     def warnings = []
 
