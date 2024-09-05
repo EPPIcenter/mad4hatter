@@ -1,5 +1,23 @@
 # MAD4HATTER Amplicon Sequencing Pipeline
 
+MAD4HATTER is a bioinformatics analysis pipeline used to process amplicon sequencing data. More information can be found below and [here](eppicenter.github.io/mad4hatter/).
+
+## Contents
+
+- [Setup](#setup)
+- [Setting Parameters](#setting-parameters)
+    - [Mandatory Parameters](#mandatory-parameters)
+        - [QC and complete workflows](#qc-and-complete-workflows)
+        - [Postprocessing workflow](#postprocessing-workflow)
+    - [Optional Parameters](#optional-parameters)
+        - [DADA parameters](#dada-parameters)
+        - [Post processing parameters](#post-processing-parameters)
+        - [Resmarker Module Parameters](#resmarker-module-parameters)
+- [Runtime Profiles](#runtime-profiles)
+    - [Apptainer](#apptainer)
+    - [Docker](#docker)
+    - [Conda](#conda)
+
 ## Setup
 
 The mad4hatter pipeline uses [nextflow](https://www.nextflow.io/) and this will need to be installed prior to using the pipeline. Information about how to [install](https://www.nextflow.io/) and use the [command line tool](https://www.nextflow.io/docs/latest/cli.html) can be found on their [website](https://www.nextflow.io/). The tool is also available from other package managers such as [conda](https://anaconda.org/bioconda/nextflow) if you would like an alternative installation pathway. 
@@ -19,7 +37,7 @@ There are 3 workflows available that we will describe below. They can be specifi
 * `complete` : Runs the pipeline end-to-end, including analysing resmarkers. 
 * `postprocessing` : Only runs the postprocessing steps to denoise asvs further. 
 
-#### Mandatory Parameters 
+#### Mandatory Parameters
 
 Below are the parameters that are essential for running the pipeline, regardless of workflow. 
 |Parameter|Description|
@@ -44,7 +62,7 @@ Here is an example of running the qc workflow:
 ```bash
 nextflow run main.nf --readDIR /path/to/data --pools D1,R1,R2 -profile sge,apptainer --sequencer miseq --workflow qc
 ``` 
-##### postprocessing workflow
+##### Postprocessing workflow
 
 To run the postprocessing workflow (`--workflow postprocessing`) the below parameters are required. 
 |Parameter|Description|
@@ -57,7 +75,7 @@ Here is an example of running the postprocessing workflow:
 nextflow run main.nf --denoised_asvs /path/to/denoised_asvs/dada2_clusters.txt --pools D1,R1,R2 -profile sge,apptainer --sequencer nextseq --workflow postprocessing
 ``` 
 
-#### Optional Parameters 
+#### Optional Parameters
 
 Below are parameters that are optional to running the pipeline.
 
@@ -75,7 +93,7 @@ Below is an example of how you may run the pipeline setting the above parameters
 nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results --pools D1,R1,R2 -profile docker --sequencer miseq --workflow qc -config conf/custom.config 
 ``` 
 
-### DADA parameters
+##### DADA parameters
 
 DADA2 infers amplicon sequences exactly and can be tuned depending on your needs. DADA2 is run in the DADA2 module of the pipeline (`DADA2_ANALYSIS`). Below are parameters that you can set to control your output. 
 
@@ -95,7 +113,7 @@ Below is an example of how you may use the above parameters on the command line:
 nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile docker --pools D1,R1,R2 -config conf/custom.config --omega_a 1e-120 --band_size 16 --dada2_pool pseudo
 ```
 
-### Post processing parameters
+##### Post processing parameters
 
 There are a number of steps in the postprocessing module (`DADA2_POSTPROC`) to reduce false positives in your final allele table. In particular, tandem repeats and hompolymer regions are masked due to known problems that they cause in Illumina instruments. Masked regions will appear as `N`'s in your sequences such as the example below.
 
@@ -110,6 +128,8 @@ NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNGTATGTATGTTGATTAATTTGTTTATATATTTATA
 ```
 
 The masking is accomplished using [Tandem Repeat Finder](https://github.com/Benson-Genomics-Lab/TRF#trf-definitions). Please refer to their documentation for additional information.
+
+By default the pipeline will use the `panel.config` to find the paths to the reference sequences for each of the pools. This can be overriden by setting either the `refseq_fasta` **or** `genome` parameter as detailed below. 
 
 Below are parameters that you can set to control the postprocessing module.
 
@@ -129,6 +149,13 @@ nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile 
 ```bash
 nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile sge,apptainer --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --pools D1,R1,R2 -config conf/custom.config --omega_a 1e-120 --band_size 16 --dada2_pool pseudo --trf_min_score 25 --trf_max_period 3
 ```
+##### Resmarker Module Parameters 
+
+By defualt the pipeline will check if any of the markers in the principal list (`panel_information/principal_resistance_marker_info_table.tsv`) are covered by any of the loci in the panel. If markers are covered then the resmarker module will run. This can be overriden and a customised table can be supplied using the following parameter.
+
+|Parameter|Description|
+|---|---|
+|resmarker_info|Path to table containing resmarker information|
 
 ## Runtime Profiles
 
