@@ -40,7 +40,7 @@ def check_pools() {
     def warnings = []
 
     legacy_pools.each { legacy, current ->
-        if (params.pools.contains(legacy)) {
+        if (params.pools.toString().contains(legacy)) {
             warnings << "You have input a legacy pool name: ${legacy}. Current name would be ${current}."
         }
     }
