@@ -40,7 +40,7 @@ def helpMessage() {
   log.info """
     Usage:
       The typical command for running the pipeline is as follows:
-      nextflow run main.nf --readDIR data/testdata --target v4
+      nextflow run main.nf --readDIR path/to/read_dir --target v4
 
     Mandatory arguments:
       --readDIR		Path to folder containing fastq files
@@ -72,28 +72,28 @@ def helpMessage() {
 
     Examples:
       More advanced usage 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --sequencer nextseq -config custom.config
+      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --target v4 --sequencer nextseq -config custom.config
 
       Change runtime param to use Docker
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 -profile docker
+      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --target v4 -profile docker
       
       Only run the QC workflow
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --QC_only
+      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --target v4 --QC_only
       
       Only run the Postprocessing workflow
       nextflow run main.nf --outDIR postprocessing_results --target v4 --denoised_asvs results/raw_dada2_output/dada2.clusters.txt
       
       Alter Dada2 params 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --omega_a 1e-40 --pool false --band_size 20 --maxEE 4
+      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --target v4 --omega_a 1e-40 --pool false --band_size 20 --maxEE 4
       
       Set full genome 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --genome data/reference/v1/PkPfPmPoPv.fasta
+      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --target v4 --genome data/reference/v1/PkPfPmPoPv.fasta
       
       Set targeted reference 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --refseq_fasta resources/v4/v4_reference.fasta
+      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --target v4 --refseq_fasta resources/v4/v4_reference.fasta
       
       Alter Masking parameters 
-      nextflow run main.nf --readDIR data/testdata --outDIR results --target v4 --homopolymer_threshold 2 --trf_min_score 30 --trf_max_period 5
+      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --target v4 --homopolymer_threshold 2 --trf_min_score 30 --trf_max_period 5
         """.stripIndent()
 }
 
