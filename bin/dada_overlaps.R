@@ -111,7 +111,6 @@ if (args$concat_non_overlaps) {
   }
 
   mergers <- c(mergers.overlap, mergers.no.overlap)[names(dadaFs)]
-  save(file = "mergers.rda", mergers, mergers.overlap, mergers.no.overlap, amplicon.info, dadaFs, dadaRs, args)
 } else {
   mergers <- mergePairs(dadaFs,
     filtered_Fs,
@@ -124,6 +123,10 @@ if (args$concat_non_overlaps) {
     maxMismatch = 1
   )
 }
+
+saveRDS(file = "mergers.RDS", mergers)
+saveRDS(file = "dadaFs.RDS", dadaFs)
+saveRDS(file = "dadaRs.RDS", dadaRs)
 
 rm(dadaFs, dadaRs)
 
