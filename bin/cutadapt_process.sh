@@ -112,6 +112,9 @@ printf "%s\t%s\n" "No Dimers" ${no_dimers} >> ${sample_id}.SAMPLEsummary.txt
 
 if [ "$sequencer" == "miseq" ]; then
     qualfilter="--trim-n -q 10"
+elif [ "$sequencer" == "no-filter" ]; then
+    echo "No filter applied"
+    unset qualfilter
 else
     qualfilter="--nextseq-trim=20"
 fi
@@ -123,7 +126,6 @@ cutadapt \
     --pair-adapters \
     -e ${allowed_errors} \
     --no-indels \
-    ${qualfilter} \
     --minimum-length ${cutadapt_minlen} \
     -o ${trimmed_demuxed_fastqs}/{name}_${sample_id}_trimmed_R1.fastq.gz \
     -p ${trimmed_demuxed_fastqs}/{name}_${sample_id}_trimmed_R2.fastq.gz \
@@ -132,6 +134,7 @@ cutadapt \
     --json=${cutadapt_json} \
     --compression-level=1 \
     --quiet \
+    ${qualfilter} \
     ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
 

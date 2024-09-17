@@ -25,6 +25,8 @@ process DADA2_ANALYSIS {
 
   output:
   path 'dada2.clusters.txt', emit: dada2_clusters
+  path '*.RDS', emit: rds_files  // Make sure to emit this output
+
   
   script:
   
