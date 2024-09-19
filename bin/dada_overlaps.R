@@ -46,9 +46,11 @@ out <- filterAndTrim(
 filtered_Fs <- filtFs[out[, 2] > 0]
 filtered_Rs <- filtRs[out[, 2] > 0]
 
-errF <- learnErrors(filtered_Fs, multithread = args$cores, MAX_CONSIST = 10, randomize = TRUE)
-errR <- learnErrors(filtered_Rs, multithread = args$cores, MAX_CONSIST = 10, randomize = TRUE)
+errF <- learnErrors(filtFs[out[,2]>0], multithread=TRUE,MAX_CONSIST=10,randomize=TRUE)
+errR <- learnErrors(filtRs[out[,2]>0], multithread=TRUE,MAX_CONSIST=10,randomize=TRUE)
 
+derepFs <- derepFastq(filtFs[out[,2]>0], verbose = TRUE)
+derepRs <- derepFastq(filtRs[out[,2]>0], verbose = TRUE)
 
 pool <- switch(args$pool,
   "true" = TRUE,
@@ -56,8 +58,8 @@ pool <- switch(args$pool,
   "pseudo" = "pseudo"
 )
 
-dadaFs <- dada(filtered_Fs, err = errF, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a)
-dadaRs <- dada(filtered_Rs, err = errR, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a)
+dadaFs <- dada(derepFs, err = errF, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a)
+dadaRs <- dada(derepRs, err = errR, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a)
 
 if (args$concat_non_overlaps) {
   amplicon.info <- data.frame(
@@ -90,7 +92,8 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = 0,
+    returnRejects = TRUE
   )
 
   mergers.no.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
@@ -98,7 +101,9 @@ if (args$concat_non_overlaps) {
     dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
     filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
     verbose = TRUE,
-    justConcatenate = TRUE
+    justConcatenate = TRUE,
+    maxMismatch = 0,
+    returnRejects = TRUE
   )
 
 
@@ -120,13 +125,16 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = 0,
+    returnRejects = TRUE
   )
 }
 
 saveRDS(file = "mergers.RDS", mergers)
 saveRDS(file = "dadaFs.RDS", dadaFs)
 saveRDS(file = "dadaRs.RDS", dadaRs)
+saveRDS(file = "derepFs.RDS", derepFs)
+saveRDS(file = "derepRs.RDS", derepRs)
 
 rm(dadaFs, dadaRs)
 
