@@ -16,7 +16,7 @@ df.processed <- read.csv(args$processed_asvs, sep = "\t", header = T)
 
 allele.table <- df.denoised %>%
   dplyr::inner_join(df.processed, by = c("sampleID", "locus" = "refid", "asv")) %>%
-  select(sampleID, locus, asv, reads, allele, pseudo_cigar) %>%
+  select(sampleID, locus, asv, reads, pseudo_cigar) %>%
   group_by(sampleID, locus, asv) %>%
   mutate(reads = sum(reads)) %>%
   arrange(locus) %>%
@@ -25,7 +25,6 @@ allele.table <- df.denoised %>%
     Locus = locus,
     ASV = asv,
     Reads = reads,
-    Allele = allele,
     PseudoCIGAR = pseudo_cigar
   ) %>%
   distinct()
@@ -37,6 +36,6 @@ df.amplicon_info_filtered <- df.amplicon_info %>%
 allele.table <- allele.table %>%
   dplyr::left_join(df.amplicon_info_filtered, by = c("Locus" = "amplicon")) %>%
   dplyr::rename(Pool = pool) %>%
-  select(SampleID, Locus, ASV, Reads, Allele, PseudoCIGAR, Pool)
+  select(SampleID, Locus, ASV, Reads, PseudoCIGAR, Pool)
 
 write.table(allele.table, file = "allele_data.txt", quote = F, sep = "\t", col.names = T, row.names = F)
