@@ -14,6 +14,7 @@ process BUILD_ALLELETABLE {
   )
 
   input:
+  path amplicon_info
   path denoised_asvs 
   path processed_asvs
 
@@ -23,6 +24,7 @@ process BUILD_ALLELETABLE {
   script:
   """
   Rscript ${projectDir}/bin/build_alleletable.R \
+    --amplicon-info ${amplicon_info} \
     --denoised-asvs ${denoised_asvs} \
     --processed-asvs ${processed_asvs}
   """

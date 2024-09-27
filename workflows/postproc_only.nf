@@ -11,6 +11,7 @@ include { BUILD_ALLELETABLE } from '../modules/local/build_alleletable.nf'
 workflow POSTPROC_ONLY {
 
     take:
+    amplicon_info
     denoised_asvs
 
     main:
@@ -29,10 +30,11 @@ workflow POSTPROC_ONLY {
     denoise_ch = Channel.fromPath(denoised_asvs_file)
     
     // Run postprocessing only workflow
-    DENOISE_AMPLICONS_2(denoise_ch)
+    DENOISE_AMPLICONS_2(amplicon_info, denoise_ch)
 
     // Allele table creation
     BUILD_ALLELETABLE(
+      amplicon_info,
       denoise_ch,
       DENOISE_AMPLICONS_2.out.results_ch
     )

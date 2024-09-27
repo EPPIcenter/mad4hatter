@@ -8,6 +8,7 @@ workflow QUALITY_CONTROL {
 
     // Define inputs
     take:
+    amplicon_info
     sample_coverage_files
     amplicon_coverage_files
     alleledata
@@ -44,6 +45,6 @@ workflow QUALITY_CONTROL {
     QUALITY_REPORT(
         sample_coverage_ch,
         amplicon_coverage_ch,
-        params.amplicon_info
+        amplicon_info
     )
 }
