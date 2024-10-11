@@ -37,6 +37,9 @@ process DADA2_ANALYSIS {
     --pool ${params.dada2_pool} \
     --band-size ${params.band_size} \
     --omega-a ${params.omega_a} \
+    --match-score ${params.match_score} \
+    --mismatch-score ${params.mismatch_score} \
+    --gap-penalty ${params.gap_penalty} \
     --maxEE ${params.maxEE} \
     --cores ${task.cpus} \
     ${concatenate} 
