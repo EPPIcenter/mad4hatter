@@ -13,11 +13,13 @@ parser$add_argument("--band-size", type = "integer", default = 16)
 parser$add_argument("--omega-a", type = "double", default = 1e-120)
 parser$add_argument("--concat-non-overlaps", action = "store_true")
 parser$add_argument("--use-quals", type = "character", default = "false")
+parser$add_argument("--match-score", type = "integer", default = 4)
+parser$add_argument("--mismatch-score", type = "integer", default = -5)
+parser$add_argument("--gap-penalty", type = "integer", default = -8)
 parser$add_argument("--maxEE", type = "integer", default = 3)
 parser$add_argument("--self-consist", action = "store_true")
 parser$add_argument("--omega-c", type = "double", default = 1e-40)
 parser$add_argument("--cores", type = "integer", default = 1)
-
 
 args <- parser$parse_args()
 print(args)
@@ -56,8 +58,8 @@ pool <- switch(args$pool,
   "pseudo" = "pseudo"
 )
 
-dadaFs <- dada(filtered_Fs, err = errF, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a, MATCH = 2, MISMATCH = -1, GAP_PENALTY = -8)
-dadaRs <- dada(filtered_Rs, err = errR, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a, MATCH = 2, MISMATCH = -1, GAP_PENALTY = -8)
+dadaFs <- dada(filtered_Fs, err = errF, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a, MATCH = args$match_score, MISMATCH = args$mismatch_score, GAP_PENALTY = args$gap_penalty)
+dadaRs <- dada(filtered_Rs, err = errR, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a, MATCH = args$match_score, MISMATCH = args$mismatch_score, GAP_PENALTY = args$gap_penalty)
 
 if (args$concat_non_overlaps) {
   amplicon.info <- data.frame(
