@@ -125,7 +125,6 @@ cutadapt \
     -g file:${fwd_primers_file} \
     -e ${allowed_errors} \
     --no-indels \
-    ${qualfilter} \
     --minimum-length ${cutadapt_minlen} \
     -o ${trimmed_demuxed_fastqs1}/{name}_${sample_id}_trimmed_R1.fastq.gz \
     -p ${trimmed_demuxed_fastqs1}/{name}_${sample_id}_trimmed_R2.fastq.gz \
@@ -155,7 +154,6 @@ for file in "${trimmed_demuxed_fastqs1}"/*"${sample_id}"_trimmed_R1.fastq.gz; do
         -g ${reverse_primer_sequence} \
         -e ${allowed_errors} \
         --no-indels \
-        ${qualfilter} \
         --minimum-length ${cutadapt_minlen} \
         -p ${trimmed_demuxed_fastqs}/${trimmed1}_trimmed_R1.fastq.gz \
         -o ${trimmed_demuxed_fastqs}/${trimmed1}_trimmed_R2.fastq.gz \
