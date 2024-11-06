@@ -16,6 +16,7 @@ include { COLLAPSE_CONCATENATED_READS } from '../modules/local/collapse_concaten
 workflow DENOISE_AMPLICONS_2 {
 
   take: 
+  amplicon_info
   denoise_ch
 
   main:
@@ -25,13 +26,13 @@ workflow DENOISE_AMPLICONS_2 {
     COLLAPSE_CONCATENATED_READS(denoise_ch) : denoise_ch
 
   // create the reference if the user has not provided one (but has a genome), otherwise use the user file
-  def reference = (params.refseq_fasta == null) ? PREPARE_REFERENCE_SEQUENCES().reference_ch : params.refseq_fasta
+  def reference = (params.refseq_fasta == null) ? PREPARE_REFERENCE_SEQUENCES(amplicon_info).reference_ch : params.refseq_fasta
 
   // use the denoised sequences and align them to the reference
   ALIGN_TO_REFERENCE(
     denoise_ch,
     reference,
-    params.amplicon_info
+    amplicon_info
   )
 
   FILTER_ASVS(

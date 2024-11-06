@@ -32,6 +32,6 @@ process BUILD_RESISTANCE_TABLE {
     --aligned_asv_table_path ${alignment_data} \
     --res_markers_info_path ${resmarkers} \
     --refseq_path ${refseq} \
-    --n-cores ${task.cpus} 
+    --n-cores ${task.cpus}
   """
 }
