@@ -75,6 +75,10 @@ test -d $adapter_dimers || mkdir -p $adapter_dimers
 no_adapter_dimers="no_adapter_dimers"
 test -d $no_adapter_dimers || mkdir -p $no_adapter_dimers
 
+# trimmed_demuxed_fastqs1=$(mktemp -d)
+trimmed_demuxed_fastqs1="trimmed_demuxed_fastqs1"
+test -d $trimmed_demuxed_fastqs1 || mkdir -p $trimmed_demuxed_fastqs1
+
 # cutadapt_json=$(mktemp)
 cutadapt_json="cutadapt.json"
 
@@ -119,14 +123,12 @@ fi
 cutadapt \
     --action=trim \
     -g file:${fwd_primers_file} \
-    -G file:${rev_primers_file} \
-    --pair-adapters \
     -e ${allowed_errors} \
     --no-indels \
     ${qualfilter} \
     --minimum-length ${cutadapt_minlen} \
-    -o ${trimmed_demuxed_fastqs}/{name}_${sample_id}_trimmed_R1.fastq.gz \
-    -p ${trimmed_demuxed_fastqs}/{name}_${sample_id}_trimmed_R2.fastq.gz \
+    -o ${trimmed_demuxed_fastqs1}/{name}_${sample_id}_trimmed_R1.fastq.gz \
+    -p ${trimmed_demuxed_fastqs1}/{name}_${sample_id}_trimmed_R2.fastq.gz \
     --untrimmed-output ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_R1.fastq.gz \
     --untrimmed-paired-output ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_R2.fastq.gz \
     --json=${cutadapt_json} \
@@ -134,6 +136,37 @@ cutadapt \
     --quiet \
     ${no_adapter_dimers}/${sample_id}_filtered_R1.fastq.gz \
     ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
+
+
+for file in "${trimmed_demuxed_fastqs1}"/*"${sample_id}"_trimmed_R1.fastq.gz; do
+    trimmed1=$(basename "$file" | sed 's/_trimmed_R1.fastq.gz//')
+    echo "$trimmed1"
+    # Extract amplicon_name, which is the part before _${sample_id}
+    amplicon_name=$(echo "$trimmed1" | sed "s/_${sample_id}//")
+    echo "Amplicon Name: $amplicon_name"
+
+    # Extract the reverse_primer_sequence from the rev_primers_file
+      reverse_primer_sequence=$(awk -v amplicon=">$amplicon_name" '$0 == amplicon {getline; print}' "${rev_primers_file}")
+      echo "Reverse Primer Sequence: $reverse_primer_sequence"
+
+
+    cutadapt \
+        --action=trim \
+        -g ${reverse_primer_sequence} \
+        -e ${allowed_errors} \
+        --no-indels \
+        ${qualfilter} \
+        --minimum-length ${cutadapt_minlen} \
+        -p ${trimmed_demuxed_fastqs}/${trimmed1}_trimmed_R1.fastq.gz \
+        -o ${trimmed_demuxed_fastqs}/${trimmed1}_trimmed_R2.fastq.gz \
+        --untrimmed-output ${trimmed_demuxed_unknown_fastqs}/${trimmed1}_unknown_R1.fastq.gz \
+        --untrimmed-paired-output ${trimmed_demuxed_unknown_fastqs}/${trimmed1}_unknown_R2.fastq.gz \
+        --json=${cutadapt_json} \
+        --compression-level=1 \
+        ${trimmed_demuxed_fastqs1}/${trimmed1}_trimmed_R2.fastq.gz \
+        ${trimmed_demuxed_fastqs1}/${trimmed1}_trimmed_R1.fastq.gz > /dev/null
+
+done
 
 
 # Count reads in each demultiplexed fastq file using zgrep
