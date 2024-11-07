@@ -3,6 +3,7 @@
 include { PREPROCESS_COVERAGE } from '../modules/local/preprocess_coverage.nf'
 include { POSTPROCESS_COVERAGE } from '../modules/local/postprocess_coverage.nf'
 include { QUALITY_REPORT } from '../modules/local/quality_report.nf'
+include { SPIKEIN_ANALYSIS } from '../workflows/spikein_analysis.nf'
 
 workflow QUALITY_CONTROL {
 
@@ -13,6 +14,7 @@ workflow QUALITY_CONTROL {
     amplicon_coverage_files
     alleledata
     clusters
+    unknown_fastqs
 
     main:
 
@@ -40,6 +42,20 @@ workflow QUALITY_CONTROL {
     amplicon_coverage_ch = postprocessing ? 
         POSTPROCESS_COVERAGE.out.postprocess_amplicon_coverage : 
         PREPROCESS_COVERAGE.out.amplicon_coverage
+
+
+    // Spike-in Analysis
+    // Detect spikeins and create QC plots
+    run_spikein_routine = \
+        params.expected_spikein &&
+        params.spikein_info
+
+    if (run_spikein_routine) {
+        SPIKEIN_ANALYSIS(
+            amplicon_info,
+            unknown_fastqs
+        )
+    }
 
     // Reporting
     QUALITY_REPORT(

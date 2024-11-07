@@ -22,6 +22,7 @@ process CUTADAPT {
     path("*.SAMPLEsummary.txt"), emit: sample_summary
     path("*.AMPLICONsummary.txt"), emit: amplicon_summary
     path('demultiplexed_fastqs'), emit: demultiplexed_fastqs
+    path('trimmed_demuxed_unknown_fastqs'), emit: trimmed_demuxed_unknown_fastqs
 
     script:
     """

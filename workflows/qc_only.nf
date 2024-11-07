@@ -26,6 +26,7 @@ workflow QC_ONLY {
     DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
     DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
     null,
-    null
+    null,
+    DEMULTIPLEX_AMPLICONS.out.trimmed_unknown_fastqs_ch
   )
 }

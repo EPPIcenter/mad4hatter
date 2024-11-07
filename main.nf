@@ -149,7 +149,8 @@ workflow {
       DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
       DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
       BUILD_ALLELETABLE.out.alleledata,
-      DENOISE_AMPLICONS_1.out.denoise_ch
+      DENOISE_AMPLICONS_1.out.denoise_ch,
+      DEMULTIPLEX_AMPLICONS.out.trimmed_unknown_fastqs_ch
     )
 
     RESISTANCE_MARKER_MODULE(
