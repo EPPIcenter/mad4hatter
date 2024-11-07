@@ -1,19 +1,24 @@
 // Process for generating plots
 process SPIKEIN_DETECTION {
     tag "Generating Plots"
-    publishDir path: results_path(''), mode: 'copy'
+    publishDir(
+        path: "${params.outDIR}/quality_report",
+        mode: 'copy'
+    )
 
     input:
-    path counts_file from counts
+    path (counts_file)
 
     output:
-    path results_path('spikein_counts_heatmap.png')
+    path ('*.pdf')
 
     script:
     """
     Rscript spikein_detection_heatmap.R \
         --input ${counts_file} \
-        --output ${}
+        --expected ${params.expected_spikein} \
+        --spikein-info ${params.spikein_info} \
+        --output contamination_report.pdf
     """
 }
 
