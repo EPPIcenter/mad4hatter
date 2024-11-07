@@ -8,33 +8,11 @@ parser <- ArgumentParser()
 parser$add_argument("--input", type = "character", nargs="+", help = "Input Spikein Count CSV file of all samples. Columns are SampleID, SpikeinID and Count.")
 parser$add_argument("--expected", type = "character", help = "CSV containing location information for a SampleID. Each row should contain a SampleID, Plate and Well. Columns are SampleID, Plate and Well.")
 parser$add_argument("--spikein-info", type = "character", help = "CSV containing what spike-in is expected at which location. Columns are SpikeinID and Well.")
-parser$add_argument("--output", type = "character", help = "Output PNG file")
+parser$add_argument("--output", type = "character", help = "Output PDF Report file.")
+parser$add_argument("--contamination-threshold", type = "numeric", default = 0.1, help = "Threshold for contamination detection")
 
 # Parsing arguments
 args <- parser$parse_args()
-
-# TEST DATA
-# WHEN TESTING, DO NOT FORGET TO MELT THE DATA.
-# counts_data <- tibble(
-#   SampleID = c("SampleID_1", "SampleID_1", "SampleID_2", "SampleID_2", "SampleID_3", "SampleID_3", "SampleID_3", "SampleID_4", "SampleID_4"),
-#   SpikeinID = c("SpikeinID_1", "SpikeinID_2", "SpikeinID_1", "SpikeinID_2", "SpikeinID_3", "SpikeinID_2", "SpikeinID_19", "SpikeinID_4", "SpikeinID_4"),
-#   Count = c(100, 200, 300, 400, 500, 600, 1100, 700, 800)
-# )
-#
-# expected_data <- tibble(
-#   SampleID = c("SampleID_1", "SampleID_2", "SampleID_3", "SampleID_4"),
-#   Plate = c("Plate_1"),
-#   Well = c("A01", "B02", "C03", "D01")
-# )
-#
-# spikein_info <- tibble(
-#   SpikeinID = sprintf("SpikeinID_%d", 1:96),
-#   Well = expand.grid(LETTERS[1:8], str_pad(1:12, 2, pad = "0")) |>
-#     apply(1, paste, collapse = "") |>
-#     as.character()
-# )
-# WHEN TESTING, DO NOT FORGET TO MELT THE DATA.
-
 
 validate_data <- function(counts_data, expected_data, spikein_info) {
   if (nrow(counts_data) == 0) {
@@ -348,7 +326,15 @@ plot_spikein_detection_plate_heatmap <- function(melted_data, expected_data, spi
     )
   )
 
-  return (g)
+  # Report back samples with contamination
+  contaminated_samples <- plate_df_long$SampleID[sample_found & plate_df_long$value > border_threshold]
+
+  result_list <- list(
+    graphic = g,
+    contaminated_samples = contaminated_samples
+  )
+
+  return (result_list)
 }
 
 # This function will plot a heatmap of the plate where the contamination originated for a given sample.
@@ -408,39 +394,52 @@ plot_contamination_origin_by_sample <- function(melted_data, expected_data, spik
   return (result_list)
 }
 
-args <- list()
-
-args$input <- "~/Documents/perfect_case.csv"
-args$input <- "~/Documents/contamination_case.csv"
-args$input <- "~/Documents/low_contamination_case.csv"
-args$expected <- "~/Documents/expected_data.csv"
-args$spikein_info <- "~/Documents/spikein_info.csv"
-
 # Load the data
 counts_data <- args$input |> map_dfr(read_csv)
 expected_data <- read_csv(args$expected)
 spikein_info <- read_csv(args$spikein_info)
 
 # Write concatenated file
-# write.csv(counts_data, file = "spikein_counts_data.csv", quote = FALSE, row.names = FALSE)
 validate_data(counts_data, expected_data, spikein_info)
 melted_data <- melt_data(counts_data)
+
+# Open the PDF to save all plots
+pdf(args$output, width = 10, height = 8)
 
 # Save the heatmap with a white background
 g <- plot_spikein_detection_heatmap_by_sampleid(melted_data, expected_data, spikein_info)
 ggsave(args$output, plot = g, bg = "white", width = 10, height = 8, dpi = 300)
+grid::grid.newpage()
 
-g <- plot_spikein_detection_plate_heatmap(melted_data, expected_data, spikein_info, "Plate_1")
-ggsave(args$output, plot = g, bg = "white", width = 10, height = 8, dpi = 300)
+# Output a contamination heatmap for each plate and
+# track contaminated samples (defined by the contamination threshold)
+# so that we can specify which samples require their own contamination
+# plot.
 
-result_list <- plot_contamination_origin_by_sample(melted_data, expected_data, spikein_info, "SampleID_2")
-ggsave(args$output, plot = result_list$plate_graphic, bg = "white", width = 10, height = 8, dpi = 300)
-write_csv(result_list$unexpected_spikein_table, file.path("~/Documents", "unexpected_spikein_table.csv"))
+# Track contaminated samples and output contamination heatmaps
+plates <- unique(expected_data$Plate)
 
-# Save the heatmap with a white background
-plot_contamination_origin_by_sample(melted_data, expected_data, spikein_info, "SampleID_3")
-plot_spikein_detection_plate_heatmap(melted_data, expected_data, spikein_info, "Plate_1")
+for (plate_name in plates) {
+  # Print the plate heatmap and start a new page
+  results <- plot_spikein_detection_plate_heatmap(melted_data, expected_data, spikein_info, plate_name, border_threshold=args$contamination_threshold)
+  print(results$graphic)  # Print the plate graphic
+  
+  # Check if there are contaminated samples for this plate
+  if (length(results$contaminated_samples) > 0) {
+    for (sample_id in results$contaminated_samples) {
+      # Start a new page for the next contaminated sample
+      grid::grid.newpage()
 
-# DEBUGGING
-melted_data %>% filter(SampleID == "SampleID_3")
-spikein_info %>% filter(Well == "C03")
+      # Print each contaminated sample plot on the same page
+      result_list <- plot_contamination_origin_by_sample(melted_data, expected_data, spikein_info, sample_id)
+      print(result_list$plate_graphic)  # Print the sample graphic
+    }
+  }
+  
+  # Start a new page for the next plate
+  grid::grid.newpage()
+}
+
+# Close the PDF device
+dev.off()
+
