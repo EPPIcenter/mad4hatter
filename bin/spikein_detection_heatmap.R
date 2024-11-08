@@ -13,8 +13,6 @@ parser$add_argument("--spikein-info", type = "character", help = "CSV containing
 parser$add_argument("--output", type = "character", help = "Output PDF Report file.")
 parser$add_argument("--contamination-threshold", type = "numeric", default = 1, help = "Threshold for contamination detection")
 
-# "#0072B2", "#D55E00", "#009E73","#CC79A7","#56B4E9", "#E69F00","#F0E442"
-
 CELL_BORDER_OKAY  = "#009E73"
 CELL_BORDER_CONT  = "#D55E00"
 HEATSCALE_LOW     = "#FFFFFF"
@@ -23,16 +21,6 @@ HEAT96X96_HIGH    = "#0072B2"
 
 # Parsing arguments
 args <- parser$parse_args()
-
-# DEBUGGING
-
-args<-list()
-setwd("~/Documents/GitHub/mad4hatter/work/1b/77f9d046b286eff77446301adffe6b")
-args$input <- c("counts_files1")
-args$expected <- "/home/bpalmer/Documents/GitHub/mad4hatter/expected_spikein_demo.csv"
-args$spikein_info <- "/home/bpalmer/Documents/GitHub/mad4hatter/spikein_info.csv"
-args$output <- "contamination_report.pdf"
-args$contamination_threshold <- 1
 
 validate_data <- function(counts_data, expected_data, spikein_info) {
   if (nrow(counts_data) == 0) {
@@ -88,7 +76,7 @@ plot_spikein_detection_heatmap_by_sampleid <- function(melted_data, expected_dat
     left_join(joined_data, by = c("SampleID")) %>%
     group_by(ExpectedSpikeinID) %>%
     mutate(total = sum(value),
-           value = if_else(total == 0, 0, (value / total * 100))) %>%
+           value = if_else(total == 0, 0., ((value / total) * 100))) %>%
     select(-total)  # Remove the temporary column if not needed
 
   # Merge transformed data with full grid to ensure complete 96x96 layout
@@ -322,7 +310,7 @@ plot_spikein_detection_plate_heatmap <- function(melted_data, expected_data, spi
     scale_x_discrete(position = "top") +
     theme(panel.background = element_rect(fill = "white", colour = "white"),
           plot.background = element_rect(fill = "white", colour = "white")) +
-    labs(x = element_blank(), y = element_blank(), fill = "Contrib. SDSI (%)", title = plate_id)
+    labs(x = element_blank(), y = element_blank(), fill = "Unexpected SDSI (%)", title = plate_id)
 
   # Make x and y axis labels bold and larger
   g <- g + theme(axis.text.x = element_text(face = "bold", size = 12),
