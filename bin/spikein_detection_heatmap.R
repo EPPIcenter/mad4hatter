@@ -3,6 +3,8 @@ library(reshape2)
 library(scales)
 library(argparse)
 library(tidyverse)
+library(gridExtra)
+library(grid)
 
 parser <- ArgumentParser()
 parser$add_argument("--input", type = "character", nargs="+", help = "Input Spikein Count CSV file of all samples. Columns are SampleID, SpikeinID and Count.")
@@ -10,6 +12,14 @@ parser$add_argument("--expected", type = "character", help = "CSV containing loc
 parser$add_argument("--spikein-info", type = "character", help = "CSV containing what spike-in is expected at which location. Columns are SpikeinID and Well.")
 parser$add_argument("--output", type = "character", help = "Output PDF Report file.")
 parser$add_argument("--contamination-threshold", type = "numeric", default = 1, help = "Threshold for contamination detection")
+
+# "#0072B2", "#D55E00", "#009E73","#CC79A7","#56B4E9", "#E69F00","#F0E442"
+
+CELL_BORDER_OKAY  = "#009E73"
+CELL_BORDER_CONT  = "#D55E00"
+HEATSCALE_LOW     = "#FFFFFF"
+HEATSCALE_HIGH    = "#D55E00"
+HEAT96X96_HIGH    = "#0072B2"
 
 # Parsing arguments
 args <- parser$parse_args()
@@ -57,8 +67,8 @@ melt_data <- function(counts_data) {
   # Return melted data
   return (melted_data)
 }
-
 plot_spikein_detection_heatmap_by_sampleid <- function(melted_data, expected_data, spikein_info) {
+
   # Create a 96x96 grid based on Well positions
   sample_ids <- spikein_info$Well
   spikein_ids <- spikein_info$Well
@@ -98,21 +108,22 @@ plot_spikein_detection_heatmap_by_sampleid <- function(melted_data, expected_dat
     scale_fill_gradient(
       name = "SDSI (%)",
       low = "white",
-      high = "#0072B2",
+      high = HEAT96X96_HIGH,
       limits = c(0, 100),
       na.value = "white"
     ) +
     labs(
-      x = "SDSI 1 -> 96\nExpected Synthetic DNA spike-in",
-      y = "Synthetic DNA spike-in\nSDSI 96 -> 1"
+      x = "SDSI 1 \u2192 96\nExpected Synthetic DNA spike-in",  # Use Unicode right arrow (→)
+      y = "Synthetic DNA spike-in\nSDSI 96 \u2192 1"  # Use Unicode right arrow (→)
     ) +
     theme_minimal(base_size = 8) +
     theme(
+      # Customize axis and legend to match the reference style
       axis.text.x = element_blank(),
       axis.text.y = element_blank(),
       axis.ticks.length = unit(0.2, "cm"),
-      axis.ticks = element_line(linewidth = 0.2),  # Updated to linewidth
-      panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),  # Updated to linewidth
+      axis.ticks = element_line(linewidth = 0.2),
+      panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),  # Black border around the plot
       legend.position = "right",
       legend.title = element_text(size = 8),
       legend.text = element_text(size = 6),
@@ -133,11 +144,12 @@ plot_spikein_detection_heatmap_by_sampleid <- function(melted_data, expected_dat
     ) +
     coord_fixed(ratio = 1)  # Ensure a square aspect ratio for the 96x96 layout
 
-  # Add a black border around wells with detected spike-in (value > 0 & value < 2)
+  # Add a black border around wells with detected spikein (value > 0 & value < 2)
+  # IMPORTANT: This should be tun-able.
   g <- g + geom_tile(
     data = transformed_data %>% filter(value > 0 & value < 2 & SpikeinID.expected != SpikeinID.variable),
     aes(x = ExpectedSpikeinID, y = variable),
-    fill = NA, color = "black", linewidth = 0.25  # Updated to linewidth
+    fill = NA, color = "black", size = 0.25
   )
 
   return(g)
@@ -257,7 +269,7 @@ create_plate_matrix_with_contaminant_tracing_for_sampleID <- function(melted_dat
     # Spikein tibble
     unexpected_spikein_table <- bind_rows(
       unexpected_spikein_table,
-      tibble(Well = well, Count = count_of_unexpected_spikein_in_sample_id_well, Metric = metric)
+      tibble(Well = well, Count = count_of_unexpected_spikein_in_sample_id_well, Percentage = metric)
     )
   }
 
@@ -305,12 +317,12 @@ plot_spikein_detection_plate_heatmap <- function(melted_data, expected_data, spi
   g <- ggplot(plate_df_long, aes(x = col, y = row)) +
     geom_tile() +
     geom_tile(aes(fill = value), colour = "black") +
-    scale_fill_gradient(low = "white", high = "red", limits = c(0, 100)) +
+    scale_fill_gradient(low = "white", high = HEATSCALE_HIGH, limits = c(0, 100)) +
     theme_minimal(base_size = 10) +
     scale_x_discrete(position = "top") +
     theme(panel.background = element_rect(fill = "white", colour = "white"),
           plot.background = element_rect(fill = "white", colour = "white")) +
-    labs(x = element_blank(), y = element_blank(), fill = "SDSI (%)", title = plate_id)
+    labs(x = element_blank(), y = element_blank(), fill = "Contrib. SDSI (%)", title = plate_id)
 
   # Make x and y axis labels bold and larger
   g <- g + theme(axis.text.x = element_text(face = "bold", size = 12),
@@ -320,8 +332,8 @@ plot_spikein_detection_plate_heatmap <- function(melted_data, expected_data, spi
   # make sure that NA values are not plotted.
   # The red border will only appear after surpassing `threshold`
   sample_found <- !(plate_df_long$value %>% is.na())
-  g <- g + geom_rect(data = plate_df_long[sample_found & plate_df_long$value <= border_threshold,], aes(xmin = as.numeric(col) - 0.5, xmax = as.numeric(col) + 0.5, ymin = as.numeric(row) - 0.5, ymax = as.numeric(row) + 0.5), fill = NA, colour = "green", size = 0.75) +
-    geom_rect(data = plate_df_long[sample_found & plate_df_long$value > border_threshold,], aes(xmin = as.numeric(col) - 0.5, xmax = as.numeric(col) + 0.5, ymin = as.numeric(row) - 0.5, ymax = as.numeric(row) + 0.5), fill = NA, colour = "red", size = 0.75)
+  g <- g + geom_rect(data = plate_df_long[sample_found & plate_df_long$value <= border_threshold,], aes(xmin = as.numeric(col) - 0.5, xmax = as.numeric(col) + 0.5, ymin = as.numeric(row) - 0.5, ymax = as.numeric(row) + 0.5), fill = NA, colour = CELL_BORDER_OKAY, linewidth = 0.65) +
+    geom_rect(data = plate_df_long[sample_found & plate_df_long$value > border_threshold,], aes(xmin = as.numeric(col) - 0.5, xmax = as.numeric(col) + 0.5, ymin = as.numeric(row) - 0.5, ymax = as.numeric(row) + 0.5), fill = NA, colour = CELL_BORDER_CONT, linewidth = 1.35, linejoin = "round")
 
   g <- g + guides(
     fill = guide_colorbar(
@@ -333,7 +345,11 @@ plot_spikein_detection_plate_heatmap <- function(melted_data, expected_data, spi
   )
 
   # Report back samples with contamination
-  contaminated_samples <- plate_df_long$SampleID[sample_found & plate_df_long$value > border_threshold]
+  rejoined_sampleID <- plate_df_long %>%
+    mutate(Well = paste0(row, col)) %>%
+    left_join(expected_data, by = c("Well" = "Well"))
+
+  contaminated_samples <- rejoined_sampleID$SampleID[sample_found & plate_df_long$value > border_threshold]
 
   result_list <- list(
     graphic = g,
@@ -369,7 +385,7 @@ plot_contamination_origin_by_sample <- function(melted_data, expected_data, spik
   g <- ggplot(plate_df_long, aes(x = col, y = row)) +
     geom_tile(aes(fill = value), colour = "black") +
     scale_fill_gradientn(
-      colors = c("black", "white", "red"),
+      colors = c("black", "white", HEATSCALE_HIGH),
       values = scales::rescale(c(-Inf, 0, 100)),
       limits = c(0, 100)
     ) +
@@ -381,7 +397,7 @@ plot_contamination_origin_by_sample <- function(melted_data, expected_data, spik
       axis.text.x = element_text(face = "bold", size = 12),
       axis.text.y = element_text(face = "bold", size = 12)
     ) +
-    labs(x = element_blank(), y = element_blank(), fill = "SDSI (%)", title = sample_id, subtitle = plate_id)
+    labs(x = element_blank(), y = element_blank(), fill = "Contrib. SDSI (%)", title = sample_id, subtitle = plate_id)
 
   # Update the legend with a larger color bar
   g <- g + guides(
@@ -400,6 +416,13 @@ plot_contamination_origin_by_sample <- function(melted_data, expected_data, spik
   return (result_list)
 }
 
+args <- list()
+args$input <- "~/Documents/contamination_case.csv"
+args$expected <- "~/Documents/expected_data.csv"
+args$spikein_info <- "~/Documents/spikein_info.csv"
+args$contamination_threshold <- 1
+args$output <- "~/Documents/contamination_report.pdf"
+
 # Load the data
 counts_data <- args$input |> map_dfr(read_csv)
 expected_data <- read_csv(args$expected)
@@ -412,40 +435,115 @@ melted_data <- melt_data(counts_data)
 # Open the PDF to save all plots
 pdf(args$output, width = 10, height = 8)
 
-# Save the heatmap with a white background
+# Save the heatmap for all samples
 g <- plot_spikein_detection_heatmap_by_sampleid(melted_data, expected_data, spikein_info)
-ggsave(args$output, plot = g, bg = "white", width = 10, height = 8, dpi = 300)
-grid::grid.newpage()
-
-# Output a contamination heatmap for each plate and
-# track contaminated samples (defined by the contamination threshold)
-# so that we can specify which samples require their own contamination
-# plot.
+print(g)  # Print the plot directly to the PDF
 
 # Track contaminated samples and output contamination heatmaps
 plates <- unique(expected_data$Plate)
 
-for (plate_name in plates) {
-  # Print the plate heatmap and start a new page
-  results <- plot_spikein_detection_plate_heatmap(melted_data, expected_data, spikein_info, plate_name, border_threshold=args$contamination_threshold)
+for (plate_id in plates) {
+  # Print the plate heatmap
+  results <- plot_spikein_detection_plate_heatmap(melted_data, expected_data, spikein_info, plate_id, border_threshold=args$contamination_threshold)
   print(results$graphic)  # Print the plate graphic
 
   # Check if there are contaminated samples for this plate
   if (length(results$contaminated_samples) > 0) {
     for (sample_id in results$contaminated_samples) {
-      # Start a new page for the next contaminated sample
-      grid::grid.newpage()
-
-      # Print each contaminated sample plot on the same page
+      # Generate the plot for each contaminated sample
       result_list <- plot_contamination_origin_by_sample(melted_data, expected_data, spikein_info, sample_id)
-      print(result_list$plate_graphic)  # Print the sample graphic
+      sample_plot <- result_list$plate_graphic
+
+      # Print the sample-specific plot
+      print(sample_plot)
+
+      # Prepare the table for the following page
+      table_out <- result_list$unexpected_spikein_table %>%
+        filter(Percentage > 0) %>%
+        dplyr::rename(
+          `Source Well` = Well,
+          `SDSI Reads Contributed (N)` = Count,
+          `Percent of Total Unexpected SDSI (%)` = Percentage
+        ) %>%
+        mutate(`Percent of Total Unexpected SDSI (%)` = round(`Percent of Total Unexpected SDSI (%)`, 2)) %>%  # Round to the nearest hundredth
+        arrange(desc(`Percent of Total Unexpected SDSI (%)`))  # Sort by percentage in descending order
+
+      # Ensure the percentages sum to exactly 100 by adjusting the maximum entry
+      total_percentage <- sum(table_out$`Percent of Total Unexpected SDSI (%)`)
+      if (total_percentage != 100) {
+        difference <- 100 - total_percentage
+
+        # Find the index of the maximum entry in the Percentage column
+        max_index <- which.max(table_out$`Percent of Total Unexpected SDSI (%)`)
+
+        # Adjust the maximum entry to account for the difference
+        table_out$`Percent of Total Unexpected SDSI (%)`[max_index] <-
+          table_out$`Percent of Total Unexpected SDSI (%)`[max_index] + difference
+      }
+
+      # Calculate the summary row
+      summary_row <- tibble(
+        `Source Well` = "Total",
+        `SDSI Reads Contributed (N)` = sum(table_out$`SDSI Reads Contributed (N)`, na.rm = TRUE),
+        `Percent of Total Unexpected SDSI (%)` = sum(table_out$`Percent of Total Unexpected SDSI (%)`, na.rm = TRUE)
+      )
+
+      # Append the summary row to the table
+      table_out <- bind_rows(table_out, summary_row)
+
+      # Split the table into pages if it's too long
+      rows_per_page <- 20  # Adjust this number based on the page size and font
+      num_pages <- ceiling(nrow(table_out) / rows_per_page)
+
+      for (page in seq_len(num_pages)) {
+        # Subset the table for the current page
+        table_chunk <- table_out[((page - 1) * rows_per_page + 1):min(page * rows_per_page, nrow(table_out)), ]
+
+        # Make the summary row (last row) bold and remove lines if it's on the current page
+        if (page == num_pages) {
+
+          # Create a theme where the last row is in bold.
+          t1 <- ttheme_default(core=list(
+            fg_params=list(fontface=c(rep("plain", nrow(table_chunk) - 1), "bold")),
+            bg_params = list(fill=c(rep(c("grey95", "grey90"),
+                                        length.out=nrow(table_chunk) - 1), "grey80"),
+                             alpha = rep(c(1,0.5), each=nrow(table_chunk)))
+          ))
+
+          # Create the table grob without row names
+          table_grob <- tableGrob(table_chunk, rows = NULL, theme = t1)
+
+        } else {
+
+          # Create a theme where the last row is in bold.
+          t1 <- ttheme_default(core=list(
+            fg_params=list(fontface=c(rep("plain", nrow(table_chunk)))),
+            bg_params = list(fill=c(rep(c("grey95", "grey90"),
+                                        length.out=nrow(table_chunk)), "grey80"),
+                             alpha = rep(c(1,0.5), each=nrow(table_chunk)))
+          ))
+
+          # Create the table grob with row names
+          table_grob <- tableGrob(table_chunk)
+        }
+
+        # Start a new page and add the title and page number
+        grid.newpage()
+        grid.text(
+          paste("Plate:", plate_id, "- Sample:", sample_id),
+          x = 0.5, y = 0.95, gp = gpar(fontsize = 14, fontface = "bold")
+        )
+        grid.text(
+          paste("Page", page, "of", num_pages),
+          x = 0.5, y = 0.92, gp = gpar(fontsize = 10)
+        )
+
+        # Print the table chunk to the page
+        grid.draw(table_grob)
+      }
     }
   }
-
-  # Start a new page for the next plate
-  grid::grid.newpage()
 }
 
 # Close the PDF device
 dev.off()
-
