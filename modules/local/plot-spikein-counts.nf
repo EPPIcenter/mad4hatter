@@ -4,28 +4,23 @@ process PLOT_SPIKEIN_COUNTS {
     label 'process_single'
 
     publishDir(
-        path: "${params.outDIR}/plots",
+        path: "${params.outDIR}/quality_report",
         mode: 'copy',
-        pattern: '*.png'
-    )
-
-    publishDir(
-        path: "${params.outDIR}/stats",
-        mode: 'copy',
-        pattern: '*.csv'
+        pattern: '*.pdf'
     )
 
     input:
     path (counts_files, stageAs: "counts_files?")
 
     output:
-    path 'spikein_counts_heatmap.png', emit: spikein_counts_heatmap
-    path 'spikein_counts_data.csv', emit: spikein_counts_data
+    path 'contamination_report.pdf', emit: contamination_report
 
     script:
     """
     Rscript ${projectDir}/bin/spikein_detection_heatmap.R \
         --input ${counts_files} \
-        --output spikein_counts_heatmap.png
+        --expected ${params.expected_spikein} \
+        --spikein-info ${params.spikein_info} \
+        --output contamination_report.pdf
     """
 }

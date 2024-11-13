@@ -9,10 +9,20 @@ parser$add_argument("--input", type = "character", nargs="+", help = "Input Spik
 parser$add_argument("--expected", type = "character", help = "CSV containing location information for a SampleID. Each row should contain a SampleID, Plate and Well. Columns are SampleID, Plate and Well.")
 parser$add_argument("--spikein-info", type = "character", help = "CSV containing what spike-in is expected at which location. Columns are SpikeinID and Well.")
 parser$add_argument("--output", type = "character", help = "Output PDF Report file.")
-parser$add_argument("--contamination-threshold", type = "numeric", default = 0.1, help = "Threshold for contamination detection")
+parser$add_argument("--contamination-threshold", type = "numeric", default = 1, help = "Threshold for contamination detection")
 
 # Parsing arguments
 args <- parser$parse_args()
+
+# DEBUGGING
+
+args<-list()
+setwd("~/Documents/GitHub/mad4hatter/work/1b/77f9d046b286eff77446301adffe6b")
+args$input <- c("counts_files1")
+args$expected <- "/home/bpalmer/Documents/GitHub/mad4hatter/expected_spikein_demo.csv"
+args$spikein_info <- "/home/bpalmer/Documents/GitHub/mad4hatter/spikein_info.csv"
+args$output <- "contamination_report.pdf"
+args$contamination_threshold <- 1
 
 validate_data <- function(counts_data, expected_data, spikein_info) {
   if (nrow(counts_data) == 0) {
@@ -49,7 +59,6 @@ melt_data <- function(counts_data) {
 }
 
 plot_spikein_detection_heatmap_by_sampleid <- function(melted_data, expected_data, spikein_info) {
-
   # Create a 96x96 grid based on Well positions
   sample_ids <- spikein_info$Well
   spikein_ids <- spikein_info$Well
@@ -94,17 +103,16 @@ plot_spikein_detection_heatmap_by_sampleid <- function(melted_data, expected_dat
       na.value = "white"
     ) +
     labs(
-      x = "SDSI 1 → 96\nExpected Synthetic DNA spike-in",
-      y = "Synthetic DNA spike-in\nSDSI 96 → 1"
+      x = "SDSI 1 -> 96\nExpected Synthetic DNA spike-in",
+      y = "Synthetic DNA spike-in\nSDSI 96 -> 1"
     ) +
     theme_minimal(base_size = 8) +
     theme(
-      # Customize axis and legend to match the reference style
       axis.text.x = element_blank(),
       axis.text.y = element_blank(),
       axis.ticks.length = unit(0.2, "cm"),
-      axis.ticks = element_line(linewidth = 0.2),
-      panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),  # Black border around the plot
+      axis.ticks = element_line(linewidth = 0.2),  # Updated to linewidth
+      panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),  # Updated to linewidth
       legend.position = "right",
       legend.title = element_text(size = 8),
       legend.text = element_text(size = 6),
@@ -125,17 +133,15 @@ plot_spikein_detection_heatmap_by_sampleid <- function(melted_data, expected_dat
     ) +
     coord_fixed(ratio = 1)  # Ensure a square aspect ratio for the 96x96 layout
 
-  # Add a black border around wells with detected spikein (value > 0 & value < 2)
-  # IMPORTANT: This should be tun-able.
+  # Add a black border around wells with detected spike-in (value > 0 & value < 2)
   g <- g + geom_tile(
     data = transformed_data %>% filter(value > 0 & value < 2 & SpikeinID.expected != SpikeinID.variable),
     aes(x = ExpectedSpikeinID, y = variable),
-    fill = NA, color = "black", size = 0.25
+    fill = NA, color = "black", linewidth = 0.25  # Updated to linewidth
   )
 
   return(g)
 }
-
 
 # This is a helper function for the functions below. It will create
 # a matrix that represents a plate, and plot the metric value for each well
@@ -423,7 +429,7 @@ for (plate_name in plates) {
   # Print the plate heatmap and start a new page
   results <- plot_spikein_detection_plate_heatmap(melted_data, expected_data, spikein_info, plate_name, border_threshold=args$contamination_threshold)
   print(results$graphic)  # Print the plate graphic
-  
+
   # Check if there are contaminated samples for this plate
   if (length(results$contaminated_samples) > 0) {
     for (sample_id in results$contaminated_samples) {
@@ -435,7 +441,7 @@ for (plate_name in plates) {
       print(result_list$plate_graphic)  # Print the sample graphic
     }
   }
-  
+
   # Start a new page for the next plate
   grid::grid.newpage()
 }

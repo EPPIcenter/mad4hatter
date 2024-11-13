@@ -3,7 +3,7 @@
 # Initialize default values
 SPIKEIN_CSV=""
 DEMUX_DIR=""
-OUTPUT_DIR=""
+OUTPUT_DIR="spikein_counts"
 THREADS=4
 
 # Parse command-line options
@@ -29,6 +29,7 @@ FINAL_COUNTS="${OUTPUT_DIR}/${SAMPLE}_final_spikein_counts.csv"
 MULTI_MAP_COUNTS="${OUTPUT_DIR}/${SAMPLE}_multi_map_spikein_counts.csv"
 
 # Ensure output directory exists
+echo "Creating directory ${OUTPUT_DIR}..."
 mkdir -p "${OUTPUT_DIR}"
 
 # Header for the consolidated counts file

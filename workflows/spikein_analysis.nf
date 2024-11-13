@@ -8,12 +8,11 @@ include { CREATE_SPIKEIN_TABLE } from '../modules/local/create_spikein_table.nf'
 workflow SPIKEIN_ANALYSIS {
 
   take:
-  amplicon_info
   unknown_fastqs_ch
 
   main:
 
-  CREATE_PRIMER_FILES(amplicon_info)
+  CREATE_PRIMER_FILES(params.primers_csv)
 
   // demutltiplex spikeins
   SPIKEIN_TRIM(
@@ -33,7 +32,7 @@ workflow SPIKEIN_ANALYSIS {
   )
 
   // create a spikein table
-  CREATE_SPIKEIN_TABLE(
-    SPIKEIN_TRIM.out.spikeins_demultiplexed.collect()
-  )
+  // CREATE_SPIKEIN_TABLE(
+  //   SPIKEIN_TRIM.out.spikeins_demultiplexed.collect()
+  // )
 }

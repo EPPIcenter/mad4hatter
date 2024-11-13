@@ -23,7 +23,7 @@ process GET_SPIKEIN_COUNTS {
     bash get-counts.sh \
         -c ${params.spikein_csv} \
         -d ${demultiplexed_spikeins_fastqs} \
-        -o 'spikein_counts' \
+        -o "spikein_counts" \
         -t ${task.cpus}
     """
 }

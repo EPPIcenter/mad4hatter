@@ -48,13 +48,12 @@ workflow QUALITY_CONTROL {
     // Detect spikeins and create QC plots
     run_spikein_routine = \
         params.expected_spikein &&
-        params.spikein_info
+        params.spikein_info &&
+        params.spikein_csv &&
+        params.primers_csv
 
     if (run_spikein_routine) {
-        SPIKEIN_ANALYSIS(
-            amplicon_info,
-            unknown_fastqs
-        )
+        SPIKEIN_ANALYSIS(unknown_fastqs)
     }
 
     // Reporting
