@@ -53,7 +53,10 @@ workflow QUALITY_CONTROL {
         params.primers_csv
 
     if (run_spikein_routine) {
-        SPIKEIN_ANALYSIS(unknown_fastqs)
+        SPIKEIN_ANALYSIS(
+            unknown_fastqs,
+            alleledata
+        )
     }
 
     // Reporting

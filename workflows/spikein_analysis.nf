@@ -9,6 +9,7 @@ workflow SPIKEIN_ANALYSIS {
 
   take:
   unknown_fastqs_ch
+  alleledata_ch
 
   main:
 
@@ -26,9 +27,13 @@ workflow SPIKEIN_ANALYSIS {
     SPIKEIN_TRIM.out.spikeins_demultiplexed
   )
 
+  // Rf. https://nextflow-io.github.io/patterns/optional-input/
+  alleledata = alleledata_ch == null ? file("NO_FILE") : alleledata_ch
+
   // plot the spikein counts in a heatmap
   PLOT_SPIKEIN_COUNTS(
-    GET_SPIKEIN_COUNTS.out.spikein_counts.collect()
+    GET_SPIKEIN_COUNTS.out.spikein_counts.collect(),
+    alleledata,
   )
 
   // create a spikein table
