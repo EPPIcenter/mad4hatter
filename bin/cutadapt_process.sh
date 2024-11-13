@@ -138,6 +138,7 @@ cutadapt \
     ${no_adapter_dimers}/${sample_id}_filtered_R2.fastq.gz > /dev/null
 
 
+# Rf. https://github.com/marcelm/cutadapt/issues/692
 for file in "${trimmed_demuxed_fastqs1}"/*"${sample_id}"_trimmed_R1.fastq.gz; do
     trimmed1=$(basename "$file" | sed 's/_trimmed_R1.fastq.gz//')
     echo "$trimmed1"
