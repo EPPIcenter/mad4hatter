@@ -10,7 +10,7 @@ parser <- ArgumentParser()
 parser$add_argument("--input", type = "character", nargs="+", help = "Input Spikein Count CSV file of all samples. Columns are SampleID, SpikeinID and Count.")
 parser$add_argument("--expected", type = "character", help = "CSV containing location information for a SampleID. Each row should contain a SampleID, Plate and Well. Columns are SampleID, Plate and Well.")
 parser$add_argument("--spikein-info", type = "character", help = "CSV containing what spike-in is expected at which location. Columns are SpikeinID and Well.")
-parser$add_argument("--alleledata", type = "character", help = "CSV containing allele data for each sample. Columns are SampleID, Locus, ASV, Reads, and PseudoCIGAR")
+parser$add_argument("--amplicon-coverage", type = "character", help = "CSV containing allele data for each sample. Columns are SampleID, Locus, Reads.")
 parser$add_argument("--output", type = "character", help = "Output PDF Report file.")
 parser$add_argument("--contamination-threshold", type = "numeric", default = 1, help = "Threshold for contamination detection")
 
@@ -450,12 +450,18 @@ plot_contamination_origin_by_sample <- function(melted_data, expected_data, spik
 args <- parser$parse_args()
 
 # TESTDATA
-# args <- list()
+args <- list()
 # args$input <- "~/Documents/contamination_case.csv"
 # args$expected <- "~/Documents/expected_data.csv"
 # args$spikein_info <- "~/Documents/spikein_info.csv"
 # args$contamination_threshold <- 1
 # args$output <- "~/Documents/contamination_report.pdf"
+
+args$input <- "counts_files1"
+args$expected <- "expected_spikein_demo.csv"
+args$spikein_info <- "spikein_info.csv"
+args$contamination_threshold <- 1
+args$output <- "~/Documents/contamination_report.pdf"
 
 # Load the data
 counts_data <- args$input |> map_dfr(read_csv)
@@ -533,52 +539,88 @@ for (plate_id in plates) {
 # is calculated the follwing way for each sample:
 #
 # (Spike-in reads / Median amplicon reads) * 100
-if (!is.null(args$alleledata)) {
-  if (!file.exists(args$alleledata)) {
+
+setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/46/e4240502c5ae04a72746a6b2adc08f")
+args<-list()
+args$amplicon_coverage<-"amplicon_coverage_postprocessed.txt"
+
+if (!is.null(args$amplicon_coverage)) {
+  if (!file.exists(args$amplicon_coverage)) {
     stop("The allele data file does not exist.")
   }
   
-  allele_data <- read_table(args$alleledata)
-  if (!all(colnames(allele_data) == c("SampleID", "Locus", "ASV", "Reads", "PseudoCIGAR", "Pool"))) {
-    stop("The allele data file does not contain the correct columns.")
+  amplicon_coverage <- read_table(args$amplicon_coverage)
+  if (!all(c("SampleID", "Locus", "Reads") %in% colnames(amplicon_coverage))) {
+    stop("The sample coverage file does not contain the correct columns.")
   }
   
   # Calculate the ratio of spike-ins compared to the median amplicon reads
   spikein_read_summary_df <- melted_data %>%
     dplyr::group_by(SampleID) %>%
-    dplyr::reframe(Reads = sum(value))
+    dplyr::reframe(SpikeInReads = sum(value))
   
-  alleledata_read_summary_df <- allele_data %>%
-    group_by(SampleID, Locus) %>%
+  amplicons_read_summary_df <- amplicon_coverage %>%
+    group_by(SampleID) %>%
     reframe(MedianReads = median(Reads))
   
   # Merge the two dataframes
   merged_df <- spikein_read_summary_df %>%
-    dplyr::left_join(alleledata_read_summary_df, by = "SampleID") %>%
+    dplyr::left_join(amplicons_read_summary_df, by = "SampleID") %>%
     dplyr::group_by(SampleID) %>%
-    dplyr::mutate(Ratio = (Reads / MedianReads) * 100)
+    dplyr::mutate(Ratio = (SpikeInReads / MedianReads) * 100) %>%
+    dplyr::ungroup()
   
-  # Create the bar plot
-  g <- ggplot(merged_df, aes(x = SampleID, y = Ratio)) +
-    geom_bar(stat = "identity", fill = "steelblue") +
-    geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-    theme_minimal(base_size = 8) +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      axis.title.x = element_blank(),
-      axis.title.y = element_text(size = 8),
-      panel.grid = element_blank(),
-      panel.background = element_rect(fill = "white", colour = NA),
-      plot.background = element_rect(fill = "white", colour = NA)
-    ) +
-    labs(y = "Spike-in reads / Median amplicon reads (%)")
+  # Get the well and format it for display
+  merged_df <- merged_df %>%
+    left_join(expected_data, by = "SampleID") %>%
+    select(Well, Ratio) %>%  # Only keep Well and Ratio columns
+    mutate(Ratio = round(Ratio, 2))  # Round Ratio to 2 decimal places
   
-  grid.newpage()
-  # Adjust plot size and print the sample-specific plot
-  pushViewport(viewport(height = 0.8, width = 0.9, y = 0.5, just = "center"))  # Adjust height and center
-  print(g, newpage = FALSE)
-  popViewport()
+  # Sort by Well for clear ordering
+  merged_df <- merged_df %>%
+    arrange(Well)
+  
+  # Define rows per page and number of pages
+  rows_per_page <- 20
+  num_pages <- ceiling(nrow(merged_df) / rows_per_page)
+  
+  # Loop through each page to display the data in chunks
+  for (page in seq_len(num_pages)) {
+    # Subset the data for the current page
+    table_chunk <- merged_df[((page - 1) * rows_per_page + 1):min(page * rows_per_page, nrow(merged_df)), ]
+    
+    # Set the table theme, making the last row bold if it's the summary row on the final page
+    t1 <- if (page == num_pages && nrow(table_chunk) == rows_per_page) {
+      ttheme_default(core = list(
+        fg_params = list(fontface = c(rep("plain", nrow(table_chunk) - 1), "bold")),
+        bg_params = list(fill = c(rep(c("grey95", "grey90"), length.out = nrow(table_chunk) - 1), "grey80"),
+                         alpha = rep(c(1, 0.5), each = nrow(table_chunk)))
+      ))
+    } else {
+      ttheme_default(core = list(
+        fg_params = list(fontface = "plain"),
+        bg_params = list(fill = c("grey95", "grey90"), alpha = 0.5)
+      ))
+    }
+    
+    # Create the table grob without row names
+    table_grob <- tableGrob(table_chunk, rows = NULL, theme = t1)
+    
+    # Start a new page and add title and page number
+    grid.newpage()
+    grid.text(
+      "Ratio of Spike-ins to Median Amplicon Reads",
+      x = 0.5, y = 0.95, gp = gpar(fontsize = 14, fontface = "bold")
+    )
+    grid.text(
+      paste("Page", page, "of", num_pages),
+      x = 0.5, y = 0.92, gp = gpar(fontsize = 10)
+    )
+    
+    # Print the table chunk to the page
+    grid.draw(table_grob)
+  }
 }
 
-# Close the PDF device
+# Close the PDF device if applicable
 dev.off()

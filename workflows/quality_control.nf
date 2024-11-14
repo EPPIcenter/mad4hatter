@@ -55,7 +55,7 @@ workflow QUALITY_CONTROL {
     if (run_spikein_routine) {
         SPIKEIN_ANALYSIS(
             unknown_fastqs,
-            alleledata
+            amplicon_coverage_ch
         )
     }
 

@@ -13,21 +13,18 @@ process PLOT_SPIKEIN_COUNTS {
     path (counts_files, stageAs: "counts_files?")
     path (expected_spikein)
     path (spikein_info)
-    path (alleledata)
+    path (amplicon_coverage)
 
     output:
     path 'contamination_report.pdf', emit: contamination_report
 
     script:
-    // Rf. https://nextflow-io.github.io/patterns/optional-input/
-    def alleledata_table = alleledata.name != "NO_FILE" ? "--alleledata ${alleledata}" : ""
-
     """
     Rscript ${projectDir}/bin/spikein_detection_heatmap.R \
         --input ${counts_files} \
         --expected ${expected_spikein} \
         --spikein-info ${spikein_info} \
         --output contamination_report.pdf \
-        ${alleledata_table}
+        --amplicon-coverage ${amplicon_coverage}
     """
 }
