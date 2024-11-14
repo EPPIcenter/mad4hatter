@@ -15,6 +15,9 @@ workflow SPIKEIN_ANALYSIS {
 
   CREATE_PRIMER_FILES(params.primers_csv)
 
+  expected_spikein_ch = channel.fromPath( params.expected_spikein, checkIfExists: true )
+  spikein_info_ch = channel.fromPath( params.spikein_info, checkIfExists: true )
+
   // demutltiplex spikeins
   SPIKEIN_TRIM(
     CREATE_PRIMER_FILES.out.fwd_primers,
@@ -33,6 +36,8 @@ workflow SPIKEIN_ANALYSIS {
   // plot the spikein counts in a heatmap
   PLOT_SPIKEIN_COUNTS(
     GET_SPIKEIN_COUNTS.out.spikein_counts.collect(),
+    expected_spikein_ch,
+    spikein_info_ch,
     alleledata,
   )
 

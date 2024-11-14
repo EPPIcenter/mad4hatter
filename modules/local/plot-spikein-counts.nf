@@ -11,6 +11,8 @@ process PLOT_SPIKEIN_COUNTS {
 
     input:
     path (counts_files, stageAs: "counts_files?")
+    path (expected_spikein)
+    path (spikein_info)
     path (alleledata)
 
     output:
@@ -23,8 +25,8 @@ process PLOT_SPIKEIN_COUNTS {
     """
     Rscript ${projectDir}/bin/spikein_detection_heatmap.R \
         --input ${counts_files} \
-        --expected ${params.expected_spikein} \
-        --spikein-info ${params.spikein_info} \
+        --expected ${expected_spikein} \
+        --spikein-info ${spikein_info} \
         --output contamination_report.pdf \
         ${alleledata_table}
     """
