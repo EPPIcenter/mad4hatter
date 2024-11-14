@@ -120,6 +120,10 @@ else
     qualfilter="--nextseq-trim=20"
 fi
 
+# Create folder for unknown files
+unknowns_workdir="${trimmed_demuxed_unknown_fastqs}/unknowns"
+test -d $unknowns_workdir || mkdir -p $unknowns_workdir
+
 cutadapt \
     --action=trim \
     -g file:${fwd_primers_file} \
@@ -129,8 +133,8 @@ cutadapt \
     --minimum-length ${cutadapt_minlen} \
     -o ${trimmed_demuxed_fastqs1}/{name}_${sample_id}_trimmed_R1.fastq.gz \
     -p ${trimmed_demuxed_fastqs1}/{name}_${sample_id}_trimmed_R2.fastq.gz \
-    --untrimmed-output ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_R1.fastq.gz \
-    --untrimmed-paired-output ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_R2.fastq.gz \
+    --untrimmed-output ${unknowns_workdir}/${sample_id}_unknown_R1.fastq.gz \
+    --untrimmed-paired-output ${unknowns_workdir}/${sample_id}_unknown_R2.fastq.gz \
     --json=${cutadapt_json} \
     --compression-level=1 \
     --quiet \
@@ -160,8 +164,8 @@ for file in "${trimmed_demuxed_fastqs1}"/*"${sample_id}"_trimmed_R1.fastq.gz; do
         --minimum-length ${cutadapt_minlen} \
         -p ${trimmed_demuxed_fastqs}/${trimmed1}_trimmed_R1.fastq.gz \
         -o ${trimmed_demuxed_fastqs}/${trimmed1}_trimmed_R2.fastq.gz \
-        --untrimmed-output ${trimmed_demuxed_unknown_fastqs}/${trimmed1}_unknown_R1.fastq.gz \
-        --untrimmed-paired-output ${trimmed_demuxed_unknown_fastqs}/${trimmed1}_unknown_R2.fastq.gz \
+        --untrimmed-output ${unknowns_workdir}/${trimmed1}_unknown_R1.fastq.gz \
+        --untrimmed-paired-output ${unknowns_workdir}/${trimmed1}_unknown_R2.fastq.gz \
         --json=${cutadapt_json} \
         --compression-level=1 \
         ${trimmed_demuxed_fastqs1}/${trimmed1}_trimmed_R2.fastq.gz \
@@ -169,6 +173,12 @@ for file in "${trimmed_demuxed_fastqs1}"/*"${sample_id}"_trimmed_R1.fastq.gz; do
 
 done
 
+# Concatenate all unknown R1 and R2 files in sorted order to ensure pairing
+zcat $(ls ${unknowns_workdir}/*_unknown_R1.fastq.gz | sort) | gzip > ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_R1.fastq.gz
+zcat $(ls ${unknowns_workdir}/*_unknown_R2.fastq.gz | sort) | gzip > ${trimmed_demuxed_unknown_fastqs}/${sample_id}_unknown_R2.fastq.gz
+
+# NOTE: Could leave work directories here.
+test -d $unknowns_workdir && rm -rf $unknowns_workdir
 
 # Count reads in each demultiplexed fastq file using zgrep
 amplicon_counts=${sample_id}.AMPLICONsummary.txt
