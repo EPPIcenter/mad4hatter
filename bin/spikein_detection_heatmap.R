@@ -229,9 +229,11 @@ create_plate_matrix_with_contaminant_tracing_for_sampleID <- function(melted_dat
   unexpected_spikein_ids_in_sample_id_well <- unexpected_spikein_ids[
     unexpected_spikein_ids %in% sample_specific_melted_data$variable]
 
-  # Get the wells for the unexpected spike-ins
-  unexpected_wells <- spikein_info$Well[spikein_info$SpikeinID %in% unexpected_spikein_ids_in_sample_id_well]
-
+  # Get the wells that we expect to have sample data in.
+  all_expected_wells <- expected_data %>%
+    filter(Plate == plate_id) %>%
+    pull(Well)
+  
   # Fill the matrix with the proportion of spike-in reads
   # that were found in the `sample_id` well, that should
   # have been found in the `unexpected_wells` well. The metric
@@ -247,7 +249,7 @@ create_plate_matrix_with_contaminant_tracing_for_sampleID <- function(melted_dat
   # Include a table of the unexpected spike-ins in the sample
   unexpected_spikein_table <- NULL
 
-  for (well in unexpected_wells) {
+  for (well in all_expected_wells) {
     spikein_id <- spikein_info$SpikeinID[spikein_info$Well == well]
     count_of_unexpected_spikein_in_sample_id_well <- sample_specific_melted_data$value[
       sample_specific_melted_data$variable == spikein_id]
@@ -258,7 +260,16 @@ create_plate_matrix_with_contaminant_tracing_for_sampleID <- function(melted_dat
     # IMPORTANT: Calculate the metric!
     # 100% means we _only_ had "unexpected" spike-in
     # 0% means we _only_ had "expected" spike-in
-    metric <- (count_of_unexpected_spikein_in_sample_id_well / total_spikein_in_sample_id_well) * 100.
+    # NOTE: Length is checked because we are looking at the count data,
+    # which is dependent on having a reference for every spike-in. If the 
+    # reference does not exist for a spike-in that we are expecting, there
+    # can be a mismatch. For consistency, we should use the expected spike-in
+    # and other validation upfront to make sure that every spike-in ID that will
+    # be used should have a reference. This mismatch is a usage error and 
+    # not a data quality problem.
+    metric <- if (length(count_of_unexpected_spikein_in_sample_id_well) > 0) { 
+      (count_of_unexpected_spikein_in_sample_id_well / total_spikein_in_sample_id_well) * 100.
+    } else { 0. }
 
     # Apply the value to the well in the plate matrix
     plate_matrix[row_id, col_id] <- metric
@@ -450,18 +461,12 @@ plot_contamination_origin_by_sample <- function(melted_data, expected_data, spik
 args <- parser$parse_args()
 
 # TESTDATA
-args <- list()
+# args <- list()
 # args$input <- "~/Documents/contamination_case.csv"
 # args$expected <- "~/Documents/expected_data.csv"
 # args$spikein_info <- "~/Documents/spikein_info.csv"
 # args$contamination_threshold <- 1
 # args$output <- "~/Documents/contamination_report.pdf"
-
-args$input <- "counts_files1"
-args$expected <- "expected_spikein_demo.csv"
-args$spikein_info <- "spikein_info.csv"
-args$contamination_threshold <- 1
-args$output <- "~/Documents/contamination_report.pdf"
 
 # Load the data
 counts_data <- args$input |> map_dfr(read_csv)
@@ -539,11 +544,6 @@ for (plate_id in plates) {
 # is calculated the follwing way for each sample:
 #
 # (Spike-in reads / Median amplicon reads) * 100
-
-setwd("/home/bpalmer/Documents/GitHub/mad4hatter/work/46/e4240502c5ae04a72746a6b2adc08f")
-args<-list()
-args$amplicon_coverage<-"amplicon_coverage_postprocessed.txt"
-
 if (!is.null(args$amplicon_coverage)) {
   if (!file.exists(args$amplicon_coverage)) {
     stop("The allele data file does not exist.")
