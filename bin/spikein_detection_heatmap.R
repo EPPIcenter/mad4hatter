@@ -37,6 +37,12 @@ validate_data <- function(counts_data, expected_data, spikein_info) {
   if (!all(c("SpikeinID", "Well") %in% colnames(spikein_info))) {
     stop("The spikein info does not contain the correct columns.")
   }
+
+  # Make sure that the expected data and sample data have the same SampleID's
+  if (!setequal(expected_data$SampleID, counts_data$SampleID)) {
+    warning("The expected data contains SampleID's that are not in the spikein count data.")
+  }
+
 }
 
 melt_data <- function(counts_data) {
@@ -302,7 +308,7 @@ plot_spikein_detection_plate_heatmap <- function(melted_data, expected_data, spi
   results <- create_plate_matrix_with_metric_value(melted_data, expected_data, spikein_info, plate_id)
   unexpected_count <- results$unexpected_count
   plate_matrix <- results$plate_matrix
-  
+
   # Transform the plate_matrix into a dataframe to plot
   plate_df <- as_tibble(plate_matrix)
   plate_df$row <- rownames(plate_matrix)
@@ -315,7 +321,7 @@ plot_spikein_detection_plate_heatmap <- function(melted_data, expected_data, spi
     pivot_longer(cols = -row, names_to = "col", values_to = "value") %>%
     mutate(row = factor(row, levels = rev(LETTERS[1:8])),
            col = factor(col, levels = str_pad(1:12, 2, pad = "0")))
-  
+
   # Merge in counts data for unexpected spikeins
   # Assuming 'unexpected_spikein_table' contains `Well` and `Count` columns
   count_labels <- unexpected_count %>%
@@ -402,8 +408,8 @@ plot_contamination_origin_by_sample <- function(melted_data, expected_data, spik
     mutate(row = factor(row, levels = rev(LETTERS[1:8])),
            col = factor(col, levels = str_pad(1:12, 2, pad = "0")),
            well = paste0(row, col))
-  
-  
+
+
   # Merge in counts data for unexpected spikeins
   # Assuming 'unexpected_spikein_table' contains `Well` and `Count` columns
   count_labels <- unexpected_spikein_table %>%
@@ -509,14 +515,14 @@ for (plate_id in plates) {
   # Check if there are contaminated samples for this plate
   if (length(results$contaminated_samples) > 0) {
     for (sample_id in results$contaminated_samples) {
-      
+
       # Make a page for the plot
       grid.newpage()
-      
+
       # Generate the plot for each contaminated sample
       result_list <- plot_contamination_origin_by_sample(melted_data, expected_data, spikein_info, sample_id)
       sample_plot <- result_list$plate_graphic
-      
+
       # Print the title at the top of the page
       sample_id_well <- expected_data$Well[expected_data$SampleID == sample_id]
       grid.text(
@@ -527,7 +533,7 @@ for (plate_id in plates) {
         plate_id,
         x = 0.5, y = 0.92, gp = gpar(fontsize = 12)
       )
-      
+
       # Adjust plot size and print the sample-specific plot
       pushViewport(viewport(height = 0.8, width = 0.9, y = 0.5, just = "center"))  # Adjust height and center
       print(sample_plot, newpage = FALSE)
@@ -548,47 +554,47 @@ if (!is.null(args$amplicon_coverage)) {
   if (!file.exists(args$amplicon_coverage)) {
     stop("The allele data file does not exist.")
   }
-  
+
   amplicon_coverage <- read_table(args$amplicon_coverage)
   if (!all(c("SampleID", "Locus", "Reads") %in% colnames(amplicon_coverage))) {
     stop("The sample coverage file does not contain the correct columns.")
   }
-  
+
   # Calculate the ratio of spike-ins compared to the median amplicon reads
   spikein_read_summary_df <- melted_data %>%
     dplyr::group_by(SampleID) %>%
     dplyr::reframe(SpikeInReads = sum(value))
-  
+
   amplicons_read_summary_df <- amplicon_coverage %>%
     group_by(SampleID) %>%
     reframe(MedianReads = median(Reads))
-  
+
   # Merge the two dataframes
   merged_df <- spikein_read_summary_df %>%
     dplyr::left_join(amplicons_read_summary_df, by = "SampleID") %>%
     dplyr::group_by(SampleID) %>%
     dplyr::mutate(Ratio = (SpikeInReads / MedianReads) * 100) %>%
     dplyr::ungroup()
-  
+
   # Get the well and format it for display
   merged_df <- merged_df %>%
     left_join(expected_data, by = "SampleID") %>%
     select(Well, Ratio) %>%  # Only keep Well and Ratio columns
     mutate(Ratio = round(Ratio, 2))  # Round Ratio to 2 decimal places
-  
+
   # Sort by Well for clear ordering
   merged_df <- merged_df %>%
     arrange(Well)
-  
+
   # Define rows per page and number of pages
   rows_per_page <- 20
   num_pages <- ceiling(nrow(merged_df) / rows_per_page)
-  
+
   # Loop through each page to display the data in chunks
   for (page in seq_len(num_pages)) {
     # Subset the data for the current page
     table_chunk <- merged_df[((page - 1) * rows_per_page + 1):min(page * rows_per_page, nrow(merged_df)), ]
-    
+
     # Set the table theme, making the last row bold if it's the summary row on the final page
     t1 <- if (page == num_pages && nrow(table_chunk) == rows_per_page) {
       ttheme_default(core = list(
@@ -602,10 +608,10 @@ if (!is.null(args$amplicon_coverage)) {
         bg_params = list(fill = c("grey95", "grey90"), alpha = 0.5)
       ))
     }
-    
+
     # Create the table grob without row names
     table_grob <- tableGrob(table_chunk, rows = NULL, theme = t1)
-    
+
     # Start a new page and add title and page number
     grid.newpage()
     grid.text(
@@ -616,7 +622,7 @@ if (!is.null(args$amplicon_coverage)) {
       paste("Page", page, "of", num_pages),
       x = 0.5, y = 0.92, gp = gpar(fontsize = 10)
     )
-    
+
     # Print the table chunk to the page
     grid.draw(table_grob)
   }

@@ -50,7 +50,7 @@ workflow QUALITY_CONTROL {
         params.expected_spikein &&
         params.spikein_info &&
         params.spikein_csv &&
-        params.primers_csv
+        params.spikein_primers
 
     if (run_spikein_routine) {
         SPIKEIN_ANALYSIS(

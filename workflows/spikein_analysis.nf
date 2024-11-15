@@ -13,7 +13,7 @@ workflow SPIKEIN_ANALYSIS {
 
   main:
 
-  CREATE_PRIMER_FILES(params.primers_csv)
+  CREATE_PRIMER_FILES(params.spikein_primers)
 
   expected_spikein_ch = channel.fromPath( params.expected_spikein, checkIfExists: true )
   spikein_info_ch = channel.fromPath( params.spikein_info, checkIfExists: true )

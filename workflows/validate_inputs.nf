@@ -19,6 +19,9 @@ workflow VALIDATE_INPUTS {
         check_readdir_presence()
         // Check sequencer input
         check_sequencer()
+        // Check spike-in metadata
+        check_spikein_metadata()
+
     } else if (workflow == 'postprocessing') {
         check_denoised_asvs_presence()
     }
@@ -73,3 +76,27 @@ def check_denoised_asvs_presence() {
         exit 1
     }
 }
+
+// Helper function to check if spike-in metadata is
+// available and complete.
+def check_spikein_metadata() {
+
+    // Map parameter names to their values
+    def spikein_metadata_params = [
+        "expected_spikein": params.expected_spikein,
+        "spikein_info": params.spikein_info,
+        "spikein_csv": params.spikein_csv,
+        "spikein_primers": params.spikein_primers
+    ]
+    
+    // Count null values
+    def null_values = spikein_metadata_params.values().count { it == null }
+
+    // If some files are present but others are missing, flag this as an error
+    if (null_values != 4 && null_values != 0) {
+        def missing_files = spikein_metadata_params.findAll { it.value == null }.keySet()
+        log.error "Some spike-in metadata files are missing. Missing files are: ${missing_files.join(',')}"
+        exit 1
+    }
+}
+
