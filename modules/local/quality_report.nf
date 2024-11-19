@@ -5,7 +5,14 @@ process QUALITY_REPORT {
 
   publishDir(
       path: "${params.outDIR}",
-      mode: 'copy'
+      mode: 'copy',
+      pattern: "{sample_coverage|amplicon_coverage}.txt"
+  )
+
+  publishDir(
+      path: "${params.outDIR}/quality_report",
+      mode: 'copy',
+      pattern: 'quality_report/*'
   )
 
   input:

@@ -4,7 +4,7 @@ process PLOT_SPIKEIN_COUNTS {
     label 'process_single'
 
     publishDir(
-        path: "${params.outDIR}/contamination_report",
+        path: "${params.outDIR}/quality_report",
         mode: 'copy',
         pattern: 'contamination_report.pdf'
     )
