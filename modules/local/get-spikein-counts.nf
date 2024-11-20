@@ -12,12 +12,6 @@ process GET_SPIKEIN_COUNTS {
     path ('spikein_counts/*_final_spikein_counts.csv'), emit: spikein_counts
     path ('spikein_counts/*_multi_map_spikein_counts.csv'), emit: multimap
 
-    publishDir(
-        path: "${params.outDIR}/spikein_work",
-        mode: 'copy',
-        glob: '*.{txt,csv}'
-    )
-
     script:
     """
     bash get-counts.sh \

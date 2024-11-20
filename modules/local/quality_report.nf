@@ -6,13 +6,12 @@ process QUALITY_REPORT {
   publishDir(
       path: "${params.outDIR}",
       mode: 'copy',
-      pattern: "{sample_coverage|amplicon_coverage}.txt"
+      pattern: '*_coverage.txt' // Matches both sample_coverage.txt and amplicon_coverage.txt
   )
 
   publishDir(
       path: "${params.outDIR}/quality_report",
-      mode: 'copy',
-      pattern: 'quality_report/*'
+      mode: 'copy'
   )
 
   input:
@@ -21,9 +20,14 @@ process QUALITY_REPORT {
   path (amplicon_info)
   
   output:
-  file ('sample_coverage.txt')
-  file ('amplicon_coverage.txt')
-  file ('quality_report')
+  path ('sample_coverage.txt')
+  path ('amplicon_coverage.txt')
+  path ('amplicon_stats.txt')
+  path ('length_vs_reads.pdf')
+  path ('QCplots.html')
+  path ('QCplots.Rmd')
+  path ('reads_histograms.pdf')
+  path ('swarm_plots.pdf')
 
   shell:
   """
@@ -32,7 +36,7 @@ process QUALITY_REPORT {
   test -f sample_coverage.txt || mv $sample_coverage sample_coverage.txt
   test -f amplicon_coverage.txt || mv $amplicon_coverage amplicon_coverage.txt
 
-  test -d quality_report || mkdir quality_report
-  Rscript ${projectDir}/bin/cutadapt_summaryplots.R amplicon_coverage.txt sample_coverage.txt $amplicon_info quality_report
+  // test -d quality_report || mkdir quality_report
+  Rscript ${projectDir}/bin/cutadapt_summaryplots.R amplicon_coverage.txt sample_coverage.txt $amplicon_info .
   """
 }

@@ -82,7 +82,7 @@ p1=ggplot(data=df, aes(x=Reads+0.1)) +
   theme(axis.title.y = element_text(size = 25))+
   scale_y_log10()
 
-ggsave(file="quality_report/reads_histograms.pdf", width=40, height=60, dpi=300, limitsize = FALSE)
+ggsave(file=file.path(outDIR, "reads_histograms.pdf"), width=40, height=60, dpi=300, limitsize = FALSE)
 
 
 #Boxplot#
@@ -125,7 +125,7 @@ p3=ggplot(df2) +
         legend.title = element_text(size = 25), 
         legend.position="bottom")
 
-ggsave(file="quality_report/swarm_plots.pdf", width=60, height=160, dpi=300, limitsize=FALSE)
+ggsave(file=file.path(outDIR, "swarm_plots.pdf"), width=60, height=160, dpi=300, limitsize=FALSE)
 
 #Length vs. Reads#
 df1=df %>% left_join(ampdata,by = c("Locus" = "amplicon")) %>% select(SampleID,Locus,Reads,ampInsert_length,Pool) %>% data.frame()
@@ -145,7 +145,7 @@ p4=ggplot(df1,aes(x=ampInsert_length,y=Reads+0.1,color = Pool)) + ggtitle("Locus
         legend.title = element_text(size = 25), 
         legend.position="bottom") 
 
-ggsave(file="quality_report/length_vs_reads.pdf", width=60, height=200, dpi=300, limitsize=FALSE)
+ggsave(file=file.path(outDIR, "length_vs_reads.pdf"), width=60, height=200, dpi=300, limitsize=FALSE)
 
 #pdf(paste(outDIR,"/QCplots.pdf",sep=""), onefile = TRUE)
 #grid.arrange(p1,p2a,p2b,p3,p4)

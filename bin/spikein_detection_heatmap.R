@@ -492,23 +492,6 @@ plot_contamination_origin_by_sample <- function(melted_data, expected_data, spik
 # Parsing arguments
 args <- parser$parse_args()
 
-# TESTDATA
-# setwd("~/Documents/GitHub/mad4hatter/arwen_plot/58e9fa3fb0c86b2485964de6bb7089")
-# args <- list()
-# args$input <- "~/Documents/contamination_case.csv"
-# args$expected <- "~/Documents/expected_data.csv"
-# args$spikein_info <- "~/Documents/spikein_info.csv"
-# args$contamination_threshold <- 1
-# args$output <- "~/Documents/contamination_report.pdf"
-# args <- list()
-# args$input <- list.files(pattern = "counts_files*")
-# args$expected <- "expected_spikein_demo.csv"
-# args$spikein_info <- "spikein_info.csv"
-# args$contamination_threshold <- 1
-# args$output <- "~/Documents/contamination_report.pdf"
-# args$amplicon_coverage <- "amplicon_coverage.txt"
-
-
 # Load the data
 counts_data <- args$input |> map_dfr(read_csv)
 expected_data <- read_csv(args$expected)
