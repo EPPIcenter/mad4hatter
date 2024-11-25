@@ -9,6 +9,12 @@ process PLOT_SPIKEIN_COUNTS {
         pattern: 'contamination_report.pdf'
     )
 
+    publishDir(
+        path: "${params.outDIR}/quality_report",
+        mode: 'copy',
+        pattern: 'spikein_amplicon_ratio.csv'
+    )
+
     input:
     path (counts_files, stageAs: "counts_files?")
     path (expected_spikein)
@@ -17,6 +23,7 @@ process PLOT_SPIKEIN_COUNTS {
 
     output:
     path 'contamination_report.pdf', emit: contamination_report
+    path 'spikein_amplicon_ratio.csv', emit: spikein_amplicon_ratio
 
     script:
     """

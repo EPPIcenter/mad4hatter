@@ -111,8 +111,8 @@ plot_spikein_detection_heatmap_by_sampleid <- function(melted_data, expected_dat
       na.value = "white"
     ) +
     labs(
-      x = "SDSI 1 \U2192 96\nExpected Synthetic DNA spike-in",  # Use Unicode right arrow (→)
-      y = "Synthetic DNA spike-in\nSDSI 96 \U2192 1"  # Use Unicode right arrow (→)
+      x = expression(atop("SDSI 1" %->% 96, "Expected Synthetic DNA spike-in")),  # Multi-line x-axis label
+      y = expression(atop("Synthetic DNA spike-in", "SDSI 96" %->% 1))  # Multi-line y-axis label
     ) +
     theme_minimal(base_size = 8) +
     theme(
@@ -128,8 +128,8 @@ plot_spikein_detection_heatmap_by_sampleid <- function(melted_data, expected_dat
       panel.grid = element_blank(),
       panel.background = element_rect(fill = "white", colour = NA),
       plot.background = element_rect(fill = "white", colour = NA),
-      axis.title.x = element_text(vjust = -1),
-      axis.title.y = element_text(angle = 90, vjust = 1),
+      axis.title.x = element_text(vjust = -1.5),
+      axis.title.y = element_text(angle = 90, vjust = 1.5),
       legend.key.size = unit(0.5, "cm")
     ) +
     guides(
@@ -145,7 +145,7 @@ plot_spikein_detection_heatmap_by_sampleid <- function(melted_data, expected_dat
   # Add a black border around wells with detected spikein (value > 0 & value < 2)
   # IMPORTANT: This should be tun-able.
   g <- g + geom_tile(
-    data = transformed_data %>% filter(value > 0 & value < 2 & SpikeinID.expected != SpikeinID.variable),
+    data = transformed_data %>% filter(value > 0 & value < 10 & SpikeinID.expected != SpikeinID.variable),
     aes(x = ExpectedSpikeinID, y = variable),
     fill = NA, color = "black", size = 0.25
   )
@@ -225,9 +225,6 @@ create_plate_matrix_with_contaminant_tracing_for_sampleID <- function(melted_dat
   rownames(plate_matrix) <- LETTERS[1:8]
   colnames(plate_matrix) <- str_pad(1:12, 2, pad = "0")
 
-  # Track whether there was expected or unexpected spikein at this well.
-  unexpected_count <- list()
-
   # Get the plate and well for the sample
   plate_id <- expected_data$Plate[expected_data$SampleID == sample_id]
   sample_id_well <- expected_data$Well[expected_data$SampleID == sample_id]
@@ -251,9 +248,6 @@ create_plate_matrix_with_contaminant_tracing_for_sampleID <- function(melted_dat
   # have been found in the `unexpected_wells` well. The metric
   # should summarize the proportion of spike-in from the wrong
   # well that made up the amount of spike-in in the `sample_id` well.
-  #
-  # The metric should be the proportion of the spike-in reads that
-  # made up the total unexpected spike-in reads in the `sample_id` well.
   sample_specific_melted_data_unexpected <- sample_specific_melted_data %>%
     filter(variable %in% unexpected_spikein_ids_in_sample_id_well)
   total_spikein_in_sample_id_well <- sum(sample_specific_melted_data_unexpected$value)
@@ -293,7 +287,7 @@ create_plate_matrix_with_contaminant_tracing_for_sampleID <- function(melted_dat
     )
   }
 
-  # Add a -1 where the sample id well is located
+  # Add a -Inf where the sample id well is located
   row_id <- match(substr(sample_id_well, 1, 1), rownames(plate_matrix))
   col_id <- match(substr(sample_id_well, 2, 3), colnames(plate_matrix))
   plate_matrix[row_id, col_id] <- -Inf
@@ -497,7 +491,7 @@ counts_data <- args$input |> map_dfr(read_csv)
 expected_data <- read_csv(args$expected)
 spikein_info <- read_csv(args$spikein_info)
 
-# Write concatenated file
+# Validate and melt the data
 validate_data(counts_data, expected_data, spikein_info)
 melted_data <- melt_data(counts_data)
 
@@ -604,38 +598,8 @@ if (!is.null(args$amplicon_coverage)) {
   merged_df <- merged_df %>%
     arrange(Well)
 
-  # Define rows per page and number of pages
-  rows_per_page <- 20
-  num_pages <- ceiling(nrow(merged_df) / rows_per_page)
-
-  # Loop through each page to display the data in chunks
-  for (page in seq_len(num_pages)) {
-
-    # Subset the data for the current page
-    table_chunk <- merged_df[((page - 1) * rows_per_page + 1):min(page * rows_per_page, nrow(merged_df)), ]
-
-    t1 <- ttheme_default(core = list(
-      fg_params = list(fontface = "plain"),
-      bg_params = list(fill = c("grey95", "grey90"), alpha = 0.5)
-    ))
-
-    # Create the table grob without row names
-    table_grob <- tableGrob(table_chunk, rows = NULL, theme = t1)
-
-    # Start a new page and add title and page number
-    grid.newpage()
-    grid.text(
-      "Ratio of Spike-ins to Median Amplicon Reads",
-      x = 0.5, y = 0.95, gp = gpar(fontsize = 14, fontface = "bold")
-    )
-    grid.text(
-      paste("Page", page, "of", num_pages),
-      x = 0.5, y = 0.92, gp = gpar(fontsize = 10)
-    )
-
-    # Print the table chunk to the page
-    grid.draw(table_grob)
-  }
+  # Output a CSV of the merged_df with the Well and Ratio
+  write_csv(merged_df, "spikein_amplicon_ratio.csv")
 }
 
 # Close the PDF device if applicable
