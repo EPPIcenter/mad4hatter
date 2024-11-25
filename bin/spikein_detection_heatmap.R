@@ -590,9 +590,9 @@ if (!is.null(args$amplicon_coverage)) {
 
   # Get the well and format it for display
   merged_df <- expected_data %>%
-    left_join(merged_df, by = "SampleID") %>%
-    select(Well, Ratio) %>%  # Only keep Well and Ratio columns
-    mutate(Ratio = round(Ratio, 2))  # Round Ratio to 2 decimal places
+    dplyr::left_join(merged_df, by = "SampleID") %>%
+    dplyr::select(Plate, Well, Ratio) %>%  # Only keep Plate, Well and Ratio columns
+    dplyr::mutate(Ratio = round(Ratio, 2))  # Round Ratio to 2 decimal places
 
   # Sort by Well for clear ordering
   merged_df <- merged_df %>%
