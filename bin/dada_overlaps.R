@@ -92,8 +92,7 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 0,
-    returnRejects = TRUE
+    maxMismatch = 0
   )
 
   mergers.no.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
@@ -102,8 +101,7 @@ if (args$concat_non_overlaps) {
     filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
     verbose = TRUE,
     justConcatenate = TRUE,
-    maxMismatch = 0,
-    returnRejects = TRUE
+    maxMismatch = 0
   )
 
 
@@ -125,11 +123,11 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 0,
-    returnRejects = TRUE
+    maxMismatch = 0
   )
 }
 
+saveRDS(file = "filtered.RDS", out)
 saveRDS(file = "mergers.RDS", mergers)
 saveRDS(file = "dadaFs.RDS", dadaFs)
 saveRDS(file = "dadaRs.RDS", dadaRs)
