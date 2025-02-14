@@ -91,8 +91,8 @@ sample_id=$(basename "$forward_read" | sed 's/_R[12].*//')
 # Remove all adapter dimers
 cutadapt \
     --action=trim \
-    -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC \
-    -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT \
+    -a GCAGCGTCAGATGTGTATAAGAGACAG \
+    -A TGGGCTCGGAGATGTGTATAAGAGACAG \
     -e ${allowed_errors} \
     --no-indels \
     --minimum-length ${cutadapt_minlen} \
