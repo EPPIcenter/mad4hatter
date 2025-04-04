@@ -238,10 +238,8 @@ create_plate_matrix_with_contaminant_tracing_for_sampleID <- function(melted_dat
   unexpected_spikein_ids_in_sample_id_well <- unexpected_spikein_ids[
     unexpected_spikein_ids %in% sample_specific_melted_data$variable]
 
-  # Get the wells that we expect to have sample data in.
-  all_expected_wells <- expected_data %>%
-    filter(Plate == plate_id) %>%
-    pull(Well)
+  # Get the wells for the unexpected spike-ins
+  unexpected_wells <- spikein_info$Well[spikein_info$SpikeinID %in% unexpected_spikein_ids_in_sample_id_well]
 
   # Fill the matrix with the proportion of spike-in reads
   # that were found in the `sample_id` well, that should
@@ -255,7 +253,7 @@ create_plate_matrix_with_contaminant_tracing_for_sampleID <- function(melted_dat
   # Include a table of the unexpected spike-ins in the sample
   unexpected_spikein_table <- NULL
 
-  for (well in all_expected_wells) {
+  for (well in unexpected_wells) {
     spikein_id <- spikein_info$SpikeinID[spikein_info$Well == well]
     count_of_unexpected_spikein_in_sample_id_well <- sample_specific_melted_data$value[
       sample_specific_melted_data$variable == spikein_id]
