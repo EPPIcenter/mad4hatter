@@ -36,11 +36,7 @@ final_seqs <- foreach (idx = 1:nrow(amplicon_info), .combine = "c") %dopar% {
 
   rs <- Biostrings::subseq(s, start = start + 1, end = end - 1)
 
-  names(rs) <- paste(c(chr,
-                       info[["amplicon_start"]],
-                       info[["amplicon_end"]],
-                       pool), collapse = "-")
-
+  names(rs) <- info[["amplicon"]]
   as.character(rs[1])
 }
 
