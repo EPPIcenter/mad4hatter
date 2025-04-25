@@ -40,7 +40,7 @@ out <- filterAndTrim(
   fnFs, filtFs, fnRs, filtRs,
   maxN = 0, maxEE = c(args$maxEE, args$maxEE), truncQ = c(5, 5), rm.phix = TRUE,
   compress = TRUE, multithread = args$cores,
-  trimRight = c(0, 0), trimLeft = 1, minLen = 75, matchIDs = TRUE
+  trimRight = c(0, 0), trimLeft = 1, minLen = 75
 )
 
 filtered_Fs <- filtFs[out[, 2] > 0]
@@ -60,15 +60,15 @@ dadaFs <- dada(filtered_Fs, err = errF, selfConsist = args$self_consist, multith
 dadaRs <- dada(filtered_Rs, err = errR, selfConsist = args$self_consist, multithread = args$cores, verbose = FALSE, pool = pool, BAND_SIZE = args$band_size, OMEGA_A = args$omega_a)
 
 if (args$concat_non_overlaps) {
+  amplicons <- read.table(args$ampliconFILE, header = TRUE)$amplicon
+
   amplicon.info <- data.frame(
     names = sapply(strsplit(names(dadaFs), "_trimmed"), "[", 1)
-  )
-
-  amplicon.info <- amplicon.info %>%
-    mutate(names = sapply(str_split(names, "_S(\\d+)"), head, 1)) %>%
-    mutate(amplicon = unlist(lapply(str_split(names, "_"), function(x) {
-      paste(x[1:3], collapse = "_")
-    }))) %>%
+  )%>%
+  mutate(amplicon = sapply(names, function(nm) {
+    match <- amplicons[str_detect(nm, paste0("^", amplicons))]
+    if (length(match) > 0) match[1] else NA_character_
+  })) %>%
     inner_join(
       read.table(args$ampliconFILE, header = T) %>%
         select(amplicon, ampInsert_length),
