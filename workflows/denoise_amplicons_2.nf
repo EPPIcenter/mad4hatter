@@ -9,7 +9,7 @@
 include { ALIGN_TO_REFERENCE } from '../modules/local/align_to_reference.nf'
 include { MASK_LOW_COMPLEXITY_REGIONS } from '../subworkflows/local/mask_low_complexity_regions.nf'
 include { PREPARE_REFERENCE_SEQUENCES } from '../subworkflows/local/prepare_reference_sequences.nf'
-include { BUILD_PSEUDOCIGAR } from '../modules/local/build_pseudocigar.nf'
+include { BUILD_PSEUDOCIGAR; BUILD_PSEUDOCIGAR as BUILD_MASKED_PSEUDOCIGAR } from '../modules/local/build_pseudocigar.nf'
 include { FILTER_ASVS } from '../modules/local/filter_asvs.nf'
 include { COLLAPSE_CONCATENATED_READS } from '../modules/local/collapse_concatenated_reads.nf'
 
@@ -38,22 +38,28 @@ workflow DENOISE_AMPLICONS_2 {
   FILTER_ASVS(
     ALIGN_TO_REFERENCE.out.alignments
   )
-  alignment_table_ch = ALIGN_TO_REFERENCE.out.alignments
-
-  if (params.masked_fasta == null && (params.mask_tandem_repeats || params.mask_homopolymers)) {
-    MASK_LOW_COMPLEXITY_REGIONS(
-      reference,
-      FILTER_ASVS.out.filtered_alignments_ch
-    )
-    alignment_table_ch = MASK_LOW_COMPLEXITY_REGIONS.out.masked_alignments
-  } 
-
-  BUILD_PSEUDOCIGAR(
+  alignment_table_ch = FILTER_ASVS.out.filtered_alignments_ch
+  
+  BUILD_PSEUDOCIGAR( 
     alignment_table_ch
   )
+  // def results_ch = BUILD_PSEUDOCIGAR.out.pseudocigar
+
+  // if (params.masked_fasta == null && (params.mask_tandem_repeats || params.mask_homopolymers)) {
+  //   MASK_LOW_COMPLEXITY_REGIONS(
+  //     reference,
+  //     FILTER_ASVS.out.filtered_alignments_ch
+  //   )
+  //   masked_alignment_table_ch = MASK_LOW_COMPLEXITY_REGIONS.out.masked_alignments
+  //   BUILD_MASKED_PSEUDOCIGAR( 
+  //     masked_alignment_table_ch
+  //   )
+  //   def masked_results_ch = BUILD_MASKED_PSEUDOCIGAR.out.pseudocigar
+  // } 
   
   emit:
-  results_ch = BUILD_PSEUDOCIGAR.out.pseudocigar
+  unmasked_pseudocigar_ch = BUILD_PSEUDOCIGAR.out.pseudocigar
+  // masked_pseudocigar_ch = BUILD_MASKED_PSEUDOCIGAR.out.pseudocigar
   reference_ch = reference
   aligned_asv_table = alignment_table_ch
 }
