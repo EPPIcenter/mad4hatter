@@ -22,6 +22,7 @@ process DADA2_ANALYSIS {
   val omega_a
   val maxEE
   val just_concatenate
+  val matchIDs
 
   output:
   path 'dada2.clusters.txt', emit: dada2_clusters
@@ -38,6 +39,7 @@ process DADA2_ANALYSIS {
     --band-size ${params.band_size} \
     --omega-a ${params.omega_a} \
     --maxEE ${params.maxEE} \
+    --matchIDs ${matchIDs} \
     --cores ${task.cpus} \
     ${concatenate} 
   """

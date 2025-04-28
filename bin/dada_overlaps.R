@@ -16,8 +16,8 @@ parser$add_argument("--use-quals", type = "character", default = "false")
 parser$add_argument("--maxEE", type = "integer", default = 3)
 parser$add_argument("--self-consist", action = "store_true")
 parser$add_argument("--omega-c", type = "double", default = 1e-40)
+parser$add_argument("--matchIDs", type = "logical", default = TRUE)
 parser$add_argument("--cores", type = "integer", default = 1)
-
 
 args <- parser$parse_args()
 print(args)
@@ -40,7 +40,7 @@ out <- filterAndTrim(
   fnFs, filtFs, fnRs, filtRs,
   maxN = 0, maxEE = c(args$maxEE, args$maxEE), truncQ = c(5, 5), rm.phix = TRUE,
   compress = TRUE, multithread = args$cores,
-  trimRight = c(0, 0), trimLeft = 1, minLen = 75, matchIDs = TRUE
+  trimRight = c(0, 0), trimLeft = 1, minLen = 75, matchIDs = args$matchIDs
 )
 
 filtered_Fs <- filtFs[out[, 2] > 0]
