@@ -23,15 +23,15 @@ def build_resmarker_info():
         'GeneID': str}, sep='\t')
 
     data = {'GeneID': [], 'Gene': [], 'CodonID': [], 'chr': [], 'start': [], 'stop': [
-    ], 'strand': [], 'Locus': [], 'amplicon_length': [], 'ampInsert_length': [], 'CodonStart': []}
+    ], 'strand': [], 'Locus': [], 'ampInsert_length': [], 'CodonStart': []}
 
     for _, row in full_resmarker_df.iterrows():
         chr = row.chr
         codon_start = row.start
         codon_stop = row.stop
 
-        panel_overlap = panel_info_df[(panel_info_df.amplicon.str.contains(chr)) & (
-            panel_info_df.ampInsert_start-1 <= codon_start) & (panel_info_df.ampInsert_end >= codon_stop)]
+        panel_overlap = panel_info_df[(panel_info_df.target_id.str.contains(chr)) & (
+            panel_info_df.insert_start <= codon_start) & (panel_info_df.insert_end >= codon_stop)]
         if len(panel_overlap) >= 1:
             for _, overlap_row in panel_overlap.iterrows():
                 data['GeneID'].append(row.GeneID)
@@ -41,10 +41,10 @@ def build_resmarker_info():
                 data['start'].append(row.start)
                 data['stop'].append(row.stop)
                 data['strand'].append(row.strand)
-                data['Locus'].append(overlap_row.amplicon)
-                data['amplicon_length'].append(overlap_row.amplicon_length)
-                data['ampInsert_length'].append(overlap_row.ampInsert_length)
-                codon_start = row.start-(overlap_row.ampInsert_start-1)
+                data['Locus'].append(overlap_row.target_id)
+                # data['amplicon_length'].append(overlap_row.amplicon_length) #calculate
+                data['ampInsert_length'].append(overlap_row.insert_length) 
+                codon_start = row.start-(overlap_row.insert_start) # TODO: change this to be calculated correctly 
                 data['CodonStart'].append(codon_start)
     resmarker_df = pd.DataFrame(data=data)
     resmarker_df.drop_duplicates(inplace=True)

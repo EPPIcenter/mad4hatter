@@ -14,7 +14,6 @@ def parse_args_build_amplicon_info():
                         type=str, default='amplicon_info.tsv')
     return parser.parse_args()
 
-
 def concatenate_tables(paths, pools):
     df_list = []
     for i in range(len(paths)):
@@ -29,10 +28,10 @@ def concatenate_tables(paths, pools):
             df['pool'] = pool
             df_list.append(df)
     concatenated_df = pd.concat(df_list)
-    concatenated_df = concatenated_df.groupby(['amplicon', 'amplicon_start', 'amplicon_end', 'ampInsert_start', 'ampInsert_end', 'rev_primer',
-                                               'amplicon_length', 'ampInsert_length', 'fwd_primer'])['pool'].agg(lambda x: ','.join(x)).reset_index()
-    concatenated_df.sort_values('amplicon', inplace=True)
+    concatenated_df = concatenated_df.groupby(['target_id', 'chrom', 'insert_start', 'insert_end', 'rev_primer','fwd_primer'])['pool'].agg(lambda x: ','.join(x)).reset_index()
+    concatenated_df.sort_values('target_id', inplace=True)
     concatenated_df.reset_index(inplace=True, drop=True)
+    concatenated_df['insert_length'] = concatenated_df.insert_end-(concatenated_df.insert_start+1) #TODO: change this to be calculated correctly 
     return concatenated_df
 
 

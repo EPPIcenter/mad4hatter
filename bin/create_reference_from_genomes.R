@@ -20,26 +20,24 @@ ref_sequences <- Biostrings::readDNAStringSet(args$genome)
 doMC::registerDoMC(cores = args$ncores)
 final_seqs <- foreach (idx = 1:nrow(amplicon_info), .combine = "c") %dopar% {
   info <- amplicon_info[idx, ]
-  split_info <- strsplit(info[["amplicon"]], "-")
-  start <- info[["ampInsert_start"]]
-  end <- info[["ampInsert_end"]]
-  pool <- unlist(split_info)[4]
-  chr <- unlist(split_info)[1]
+  start <- info[["insert_start"]]
+  end <- info[["insert_end"]]
+  chr <- info[["chrom"]]
 
   # 'rs' is the reference amplicon sequence
   # 's' is the sequence to make rs
   s <- ref_sequences[str_detect(names(ref_sequences), chr), ]
+
+  # Error if chromosome not in genome file
   if (length(s) == 0) {
-    print(paste("skipping", chr))
-    return(NULL)
+    stop(paste0(
+      "ERROR: Chromosome '", chr, "' not found in genome file. Please check if the chromosome names match."
+    ))
   }
 
-  rs <- Biostrings::subseq(s, start = start + 1, end = end - 1)
+  rs <- Biostrings::subseq(s, start = start + 2, end = end - 1) # TODO: Add in option to say how much you want to trim left and right by 
 
-  names(rs) <- paste(c(chr,
-                       info[["amplicon_start"]],
-                       info[["amplicon_end"]],
-                       pool), collapse = "-")
+  names(rs) <- names(rs) <- info[["target_id"]]
 
   as.character(rs[1])
 }

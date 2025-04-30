@@ -128,8 +128,8 @@ p3=ggplot(df2) +
 ggsave(file="quality_report/swarm_plots.pdf", width=60, height=160, dpi=300, limitsize=FALSE)
 
 #Length vs. Reads#
-df1=df %>% left_join(ampdata,by = c("Locus" = "amplicon")) %>% select(SampleID,Locus,Reads,ampInsert_length,Pool) %>% data.frame()
-p4=ggplot(df1,aes(x=ampInsert_length,y=Reads+0.1,color = Pool)) + ggtitle("Locus Length vs. Reads") + 
+df1=df %>% left_join(ampdata,by = c("Locus" = "target_id")) %>% select(SampleID,Locus,Reads,insert_length,Pool) %>% data.frame()
+p4=ggplot(df1,aes(x=insert_length,y=Reads+0.1,color = Pool)) + ggtitle("Locus Length vs. Reads") + 
   geom_point(alpha=0.9,size=2.5) + 
   scale_y_log10()+
   xlab("Locus Insert Length") + 

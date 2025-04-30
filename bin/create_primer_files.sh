@@ -60,12 +60,12 @@ trap "rm -f '$adapters'" EXIT
 # Parse the amplicon_info file and create adapters.txt
 cat $amplicon_info | awk 'NR==1 {
   for (i = 1; i <= NF; i++) {
-    if ( $i == "amplicon" ) {amplicon=i}
+    if ( $i == "target_id" ) {target_id=i}
     if ( $i == "fwd_primer" ) {fwd_primer=i}
     if ( $i == "rev_primer" ) {rev_primer=i}
   }
 } NR>=1 {
-  print $amplicon,$fwd_primer,$rev_primer
+  print $target_id,$fwd_primer,$rev_primer
 }' > ${adapters}
 
 # Check if adapters.txt has 3 fields.
