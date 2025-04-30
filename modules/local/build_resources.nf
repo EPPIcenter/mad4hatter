@@ -8,6 +8,8 @@ process BUILD_AMPLICON_INFO {
         path: "${params.outDIR}/panel_information",
         mode: 'copy'
     )
+    publishDir(path: "${params.outDIR}/panel_information", mode: 'copy')
+    publishDir(path: "${params.outDIR}/standard_outputs/", mode: 'copy')
 
     output:
         path "${amplicon_info_output}", emit: amplicon_info

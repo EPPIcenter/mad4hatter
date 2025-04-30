@@ -25,7 +25,7 @@ workflow GENERATE_AMPLICON_INFO {
     def amplicon_info_paths_str = amplicon_info_paths.join(' ')
     def selectedPools_str = selectedPools.join(' ')
 
-    BUILD_AMPLICON_INFO(selectedPools_str, amplicon_info_paths_str, "amplicon_info.tsv")
+    BUILD_AMPLICON_INFO(selectedPools_str, amplicon_info_paths_str, "panel_info.tsv")
 
     // Emit the amplicon_info channel
     emit: amplicon_info_ch = BUILD_AMPLICON_INFO.out.amplicon_info
