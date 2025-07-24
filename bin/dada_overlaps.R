@@ -40,7 +40,7 @@ out <- filterAndTrim(
   fnFs, filtFs, fnRs, filtRs,
   maxN = 0, maxEE = c(args$maxEE, args$maxEE), truncQ = c(5, 5), rm.phix = TRUE,
   compress = TRUE, multithread = args$cores,
-  trimRight = c(0, 0), trimLeft = 1, minLen = 75, matchIDs = TRUE
+  trimRight = c(0, 0), trimLeft = 1, minLen = 75, matchIDs = FALSE
 )
 
 filtered_Fs <- filtFs[out[, 2] > 0]
