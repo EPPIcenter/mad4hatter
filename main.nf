@@ -184,10 +184,11 @@ workflow.onComplete {
 def record_params() {
     
     def output = new File("${params.outDIR}/run/parameters.tsv")
-
+    output.append("{\n")
     params.each{ k, v -> 
-        output.append("${k}\t${v}\n")
+        output.append("\t${k}:\t${v},\n")
     }
+    output.append("}\n")
 }
 
 
