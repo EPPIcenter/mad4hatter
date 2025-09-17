@@ -20,3 +20,11 @@ RUN Rscript -e 'if (!require("BiocManager", quietly = TRUE)) { install.packages(
 RUN Rscript -e 'BiocManager::install("dada2", version = "3.17", ask = FALSE)'
 RUN Rscript -e 'BiocManager::install("muscle", version = "3.17", ask = FALSE)'
 RUN Rscript -e 'BiocManager::install("BSgenome", version = "3.17", ask = FALSE)'
+
+# Add scripts
+COPY bin/ /opt/mad4hatter/bin/
+RUN chmod +x /opt/mad4hatter/bin/*
+ENV PATH="/opt/mad4hatter/bin:${PATH}"
+
+# Add panel information
+COPY panel_information/ /opt/mad4hatter/panel_information/
