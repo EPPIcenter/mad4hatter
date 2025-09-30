@@ -6,11 +6,11 @@ library(argparse)
 library(foreach)
 library(doMC)
 
-parser <- ArgumentParser(description='Create reference sequences using amplicon table')
-parser$add_argument('--output', type="character", help='name of fasta to output', required = TRUE)
-parser$add_argument('--ampliconFILE', type="character", required = TRUE)
-parser$add_argument('--genome', type="character", required = TRUE)
-parser$add_argument('--ncores', type="integer", default=1)
+parser <- ArgumentParser(description = "Create reference sequences using amplicon table")
+parser$add_argument("--output", type = "character", help = "name of fasta to output", required = TRUE)
+parser$add_argument("--ampliconFILE", type = "character", required = TRUE)
+parser$add_argument("--genome", type = "character", required = TRUE)
+parser$add_argument("--ncores", type = "integer", default = 1)
 
 args <- parser$parse_args()
 
@@ -18,12 +18,11 @@ amplicon_info <- read.table(args$ampliconFILE, header = TRUE)
 ref_sequences <- Biostrings::readDNAStringSet(args$genome)
 
 doMC::registerDoMC(cores = args$ncores)
-final_seqs <- foreach (idx = 1:nrow(amplicon_info), .combine = "c") %dopar% {
+final_seqs <- foreach(idx = 1:nrow(amplicon_info), .combine = "c") %dopar% {
   info <- amplicon_info[idx, ]
   split_info <- strsplit(info[["amplicon"]], "-")
   start <- info[["ampInsert_start"]]
   end <- info[["ampInsert_end"]]
-  pool <- unlist(split_info)[4]
   chr <- unlist(split_info)[1]
 
   # 'rs' is the reference amplicon sequence
@@ -36,10 +35,11 @@ final_seqs <- foreach (idx = 1:nrow(amplicon_info), .combine = "c") %dopar% {
 
   rs <- Biostrings::subseq(s, start = start + 1, end = end - 1)
 
-  names(rs) <- paste(c(chr,
-                       info[["amplicon_start"]],
-                       info[["amplicon_end"]],
-                       pool), collapse = "-")
+  names(rs) <- paste(c(
+    chr,
+    info[["amplicon_start"]],
+    info[["amplicon_end"]]
+  ), collapse = "-")
 
   as.character(rs[1])
 }
