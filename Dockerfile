@@ -28,4 +28,3 @@ ENV PATH="/opt/mad4hatter/bin:${PATH}"
 
 # Add panel information
 COPY panel_information/ /opt/mad4hatter/panel_information/
-
