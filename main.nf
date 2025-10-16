@@ -139,7 +139,7 @@ workflow {
     // Finally create the final allele table
     BUILD_ALLELETABLE(
       amplicon_info,
-      DENOISE_AMPLICONS_1.out.denoise_ch,
+      DENOISE_AMPLICONS_2.out.denoise_ch,
       DENOISE_AMPLICONS_2.out.results_ch
     )
 
