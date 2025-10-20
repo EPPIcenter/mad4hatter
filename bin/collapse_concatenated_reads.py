@@ -11,6 +11,8 @@ import pandas as pd
 import sys
 
 # TODO: add unit tests using nftest
+# TODO: test full pipeline 
+# TODO: remove old R script
 
 def main():
     parser = argparse.ArgumentParser(description='Collapse concatenated reads with 10 Ns')
@@ -88,14 +90,6 @@ def collapse_asvs(concat_clusters):
         return pd.DataFrame(columns=['sampleID','locus','asv','reads','allele'])
     return pd.concat(outputs, ignore_index=True)
      
-def calculate_normalized_reads(df):
-    """Calculate normalized reads and allele counts for each locus."""
-    df = df.copy()
-    total_reads = df['reads'].sum()
-    df['norm.reads.locus'] = df['reads'] / total_reads
-    df['n.alleles'] = len(df)
-    return df
-
 def collapse_group(df):
     """Collapse sequences within a group by finding common prefixes and suffixes."""
     options = []
