@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""
-Collapse concatenated reads.
-
-Usage:
-    python collapse_concatenated_reads.py --clusters path/to/asv_table.tsv
-"""
 
 import argparse
 import pandas as pd
