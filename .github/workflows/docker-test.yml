@@ -9,6 +9,7 @@ on:
       - 'Dockerfile'
       - 'bin/**'
       - 'panel_information/**'
+      - 'conf/terra_panel.json'
 
 jobs:
   test-build:
