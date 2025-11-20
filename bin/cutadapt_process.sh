@@ -115,7 +115,7 @@ printf "%s\t%s\n" "Input" ${total_pairs} > ${sample_id}.SAMPLEsummary.txt
 printf "%s\t%s\n" "No Dimers" ${no_dimers} >> ${sample_id}.SAMPLEsummary.txt
 
 if [ "$sequencer" == "miseq" ]; then
-    qualfilter="--trim-n -q 10"
+    qualfilter="--trim-n -q 20"
 else
     qualfilter="--nextseq-trim=20"
 fi
