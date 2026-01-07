@@ -98,10 +98,8 @@ fasta_positions <- lapply(args$masks, get_fasta_masked_positions)
 
 # Merge all data frames
 merged <- Reduce(function(df1, df2) merge(df1, df2, by = "refid", all = TRUE), fasta_positions)
-print(merged)
 merged$all_positions <- apply(merged[-which(names(merged) %in% "refid")], 1,
                                function(x) unlist(x[!is.na(unlist(x))]))
-print(merged)
 merged <- merged[, c("refid", "all_positions")]
 
 # Mask the aligned reference sequences
