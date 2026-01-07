@@ -39,12 +39,10 @@ def merge_fasta():
 
     for file in args.reference_paths:
         if not os.path.isfile(file):
-        #     print(f"File {file} does not exist. Skipping.")
             warnings.warn(
                 f"File {file} does not exist. Skipping.",
                 category=UserWarning
             )
-            # print(f"WARNING: File {file} does not exist. Skipping.", file=sys.stderr)
             continue
 
         # Read sequences from the file
@@ -58,10 +56,7 @@ def merge_fasta():
                     f"Duplicate sequence found: {record.id} (Skipping)",
                     category=UserWarning
                 )
-    # # Write the unique sequences to the output file
-    # with open(args.reference_output_path, "w") as output_handle:
-    #     for seq, id in sequences.items():
-    #         output_handle.write(f">{id}\n{seq}\n")
+    # Write the unique sequences to the output file
     if not sequences:
         sys.exit("ERROR: No valid FASTA records were found.")
 
