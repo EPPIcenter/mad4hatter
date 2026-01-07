@@ -3,11 +3,11 @@ nextflow.enable.dsl = 2
 workflow VALIDATE_INPUTS {
 
     // Check if the workflow is valid
-    def allowed_workflows = ['qc', 'complete', 'postprocessing']
-    workflow = params.workflow?.toLowerCase()
+    def allowed_workflow_names = ['qc', 'complete', 'postprocessing']
+    workflow_name = params.workflow_name?.toLowerCase()
 
-    if (!allowed_workflows.contains(workflow)) {
-        log.error "Invalid workflow specified: ${params.workflow}. Allowed workflows are: qc, complete, postprocessing."
+    if (!allowed_workflow_names.contains(workflow_name)) {
+        log.error "Invalid workflow specified: ${params.workflow_name}. Allowed workflows are: qc, complete, postprocessing."
         exit 1
     }
 
@@ -15,11 +15,11 @@ workflow VALIDATE_INPUTS {
     check_pools()
 
     // Check params based on workflow
-    if (workflow == 'complete' || workflow == 'qc') {
+    if (workflow_name == 'complete' || workflow_name == 'qc') {
         check_readdir_presence()
         // Check sequencer input
         check_sequencer()
-    } else if (workflow == 'postprocessing') {
+    } else if (workflow_name == 'postprocessing') {
         check_denoised_asvs_presence()
     }
 }
@@ -39,10 +39,28 @@ def check_pools() {
     ]
     def warnings = []
 
-    legacy_pools.each { legacy, current ->
-        if (params.pools.toString().contains(legacy)) {
-            warnings << "You have input a legacy pool name: ${legacy}. Current name would be ${current}."
+    def selectedPools = params.pools.toString().split(',')
+    def invalidPools = []
+
+    // Check all pools first
+    for (pool in selectedPools) {
+        def trimmedPool = pool.trim()
+        def paths = params.pool_options[trimmedPool]
+        if (paths == null) {
+            invalidPools << trimmedPool
+        } else {
+            legacy_pools.each { legacy, current ->
+                if (trimmedPool == legacy) {
+                    warnings << "You have input a legacy pool name: ${legacy}. Current name would be ${current}."
+                }
+            }
         }
+    }
+
+    // Report all invalid pools at once
+    if (!invalidPools.isEmpty()) {
+        log.error "The following pools were not found in configuration: ${invalidPools.join(', ')}"
+        exit 1
     }
 
     if (!warnings.isEmpty()) {

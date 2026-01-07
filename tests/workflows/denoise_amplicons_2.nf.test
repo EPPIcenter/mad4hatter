@@ -1,0 +1,121 @@
+nextflow_workflow {
+
+    name "Test Workflow DENOISE_AMPLICONS_2"
+    script "workflows/denoise_amplicons_2.nf"
+    workflow "DENOISE_AMPLICONS_2"
+
+    test("Should run without failures without refseq_fasta") {
+
+        when {
+            params {
+                pools = 'D1,R1,R2'
+                just_concatenate = true
+                refseq_fasta = null
+                masked_fasta = null
+                mask_tandem_repeats = true
+                mask_homopolymers = true
+
+                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+                denoise_ch = "${projectDir}/tests/example_data/subset_dada2.clusters.txt"
+            }
+            workflow {
+                """
+                input[0] = params.amplicon_info
+                input[1] = params.denoise_ch
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            assert workflow.out.results_ch
+            assert path(workflow.out.results_ch.get(0)).md5 == "ad36677990a6a75dc6fed8cc2156b829"
+
+            assert workflow.out.reference_ch
+            assert path(workflow.out.reference_ch.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+
+            assert workflow.out.aligned_asv_table
+            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "2dcb5dae34de2ddb352bb2798116b696"
+
+            assert workflow.trace.tasks().size() == 8
+        }
+
+    }
+
+    test("Should run without failures with refseq_fasta") {
+
+        when {
+            params {
+                just_concatenate = true
+                refseq_fasta = "${projectDir}/tests/example_data/multi_pool_targeted_reference.fasta"
+                masked_fasta = null
+                mask_tandem_repeats = true
+                mask_homopolymers = true
+
+                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+                denoise_ch = "${projectDir}/tests/example_data/subset_dada2.clusters.txt"
+            }
+            workflow {
+                """
+                input[0] = params.amplicon_info
+                input[1] = params.denoise_ch
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            assert workflow.out.results_ch
+            assert path(workflow.out.results_ch.get(0)).md5 == "ad36677990a6a75dc6fed8cc2156b829"
+
+            assert workflow.out.reference_ch
+            assert path(workflow.out.reference_ch.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+
+            assert workflow.out.aligned_asv_table
+            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "2dcb5dae34de2ddb352bb2798116b696"
+
+            assert workflow.trace.tasks().size() == 7
+        }
+
+    }
+
+    test("Should run without failures without concatenating") {
+
+        when {
+            params {
+                just_concatenate = false
+                refseq_fasta = "${projectDir}/tests/example_data/multi_pool_targeted_reference.fasta"
+                masked_fasta = null
+                mask_tandem_repeats = true
+                mask_homopolymers = true
+
+                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+                denoise_ch = "${projectDir}/tests/example_data/subset_dada2.clusters.txt"
+            }
+            workflow {
+                """
+                input[0] = params.amplicon_info
+                input[1] = params.denoise_ch
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            assert workflow.out.results_ch
+            assert path(workflow.out.results_ch.get(0)).md5 == "ad36677990a6a75dc6fed8cc2156b829"
+
+            assert workflow.out.reference_ch
+            assert path(workflow.out.reference_ch.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+
+            assert workflow.out.aligned_asv_table
+            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "2dcb5dae34de2ddb352bb2798116b696"
+
+            assert workflow.trace.tasks().size() == 6
+        }
+
+    }
+}

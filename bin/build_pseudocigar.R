@@ -222,6 +222,8 @@ compute_substitution_group <- function(query_chars, ref_chars, ref_position, mas
 #' @return A string representing the pseudoCIGAR format.
 build_pseudoCIGAR_string <- function(reference, query) {
   # Check if lengths of reference and query are the same
+  print(paste0("Reference length: ", nchar(reference)))
+  print(paste0("Query length: ", nchar(query)))
   if (nchar(reference) != nchar(query)) {
     stop("The lengths of reference and query sequences must be the same.")
   }

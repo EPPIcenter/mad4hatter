@@ -1,0 +1,3 @@
+Input	11
+No Dimers	10
+Amplicons	5

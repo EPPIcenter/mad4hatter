@@ -1,0 +1,29 @@
+nextflow_process {
+
+    name "Test Process FILTER_ASVS"
+    script "modules/local/filter_asvs.nf"
+    process "FILTER_ASVS"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                alignments = "${projectDir}/tests/example_data/alignments.txt"
+                alignment_threshold = 400
+            }
+            process {
+                """
+                input[0] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.filtered_alignments_ch
+            assert path(process.out.filtered_alignments_ch.get(0)).md5 == "8a0574710c42b56609c2b79f9c204d85"
+        }
+
+    }
+
+}

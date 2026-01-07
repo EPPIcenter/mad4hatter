@@ -1,0 +1,100 @@
+nextflow_workflow {
+
+    name "Test Workflow GENERATE_AMPLICON_INFO"
+    script "workflows/generate_amplicon_info.nf"
+    workflow "GENERATE_AMPLICON_INFO"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                pools = 'D1,R1,R2'
+
+                pool_options = [
+                    D1: [
+                        amplicon_info_path: 'panel_information/D1.1/D1.1_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/D1.1/D1.1_reference.fasta'
+                    ],
+                    R1: [
+                        amplicon_info_path: 'panel_information/R1.2/R1.2_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/R1.2/R1.2_reference.fasta'
+                    ],
+                    R2: [
+                        amplicon_info_path: 'panel_information/R2.1/R2.1_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/R2.1/R2.1_reference.fasta'
+                    ]
+                ]
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.amplicon_info_ch
+            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "38199619a70401b0940098a2132ee11f"
+        }
+
+    }
+
+    test("Should run without failures with spaces in pools") {
+
+        when {
+            params {
+                pools = 'D1, R1, R2'
+
+                pool_options = [
+                    D1: [
+                        amplicon_info_path: 'panel_information/D1.1/D1.1_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/D1.1/D1.1_reference.fasta'
+                    ],
+                    R1: [
+                        amplicon_info_path: 'panel_information/R1.2/R1.2_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/R1.2/R1.2_reference.fasta'
+                    ],
+                    R2: [
+                        amplicon_info_path: 'panel_information/R2.1/R2.1_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/R2.1/R2.1_reference.fasta'
+                    ]
+                ]
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.amplicon_info_ch
+            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "38199619a70401b0940098a2132ee11f"
+        }
+
+    }
+
+        test("Should run without failures with single pool") {
+
+        when {
+            params {
+                pools = 'D1'
+
+                pool_options = [
+                    D1: [
+                        amplicon_info_path: 'panel_information/D1.1/D1.1_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/D1.1/D1.1_reference.fasta'
+                    ],
+                    R1: [
+                        amplicon_info_path: 'panel_information/R1.2/R1.2_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/R1.2/R1.2_reference.fasta'
+                    ],
+                    R2: [
+                        amplicon_info_path: 'panel_information/R2.1/R2.1_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/R2.1/R2.1_reference.fasta'
+                    ]
+                ]
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.amplicon_info_ch
+            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "22a5b9f766e51d9a4976ec35f5e50cb3"
+        }
+
+    }
+
+}

@@ -1,0 +1,134 @@
+nextflow_workflow {
+
+    name "Test Workflow VALIDATE_INPUTS"
+    script "workflows/validate_inputs.nf"
+    workflow "VALIDATE_INPUTS"
+
+    test("Running complete workflow checks should pass") {
+
+        when {
+            params {
+                workflow_name='complete'
+                pools='D1.1,R1,R2'
+
+                readDIR='${projectDir}/tests/example_data/'
+                sequencer='miseq'
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+    test("Running qc workflow checks should pass") {
+
+        when {
+            params {
+                workflow_name='QC'
+                pools='D1.1,R1,R2'
+
+                readDIR='${projectDir}/tests/example_data/'
+                sequencer='miseq'
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+    test("Running complete workflow checks should pass with upper case workflow name") {
+
+        when {
+            params {
+                workflow_name='COMPLETE'
+                pools='D1.1,R1,R2'
+
+                readDIR='${projectDir}/tests/example_data/'
+                sequencer='miseq'
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+    test("Running checks should fail with invalid workflow name") {
+
+        when {
+            params {
+                workflow_name='invalid'
+                pools='D1.1,R1,R2'
+
+                readDIR='${projectDir}/tests/example_data/'
+                sequencer='miseq'
+            }
+        }
+
+        then {
+            assert workflow.failed
+            workflow.errorReport.contains("Invalid workflow specified: invalid. Allowed workflows are: qc, complete, postprocessing.")
+        }
+
+    }
+
+    test("Running complete workflow checks should fail with missing readDIR") {
+
+        when {
+            params {
+                workflow_name='complete'
+                pools='D1.1,R1,R2'
+
+                readDIR=null
+                sequencer='miseq'
+            }
+        }
+
+        then {
+            assert workflow.failed
+            workflow.errorReport.contains("`--readDIR` must be specified but is missing.")
+        }
+
+    }
+
+    test("Running complete workflow checks should fail with invalid pool name") {
+
+        when {
+            params {
+                workflow_name='complete'
+                pools='D1.1,R1,bad_pool ,bad_pool2'
+
+                readDIR='${projectDir}/tests/example_data/'
+                sequencer='miseq'
+            }
+        }
+
+        then {
+            assert workflow.failed
+            workflow.errorReport.contains("The following pools were not found in configuration: bad_pool, bad_pool2")
+        }
+
+    }
+
+    test("Running postprocessing workflow checks should pass") {
+
+        when {
+            params {
+                workflow_name='postprocessing'
+                pools='D1.1,R1,R2'
+
+                denoised_asvs='${projectDir}/tests/example_data/'
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+}

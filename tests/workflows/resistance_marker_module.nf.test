@@ -1,0 +1,60 @@
+nextflow_workflow {
+
+    name "Test Workflow RESISTANCE_MARKER_MODULE"
+    script "workflows/resistance_marker_module.nf"
+    workflow "RESISTANCE_MARKER_MODULE"
+
+    test("Should run without failures when building resmarker_info") {
+
+        when {
+            params {
+                principal_resmarkers = "${projectDir}/tests/example_data/principal_resistance_marker_info_table.tsv"
+                resmarker_info = null
+                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+                allele_data = "${projectDir}/tests/example_data/allele_data.txt"
+                alignment_data = "${projectDir}/tests/example_data/alignments.txt"
+                reference = "${projectDir}/tests/example_data/multi_pool_targeted_reference.fasta"
+            }
+            workflow {
+                """
+                input[0] = file(params.amplicon_info)
+                input[1] = file(params.allele_data)
+                input[2] = file(params.alignment_data)
+                input[3] = file(params.reference)
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+    test("Should run without failures when resmarker_info is provided") {
+
+        when {
+            params {
+                resmarker_info = "${projectDir}/tests/example_data/test_resmarker_info.txt"
+                amplicon_info = "unused_file_path"
+                allele_data = "${projectDir}/tests/example_data/test_resmarker_allele_data.txt"
+                alignment_data = "${projectDir}/tests/example_data/test_resmarker_alignments.txt"
+                reference = "${projectDir}/tests/example_data/test_resmarker_reference.fasta"
+            }
+            workflow {
+                """
+                input[0] = file(params.amplicon_info)
+                input[1] = file(params.allele_data)
+                input[2] = file(params.alignment_data)
+                input[3] = file(params.reference)
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+}

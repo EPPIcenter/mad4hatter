@@ -1,0 +1,107 @@
+nextflow_process {
+
+    name "Test Process BUILD_RESMARKER_INFO"
+    script "modules/local/build_resources.nf"
+    process "BUILD_RESMARKER_INFO"
+
+    test("Should run without failures on full mad4hatter pools") {
+
+        when {
+            params {
+                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+                principal_resmarkers = "${projectDir}/tests/example_data/principal_resistance_marker_info_table.tsv"
+                resmarker_info_output_path = "output"
+            }
+            process {
+                """
+                input[0] = params.amplicon_info
+                input[1] = params.principal_resmarkers
+                input[2] = params.resmarker_info_output_path
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.resmarker_info
+            assert path(process.out.resmarker_info.get(0)).md5 == "3d0ced7271b16dc7d3281c5a1b7347e1"
+        }
+
+    }
+
+
+    test("Running with no overlap should run successfully and produce null output") {
+
+        when {
+            params {
+                amplicon_info = "${projectDir}/tests/example_data/D1.1_amplicon_info.tsv"
+                principal_resmarkers = "${projectDir}/tests/example_data/principal_resistance_marker_info_table.tsv"
+                resmarker_info_output_path = "output"
+            }
+            process {
+                """
+                input[0] = params.amplicon_info
+                input[1] = params.principal_resmarkers
+                input[2] = params.resmarker_info_output_path
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert !process.out.resmarker_info
+        }
+
+    }
+
+    test("Running with multiple tiled targets should run successfully") {
+
+        when {
+            params {
+                amplicon_info = "${projectDir}/tests/example_data/dummy_amplicon_info_with_resmarker_multiple_targets_per_marker.tsv "
+                principal_resmarkers = "${projectDir}/tests/example_data/dummy_resmarker_info.tsv"
+                resmarker_info_output_path = "output"
+            }
+            process {
+                """
+                input[0] = params.amplicon_info
+                input[1] = params.principal_resmarkers
+                input[2] = params.resmarker_info_output_path
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.resmarker_info
+            assert path(process.out.resmarker_info.get(0)).md5 == "e7ff63f3af9d1c047bc3709d2b0aa8f7"
+        }
+
+    }
+    
+    test("Running with marker at edge of target example should run successfully") {
+
+        when {
+            params {
+                amplicon_info = "${projectDir}/tests/example_data/dummy_amplicon_info_with_resmarker_at_edge.tsv"
+                principal_resmarkers = "${projectDir}/tests/example_data/dummy_resmarker_info.tsv"
+                resmarker_info_output_path = "output"
+            }
+            process {
+                """
+                input[0] = params.amplicon_info
+                input[1] = params.principal_resmarkers
+                input[2] = params.resmarker_info_output_path
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.resmarker_info
+            assert path(process.out.resmarker_info.get(0)).md5 == "af25da9b4ba014f97926b61577d2bc46"
+        }
+
+    }
+}
+

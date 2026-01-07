@@ -1,0 +1,36 @@
+nextflow_process {
+
+    name "Test Process POSTPROCESS_COVERAGE"
+    script "modules/local/postprocess_coverage.nf"
+    process "POSTPROCESS_COVERAGE"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                alleledata = "${projectDir}/tests/example_data/allele_data.txt"
+                clusters = "${projectDir}/tests/example_data/dada2.clusters.txt"
+                sample_coverage = "${projectDir}/tests/example_data/sample_coverage.txt"
+                amplicon_coverage = "${projectDir}/tests/example_data/amplicon_coverage.txt"
+            }
+            process {
+                """
+                input[0] = params.alleledata
+                input[1] = params.clusters
+                input[2] = params.sample_coverage
+                input[3] = params.amplicon_coverage
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.postprocess_sample_coverage
+            assert process.out.postprocess_amplicon_coverage
+            assert path(process.out.postprocess_sample_coverage.get(0)).md5 == "132e9b2b8b48f9553c69eec1ba630dbc"
+            assert path(process.out.postprocess_amplicon_coverage.get(0)).md5 == "74bf05fb7fdbbc29ce3f52c6a481ca40"
+        }
+
+    }
+
+}

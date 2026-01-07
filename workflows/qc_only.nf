@@ -16,7 +16,7 @@ workflow QC_ONLY {
 
   main:
 
-  read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
+  read_pairs = channel.fromFilePairs( reads, checkIfExists: true )
 
   DEMULTIPLEX_AMPLICONS(amplicon_info, read_pairs)
 

@@ -1,0 +1,28 @@
+nextflow_workflow {
+
+    name "Test Workflow QC_ONLY"
+    script "workflows/qc_only.nf"
+    workflow "QC_ONLY"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                sequencer = 'miseq'
+            }
+            workflow {
+                """
+                input[0] = file("${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv")
+                input[1] = "${projectDir}/tests/example_data/cutadapt_examples/sample*_{R1,R2}.fastq.gz"
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.trace.tasks().size() == 6
+        }
+
+    }
+
+}

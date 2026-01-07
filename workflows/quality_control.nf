@@ -20,13 +20,13 @@ workflow QUALITY_CONTROL {
     sample_combined = sample_coverage_files.collect()
     amplicon_combined = amplicon_coverage_files.collect()
 
-    // Initial Preprocessing
+    // Put all sample and amplicon coverage files into a single file with sample name column
     PREPROCESS_COVERAGE(
         sample_combined,
         amplicon_combined
     )
 
-    // If postprocessing coverage is provided, run the postprocessing workflow
+    // If postprocessing coverage is provided add dada2 and postprocessing coverage to the coverage files
     def postprocessing = (alleledata && clusters)
     sample_coverage_ch = postprocessing ? 
         POSTPROCESS_COVERAGE(

@@ -1,0 +1,70 @@
+nextflow_process {
+
+    name "Test Process BUILD_PSEUDOCIGAR"
+    script "modules/local/build_pseudocigar.nf"
+    process "BUILD_PSEUDOCIGAR"
+
+    test("Alignments with SNPs should run without failures") {
+
+        when {
+            params {
+                alignments = "${projectDir}/tests/example_data/small_alignments_with_SNPs.alignments.txt "
+            }
+            process {
+                """
+                input[0] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.pseudocigar
+            assert path(process.out.pseudocigar.get(0)).md5 == "01bf80f3df664c4c2fbeb449eedb2b98"
+        }
+
+    }
+
+    test("Alignments with indels should run without failures") {
+
+        when {
+            params {
+                alignments = "${projectDir}/tests/example_data/small_alignments_with_indels.alignments.txt"
+            }
+            process {
+                """
+                input[0] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.pseudocigar
+            assert path(process.out.pseudocigar.get(0)).md5 == "c570ece11e1e83f6e88c00e9b19698b3"
+        }
+
+    }
+
+    test("Masked alignments with indels should run without failures") {
+
+        when {
+            params {
+                alignments = "${projectDir}/tests/example_data/small_alignments_masked_with_indels.alignments.txt"
+            }
+            process {
+                """
+                input[0] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.pseudocigar
+            assert path(process.out.pseudocigar.get(0)).md5 == "00093da0d57d8e0b442645af0a46f9a2"
+        }
+
+    }
+
+}
