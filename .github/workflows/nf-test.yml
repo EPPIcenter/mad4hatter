@@ -1,0 +1,36 @@
+name: Run nf-tests
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Set up Nextflow
+        uses: nf-core/setup-nextflow@v1
+      
+      - name: Set up nf-test
+        uses: nf-core/setup-nf-test@v1
+        with:
+          install-pdiff: true
+      
+      - name: Verify Nextflow and nf-test installation
+        run: |
+          nextflow -version
+          nf-test --version
+      
+      - name: Run all nf-tests
+        run: |
+          nf-test test --profile docker
+
