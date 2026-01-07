@@ -23,12 +23,7 @@ jobs:
       - name: Set up nf-test
         uses: nf-core/setup-nf-test@v1
         with:
-          install-pdiff: true
-      
-      - name: Verify Nextflow and nf-test installation
-        run: |
-          nextflow -version
-          nf-test --version
+          install-pdiff: true d
       
       - name: Run all nf-tests
         run: |
