@@ -1,0 +1,85 @@
+nextflow_workflow {
+
+    name "Test Workflow QUALITY_CONTROL"
+    script "workflows/quality_control.nf"
+    workflow "QUALITY_CONTROL"
+
+    test("Should run without postprocessing") {
+
+        when {
+            params {
+                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+                sample_file1 = "${projectDir}/tests/example_data/N3D7100Kb_S103.SAMPLEsummary.txt"
+                sample_file2 = "${projectDir}/tests/example_data/N3D710ka_S56.SAMPLEsummary.txt"
+                sample_file3 = "${projectDir}/tests/example_data/SRR26819135_S1_L001.SAMPLEsummary.txt"
+                amplicon_file1 = "${projectDir}/tests/example_data/N3D7100Kb_S103.AMPLICONsummary.txt"
+                amplicon_file2 = "${projectDir}/tests/example_data/N3D710ka_S56.AMPLICONsummary.txt"
+                amplicon_file3 = "${projectDir}/tests/example_data/SRR26819135_S1_L001.AMPLICONsummary.txt"
+                alleledata = null
+                clusters = null
+            }
+            workflow {
+                """
+                input[0] = file(params.amplicon_info)
+                input[1] = Channel.of(
+                    file(params.sample_file1),
+                    file(params.sample_file2),
+                    file(params.sample_file3)
+                )
+                input[2] = Channel.of(
+                    file(params.amplicon_file1),
+                    file(params.amplicon_file2),
+                    file(params.amplicon_file3)
+                )
+                input[3] = Channel.empty()
+                input[4] = Channel.empty()
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+    test("Should run with postprocessing") {
+
+        when {
+            params {
+                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+                sample_file1 = "${projectDir}/tests/example_data/N3D7100Kb_S103.SAMPLEsummary.txt"
+                sample_file2 = "${projectDir}/tests/example_data/N3D710ka_S56.SAMPLEsummary.txt"
+                sample_file3 = "${projectDir}/tests/example_data/SRR26819135_S1_L001.SAMPLEsummary.txt"
+                amplicon_file1 = "${projectDir}/tests/example_data/N3D7100Kb_S103.AMPLICONsummary.txt"
+                amplicon_file2 = "${projectDir}/tests/example_data/N3D710ka_S56.AMPLICONsummary.txt"
+                amplicon_file3 = "${projectDir}/tests/example_data/SRR26819135_S1_L001.AMPLICONsummary.txt"
+                alleledata = "${projectDir}/tests/example_data/allele_data.txt"
+                clusters = "${projectDir}/tests/example_data/dada2.clusters.txt"
+            }
+            workflow {
+                """
+                input[0] = file(params.amplicon_info)
+                input[1] = Channel.of(
+                    file(params.sample_file1),
+                    file(params.sample_file2),
+                    file(params.sample_file3)
+                )
+                input[2] = Channel.of(
+                    file(params.amplicon_file1),
+                    file(params.amplicon_file2),
+                    file(params.amplicon_file3)
+                )
+                input[3] = file(params.alleledata)
+                input[4] = file(params.clusters)
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+}

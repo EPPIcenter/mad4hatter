@@ -1,0 +1,32 @@
+nextflow_process {
+
+    name "Test Process PREPROCESS_COVERAGE"
+    script "modules/local/preprocess_coverage.nf"
+    process "PREPROCESS_COVERAGE"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                sample_coverages = ["${projectDir}/tests/example_data/N3D7100Kb_S103.SAMPLEsummary.txt", "${projectDir}/tests/example_data/N3D710ka_S56.SAMPLEsummary.txt", "${projectDir}/tests/example_data/SRR26819135_S1_L001.SAMPLEsummary.txt"]
+                amplicon_coverages = ["${projectDir}/tests/example_data/N3D7100Kb_S103.AMPLICONsummary.txt", "${projectDir}/tests/example_data/N3D710ka_S56.AMPLICONsummary.txt", "${projectDir}/tests/example_data/SRR26819135_S1_L001.AMPLICONsummary.txt"]
+            }
+            process {
+                """
+                input[0] = params.sample_coverages
+                input[1] = params.amplicon_coverages
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.sample_coverage
+            assert process.out.amplicon_coverage
+            assert path(process.out.sample_coverage.get(0)).md5 == "3ccbcdc873b904fed77aeea8606322b9"
+            assert path(process.out.amplicon_coverage.get(0)).md5 == "6e4ecd2939db1982d9cd746cc2711503"
+        }
+
+    }
+
+}

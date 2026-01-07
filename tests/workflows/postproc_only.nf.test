@@ -1,0 +1,28 @@
+nextflow_workflow {
+
+    name "Test Workflow POSTPROC_ONLY"
+    script "workflows/postproc_only.nf"
+    workflow "POSTPROC_ONLY"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                pools="D1,R1"
+            }
+            workflow {
+                """
+                input[0] = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+                input[1] = "${projectDir}/tests/example_data/subset_dada2.clusters.txt"
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.trace.tasks().size() == 9
+        }
+
+    }
+
+}

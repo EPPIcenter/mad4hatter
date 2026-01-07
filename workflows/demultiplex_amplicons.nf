@@ -1,6 +1,5 @@
 include { CREATE_PRIMER_FILES } from '../modules/local/create_primer_files.nf'
 include { CUTADAPT } from '../modules/local/cutadapt.nf'
-include { QUALITY_REPORT } from '../modules/local/quality_report.nf'
 
 workflow DEMULTIPLEX_AMPLICONS {
 

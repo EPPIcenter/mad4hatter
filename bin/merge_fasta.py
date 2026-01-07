@@ -1,16 +1,34 @@
 #!/usr/bin/env python3
 import argparse
-from Bio import SeqIO
-import sys
 import os
+import sys
+import warnings
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
+from Bio.SeqIO.FastaIO import FastaWriter
 
 
 def parse_args_merge_fasta():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--reference_paths', type=str, required=True, nargs='+',
-                        help='Paths to amplicon info tables for pools')
-    parser.add_argument('--reference_output_path',
-                        type=str, default='reference.fasta')
+    parser.add_argument(
+        '--reference_paths', 
+        type=str, 
+        required=True, 
+        nargs='+',
+        help='Paths to amplicon info tables for pools'
+        )
+    parser.add_argument(
+        '--reference_output_path',
+        type=str, 
+        default='reference.fasta'
+        )
+    parser.add_argument(
+        '--wrap',
+        type=int,
+        default=80,
+        help='FASTA line width (default: 80)'
+    )
     return parser.parse_args()
 
 
@@ -21,7 +39,10 @@ def merge_fasta():
 
     for file in args.reference_paths:
         if not os.path.isfile(file):
-            print(f"File {file} does not exist. Skipping.")
+            warnings.warn(
+                f"File {file} does not exist. Skipping.",
+                category=UserWarning
+            )
             continue
 
         # Read sequences from the file
@@ -30,11 +51,32 @@ def merge_fasta():
             if seq_str not in sequences:
                 sequences[seq_str] = record.id
             else:
-                print(f"Duplicate found: {record.id} (Skipping)")
+                # print(f"Duplicate found: {record.id} (Skipping)", file=sys.stderr)
+                warnings.warn(
+                    f"Duplicate sequence found: {record.id} (Skipping)",
+                    category=UserWarning
+                )
     # Write the unique sequences to the output file
+    if not sequences:
+        sys.exit("ERROR: No valid FASTA records were found.")
+
+    # Convert to SeqRecord objects
+    records = sorted(
+        (
+            SeqRecord(
+                Seq(seq),
+                id=record_id,
+                description=""
+            )
+            for seq, record_id in sequences.items()
+        ),
+        key=lambda r: r.id
+    )
+
+    # Write FASTA with 30 characters per line
     with open(args.reference_output_path, "w") as output_handle:
-        for seq, id in sequences.items():
-            output_handle.write(f">{id}\n{seq}\n")
+        writer = FastaWriter(output_handle, wrap=args.wrap)
+        writer.write_file(records)
 
 
 if __name__ == "__main__":

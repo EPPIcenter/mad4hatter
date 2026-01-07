@@ -1,0 +1,50 @@
+nextflow_process {
+
+    name "Test Process CREATE_PRIMER_FILES"
+    script "modules/local/create_primer_files.nf"
+    process "CREATE_PRIMER_FILES"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+            }
+            process {
+                """
+                input[0] = params.amplicon_info
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.fwd_primers
+            assert process.out.rev_primers
+            assert path(process.out.fwd_primers.get(0)).md5 == "9e4928d6a4203060deaf9b3f6d8d179e"
+            assert path(process.out.rev_primers.get(0)).md5 == "0b347e5fbc47d433b7b2f4acd331ea8f"
+        }
+
+    }
+
+    test("Should fail without rev primer column") {
+
+        when {
+            params {
+                amplicon_info = "${projectDir}/tests/example_data/tests/example_data/multi_pool_amplicon_info_no_ref.tsv"
+            }
+            process {
+                """
+                input[0] = params.amplicon_info
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            process.errorReport.contains("Must have 'fwd_primer' and 'rev_primer' in ")
+        }
+
+    }
+
+}
