@@ -23,9 +23,9 @@ jobs:
       - name: Set up nf-test
         uses: nf-core/setup-nf-test@v1
         with:
-          install-pdiff: true d
+          install-pdiff: true
       
       - name: Run all nf-tests
         run: |
-          nf-test test --profile docker
+          nf-test test --profile docker,test
 
