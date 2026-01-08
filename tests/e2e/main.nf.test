@@ -25,7 +25,7 @@ nextflow_pipeline {
         when {
             params {
                 workflow_name = 'complete'
-                pools = 'R2'
+                pools = 'D1'
                 readDIR = "${projectDir}/tests/example_data/example_fastq/"
                 sequencer = 'nextseq'
                 outDIR = 'results_test_nextseq'
