@@ -35,7 +35,7 @@ workflow POSTPROC_ONLY {
     // Allele table creation
     BUILD_ALLELETABLE(
       amplicon_info,
-      denoise_ch,
+      DENOISE_AMPLICONS_2.out.denoise_ch,
       DENOISE_AMPLICONS_2.out.results_ch
     )
 }
