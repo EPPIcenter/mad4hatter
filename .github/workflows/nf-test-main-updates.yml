@@ -1,10 +1,12 @@
-name: Run nf-tests
+name: Run e2e nf-tests
 
 on:
   pull_request:
     branches:
       - develop
-      - main
+    paths:
+      - 'main.nf'
+      - 'tests/e2e/**'
 
 jobs:
   test:
@@ -27,12 +29,4 @@ jobs:
       
       - name: Run all nf-tests
         run: |
-          nf-test test tests/modules/ --profile docker,test
-          nf-test test tests/subworkflows/ --profile docker,test
-          nf-test test tests/workflows/ --profile docker,test
-      
-      - name: Run e2e tests (main branch only)
-        if: github.base_ref == 'main'
-        run: |
           nf-test test tests/e2e/ --profile docker,test
-
