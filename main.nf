@@ -145,7 +145,6 @@ workflow {
 
     // Create the quality report now
     QUALITY_CONTROL(
-      amplicon_info,
       DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
       DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
       BUILD_ALLELETABLE.out.alleledata,
