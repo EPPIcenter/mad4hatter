@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Ask a question about the pipeline
+description: Ask a question about the pipeline
 labels: question
 ---
 body:
@@ -18,18 +18,17 @@ body:
       description: Have you checked the documentation? If yes, what sections? This will help us to improve these sections in the future.
     validations:
       required: false
-  - type: checkbox
+  - type: dropdown
     id: priority
     attributes:
       label: Priority
       description: How urgent is this question for you?
+      options:
+        - Low - I can wait. I don't need an answer urgently.
+        - Medium - Somewhat urgent. I need an answer in the week or so.
+        - High - Blocking urgent work from being completed. I need an answer ASAP.
     validations:
       required: false
-    options:
-      - label: Low - I can wait. I don't need an answer urgently.
-      - label: Medium - Somewhat urgent. I need an answer in the week or so.
-      - label: High - Blocking urgent work from being completed. I need an answer ASAP.
-    default: Low
   - type: textarea
     id: additional_context
     attributes:

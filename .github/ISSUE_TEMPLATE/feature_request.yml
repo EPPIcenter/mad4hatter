@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a new feature or enhancement for the pipeline
+description: Suggest a new feature or enhancement for the pipeline
 labels: enhancement
 ---
 body:
@@ -11,18 +11,17 @@ body:
       description: Please provide a clear and concise description of the feature you'd like to see.
     validations:
       required: true
-  - type: checkbox
+  - type: dropdown
     id: priority
     attributes:
       label: Priority
       description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would improve workflow
+        - High - Critical for my use case
     validations:
       required: true
-    options:
-      - label: Low - Nice to have
-      - label: Medium - Would improve workflow
-      - label: High - Critical for my use case
-    default: Low
   - type: textarea
     id: problem_use_case
     attributes:
