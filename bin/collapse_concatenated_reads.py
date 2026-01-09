@@ -4,9 +4,7 @@ import argparse
 import pandas as pd
 import sys
 
-# TODO: add unit tests using nftest
-# TODO: test full pipeline 
-# TODO: remove old R script
+# TODO: introduce concatenated read example into downstream tests 
 
 def main():
     parser = argparse.ArgumentParser(description='Collapse concatenated reads with 10 Ns')
@@ -52,12 +50,14 @@ def main():
             final_df['n.alleles'] = grp['asv'].transform('count')
 
         else:
+            # If no concatinated reads, skip collapse and use unconcatenated ASVs as final file 
             final_df = unconcatenated_df
 
         # Output results with all columns ordered correctly
         output_file = args.output if args.output else "clusters.concatenated.collapsed.txt"
         desired_cols = ['sampleID', 'locus', 'asv', 'reads', 'allele', 'norm.reads.locus', 'n.alleles']
         final_df = final_df[desired_cols]
+        final_df = final_df.sort_values(by=['sampleID', 'locus', 'asv'])
         final_df.to_csv(output_file, sep='\t', index=False)
         print(f"Output saved to: {output_file}", file=sys.stderr)
         print(f"Final table: {len(final_df)} rows", file=sys.stderr)
@@ -89,14 +89,12 @@ def collapse_group(df):
     options = []
     for _, row in df.iterrows():
         options.append({'left': row.left, 'right': row.right})
-
     new_lefts = []
     new_rights = []
     
     for _, row in df.iterrows(): 
         new_left = row.left
         new_right = row.right
-        
         for option in options: 
             # Check if sequences can be collapsed based on prefix/suffix matching
             left_match = (row.left.startswith(option['left']) or 
@@ -110,7 +108,6 @@ def collapse_group(df):
                     new_left = option['left']
                 if len(option['right']) < len(new_right):
                     new_right = option['right']
-                    
         new_lefts.append(new_left)
         new_rights.append(new_right)
     
