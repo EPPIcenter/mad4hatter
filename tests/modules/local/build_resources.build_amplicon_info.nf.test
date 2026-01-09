@@ -1,0 +1,83 @@
+nextflow_process {
+
+    name "Test Process BUILD_AMPLICON_INFO"
+    script "modules/local/build_resources.nf"
+    process "BUILD_AMPLICON_INFO"
+
+    test("Build all pools should run without failures") {
+
+        when {
+            params {
+                pools = "D1 R1 R2"
+                amplicon_info_paths = "${projectDir}/tests/example_data/D1.1_amplicon_info.tsv ${projectDir}/tests/example_data/R1.2_amplicon_info.tsv ${projectDir}/tests/example_data/R2.1_amplicon_info.tsv"
+                amplicon_info_output = "amplicon_info_test.tsv"
+            }
+            process {
+                """
+                input[0] = params.pools
+                input[1] = params.amplicon_info_paths
+                input[2] = params.amplicon_info_output
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.amplicon_info
+            assert path(process.out.amplicon_info.get(0)).md5 == "38199619a70401b0940098a2132ee11f"
+        }
+
+    }
+
+    test("Build single pool should run without failures") {
+
+        when {
+            params {
+                pools = "R1"
+                amplicon_info_paths = "${projectDir}/tests/example_data/R1.2_amplicon_info.tsv"
+                amplicon_info_output = "amplicon_info_test.tsv"
+            }
+            process {
+                """
+                input[0] = params.pools
+                input[1] = params.amplicon_info_paths
+                input[2] = params.amplicon_info_output
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.amplicon_info
+            assert path(process.out.amplicon_info.get(0)).md5 == "1459472afbb8d971186853bf454f9647"
+        }
+
+    }
+
+
+    test("Build crazy name should run without failures") {
+
+        when {
+            params {
+                pools = "Something"
+                amplicon_info_paths = "${projectDir}/tests/example_data/R1.2_amplicon_info.tsv"
+                amplicon_info_output = "amplicon_info_test.tsv"
+            }
+            process {
+                """
+                input[0] = params.pools
+                input[1] = params.amplicon_info_paths
+                input[2] = params.amplicon_info_output
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.amplicon_info
+            assert path(process.out.amplicon_info.get(0)).md5 == "d7df780bce1f6b597bd6d85218020002"
+        }
+
+    }
+
+}

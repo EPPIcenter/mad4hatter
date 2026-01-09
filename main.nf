@@ -16,7 +16,7 @@ include { DENOISE_AMPLICONS_1 } from './workflows/denoise_amplicons_1.nf'
 include { DENOISE_AMPLICONS_2 } from './workflows/denoise_amplicons_2.nf'
 include { RESISTANCE_MARKER_MODULE } from './workflows/resistance_marker_module.nf'
 include { QUALITY_CONTROL} from './workflows/quality_control.nf'
-include { GENERATE_AMPLICON_INFO } from './workflows/process_inputs.nf'
+include { GENERATE_AMPLICON_INFO } from './workflows/generate_amplicon_info.nf'
 include { VALIDATE_INPUTS } from './workflows/validate_inputs.nf'
 include { BUILD_RESMARKER_INFO } from './modules/local/build_resources.nf'
 
@@ -45,7 +45,7 @@ def helpMessage() {
 
     Optional arguments:
       --outDIR                  Path to folder to place final output [Default: results]
-      --workflow                Workflow option to be run [Options: complete (default), qc, postprocessing]
+      --workflow_name           Workflow option to be run [Options: complete (default), qc, postprocessing]
 
       (Nextflow parameters. Note the flags have "-" and not "--" at the start) 
       -profile                  Runtime profile [Options: sge,apptainer, docker, conda]
@@ -76,10 +76,10 @@ def helpMessage() {
       nextflow run main.nf --readDIR path/to/read_dir --outDIR results --pools D1,R1,R2 -profile docker
       
       Only run the QC workflow
-      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --pools D1,R1,R2 --workflow qc
+      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --pools D1,R1,R2 --workflow_name qc
       
       Only run the Postprocessing workflow
-      nextflow run main.nf --workflow postprocessing --pools D1,R1,R2 --denoised_asvs results/raw_dada2_output/dada2.clusters.txt --outDIR postprocessing_results
+      nextflow run main.nf --workflow_name postprocessing --pools D1,R1,R2 --denoised_asvs results/raw_dada2_output/dada2.clusters.txt --outDIR postprocessing_results
       
       Alter Dada2 params 
       nextflow run main.nf --readDIR path/to/read_dir --outDIR results --pools D1,R1,R2 --omega_a 1e-40 --dada2_pool false --band_size 20 --maxEE 4
@@ -107,17 +107,17 @@ workflow {
 
   def amplicon_info = (params.amplicon_info == null) ? GENERATE_AMPLICON_INFO().amplicon_info_ch : params.amplicon_info
   // Convert workflow to lowercase
-  def workflow = params.workflow?.toLowerCase()
+  def workflow_name = params.workflow_name?.toLowerCase()
 
-  if (workflow=='qc') {
+  if (workflow_name=='qc') {
     // Run QC Only Workflow
     QC_ONLY(amplicon_info, params.reads)
 
-  } else if (workflow=='postprocessing') {
+  } else if (workflow_name=='postprocessing') {
     // Run Postprocessing only
     POSTPROC_ONLY(amplicon_info, params.denoised_asvs)
 
-  } else if (workflow=='complete'){
+  } else if (workflow_name=='complete'){
     // Create read pairs channel from fastq data
     read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
 
@@ -139,13 +139,12 @@ workflow {
     // Finally create the final allele table
     BUILD_ALLELETABLE(
       amplicon_info,
-      DENOISE_AMPLICONS_1.out.denoise_ch,
+      DENOISE_AMPLICONS_2.out.denoise_ch,
       DENOISE_AMPLICONS_2.out.results_ch
     )
 
     // Create the quality report now
     QUALITY_CONTROL(
-      amplicon_info,
       DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
       DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
       BUILD_ALLELETABLE.out.alleledata,
@@ -159,7 +158,8 @@ workflow {
       DENOISE_AMPLICONS_2.out.reference_ch
     )
   } else {
-    exit 0, log.error("`--workflow` invalid.")
+    log.error "`--workflow_name` invalid."
+    exit 1
   }
 }
 

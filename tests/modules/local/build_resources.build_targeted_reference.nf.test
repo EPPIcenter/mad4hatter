@@ -1,0 +1,146 @@
+nextflow_process {
+
+    name "Test Process BUILD_TARGETED_REFERENCE"
+    script "modules/local/build_resources.nf"
+    process "BUILD_TARGETED_REFERENCE"
+
+    test("Unique records being merged should run successfully") {
+
+        when {
+            params {
+                reference_input_paths = "${projectDir}/tests/example_data/chrom_two_targeted_ref.fasta ${projectDir}/tests/example_data/chrom_one_targeted_ref.fasta"
+                reference_output_path = "merged_reference.fasta"
+            }
+            process {
+                """
+                // define inputs of the process here. Example:
+                input[0] = params.reference_input_paths
+                input[1] = params.reference_output_path
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.reference_fasta
+            assert path(process.out.reference_fasta.get(0)).md5 == "3dca6dd780fd79251de6055109e90f3b"
+        }
+
+    }
+
+    test("Duplicated records being merged should run successfully") {
+
+        when {
+            params {
+                reference_input_paths = "${projectDir}/tests/example_data/chrom_two_targeted_ref.fasta ${projectDir}/tests/example_data/merged_chrom_one_two.fasta"
+                reference_output_path = "merged_reference.fasta"
+            }
+            process {
+                """
+                // define inputs of the process here. Example:
+                input[0] = params.reference_input_paths
+                input[1] = params.reference_output_path
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.reference_fasta
+            assert path(process.out.reference_fasta.get(0)).md5 == "3dca6dd780fd79251de6055109e90f3b"
+        }
+
+    }
+
+    test("Single reference should run successfully") {
+
+        when {
+            params {
+                reference_input_paths = "${projectDir}/tests/example_data/chrom_two_targeted_ref.fasta"
+                reference_output_path = "merged_reference.fasta"
+            }
+            process {
+                """
+                input[0] = params.reference_input_paths
+                input[1] = params.reference_output_path
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.reference_fasta
+            assert path(process.out.reference_fasta.get(0)).md5 == "cd7f9c98b330cd5efcf2225dcbcc09d5"
+        }
+
+    }
+
+    test("Missing references should fail") {
+
+        when {
+            params {
+                reference_input_paths = "${projectDir}/tests/example_data/missing1.fasta ${projectDir}/tests/example_data/missing2.fasta"
+                reference_output_path = "merged_reference.fasta"
+            }
+            process {
+                """
+                input[0] = params.reference_input_paths
+                input[1] = params.reference_output_path
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            process.errorReport.contains("ERROR: No valid FASTA records were found.")
+        }
+
+    }
+
+    test("Missing one references should warn") {
+
+        when {
+            params {
+                reference_input_paths = "${projectDir}/tests/example_data/chrom_two_targeted_ref.fasta ${projectDir}/tests/example_data/missing1.fasta"
+                reference_output_path = "merged_reference.fasta"
+            }
+            process {
+                """
+                input[0] = params.reference_input_paths
+                input[1] = params.reference_output_path
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.reference_fasta
+            assert path(process.out.reference_fasta.get(0)).md5 == "cd7f9c98b330cd5efcf2225dcbcc09d5"
+        }
+
+    }
+
+    test("Merging most common mad4hatter pools should run successfully") {
+
+        when {
+            params {
+                reference_input_paths = "${projectDir}/tests/example_data/D1.1_reference.fasta ${projectDir}/tests/example_data/R1.2_reference.fasta ${projectDir}/tests/example_data/R2.1_reference.fasta"
+                reference_output_path = "merged_reference.fasta"
+            }
+            process {
+                """
+                input[0] = params.reference_input_paths
+                input[1] = params.reference_output_path
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.reference_fasta
+            assert path(process.out.reference_fasta.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+        }
+
+    }
+
+}

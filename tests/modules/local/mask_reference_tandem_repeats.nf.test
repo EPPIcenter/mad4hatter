@@ -1,0 +1,32 @@
+nextflow_process {
+
+    name "Test Process MASK_REFERENCE_TANDEM_REPEATS"
+    script "modules/local/mask_reference_tandem_repeats.nf"
+    process "MASK_REFERENCE_TANDEM_REPEATS"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                refseq_fasta = "${projectDir}/tests/example_data/dummy_targeted_ref.fasta"
+                min_score = 25
+                max_period = 3
+            }
+            process {
+                """
+                input[0] = params.refseq_fasta
+                input[1] = params.min_score
+                input[2] = params.max_period
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.masked_fasta
+            assert path(process.out.masked_fasta.get(0)).md5 == "aa9bc085241ffe23f83aa43f7b15f9b9"
+        }
+
+    }
+
+}

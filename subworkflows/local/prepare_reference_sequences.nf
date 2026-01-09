@@ -1,6 +1,6 @@
 
 include { CREATE_REFERENCE_FROM_GENOMES } from '../../modules/local/create_reference_from_genomes.nf'
-include { CONCATENATE_TARGETED_REFERENCE } from '../../workflows/process_inputs.nf'
+include { CONCATENATE_TARGETED_REFERENCE } from './concatenate_targeted_reference.nf'
 
 workflow PREPARE_REFERENCE_SEQUENCES {
   take: 
@@ -12,7 +12,7 @@ workflow PREPARE_REFERENCE_SEQUENCES {
     // Read in genome file provided by the user 
     File genome_file = new File(params.genome).absoluteFile
     if(!genome_file.exists()) {
-        exit 1, log.error("The specified denoised_asvs file '${params.denoised_asvs}' does not exist.")
+        exit 1, log.error("The specified genome file '${params.genome}' does not exist.")
     }
 
     // Add debugging steps as this is user input

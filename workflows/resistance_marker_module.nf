@@ -24,7 +24,7 @@ workflow RESISTANCE_MARKER_MODULE {
         resmarkers_amplicon = BUILD_RESMARKER_INFO.out.resmarker_info
     }
     else {
-        resmarkers_amplicon = params.resmarkers_amplicon
+        resmarkers_amplicon = params.resmarker_info
     }
 
     BUILD_RESISTANCE_TABLE(

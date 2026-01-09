@@ -1,0 +1,38 @@
+nextflow_workflow {
+
+    name "Test Workflow DEMULTIPLEX_AMPLICONS"
+    script "workflows/demultiplex_amplicons.nf"
+    workflow "DEMULTIPLEX_AMPLICONS"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                cutadapt_minlen = 5
+                sequencer = "miseq"
+                allowed_errors = 0
+                
+            }
+            workflow {
+                """
+                input[0] = file("${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv")
+                input[1] = Channel.of(
+                    tuple(
+                        'sample1',
+                        [
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample1_R1.fastq.gz"),
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample1_R2.fastq.gz")
+                        ]
+                    ),
+                )
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+}

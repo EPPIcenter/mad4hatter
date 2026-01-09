@@ -1,0 +1,66 @@
+nextflow_process {
+
+    name "Test Process PUBLISH_COVERAGE"
+    script "modules/local/publish_coverage.nf"
+    process "PUBLISH_COVERAGE"
+
+    test("Should run without failures and rename files correctly") {
+
+        when {
+            params {
+                outDIR = "results_test_publish_coverage"
+                sample_coverage = "${projectDir}/tests/example_data/sample_coverage.txt"
+                amplicon_coverage = "${projectDir}/tests/example_data/amplicon_coverage.txt"
+            }
+            process {
+                """
+                input[0] = file(params.sample_coverage)
+                input[1] = file(params.amplicon_coverage)
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.sample_coverage
+            assert process.out.amplicon_coverage
+            def samplePath = process.out.sample_coverage[0]
+            def ampliconPath = process.out.amplicon_coverage[0]
+
+            assert samplePath.endsWith('sample_coverage.txt')
+            assert ampliconPath.endsWith('amplicon_coverage.txt')
+        }
+
+    }
+
+    test("Should handle postprocessed coverage files") {
+
+        when {
+            params {
+                outDIR = "results_test_publish_coverage_postproc"
+                sample_coverage = "${projectDir}/tests/example_data/sample_coverage_postprocessed.txt"
+                amplicon_coverage = "${projectDir}/tests/example_data/amplicon_coverage_postprocessed.txt"
+            }
+            process {
+                """
+                input[0] = file(params.sample_coverage)
+                input[1] = file(params.amplicon_coverage)
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.sample_coverage
+            assert process.out.amplicon_coverage
+            def samplePath = process.out.sample_coverage[0]
+            def ampliconPath = process.out.amplicon_coverage[0]
+
+            assert samplePath.endsWith('sample_coverage.txt')
+            assert ampliconPath.endsWith('amplicon_coverage.txt')
+        }
+
+    }
+
+}
+

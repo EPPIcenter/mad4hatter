@@ -1,0 +1,32 @@
+nextflow_process {
+
+    name "Test Process ALIGN_TO_REFERENCE"
+    script "modules/local/align_to_reference.nf"
+    process "ALIGN_TO_REFERENCE"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                clusters = "${projectDir}/tests/example_data/clusters.concatenated.collapsed.txt"
+                refseq_fasta = "${projectDir}/tests/example_data/multi_pool_targeted_reference.fasta"
+                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+            }
+            process {
+                """
+                input[0] = params.clusters
+                input[1] = params.refseq_fasta
+                input[2] = params.amplicon_info
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.alignments
+            assert path(process.out.alignments.get(0)).md5 == "6655edc403c310471f09741ac1cb3c9f"
+        }
+
+    }
+
+}

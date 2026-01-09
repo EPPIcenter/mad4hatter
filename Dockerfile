@@ -28,3 +28,4 @@ ENV PATH="/opt/mad4hatter/bin:${PATH}"
 
 # Add panel information
 COPY panel_information/ /opt/mad4hatter/panel_information/
+COPY conf/terra_panel.json /opt/mad4hatter/conf/terra_panel.json

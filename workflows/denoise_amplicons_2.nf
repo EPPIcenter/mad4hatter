@@ -53,6 +53,7 @@ workflow DENOISE_AMPLICONS_2 {
   )
   
   emit:
+  denoise_ch = denoise_ch 
   results_ch = BUILD_PSEUDOCIGAR.out.pseudocigar
   reference_ch = reference
   aligned_asv_table = alignment_table_ch

@@ -1,0 +1,223 @@
+import java.util.zip.GZIPInputStream
+nextflow_process {
+
+    name "Test Process CUTADAPT"
+    script "modules/local/cutadapt.nf"
+    process "CUTADAPT"
+    
+    test("Should run without failures dummy test data") {
+
+        when {
+            params {
+                fwd_primers = "${projectDir}/tests/example_data/cutadapt_examples/dummy_fwd_primers.fasta"
+                rev_primers = "${projectDir}/tests/example_data/cutadapt_examples/dummy_rev_primers.fasta"
+                pair_id = "sample1"
+                reads_r1 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R1.fastq.gz"
+                reads_r2 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R2.fastq.gz"
+                cutadapt_minlen = 5
+                sequencer = "miseq"
+                allowed_errors = 0
+            }
+            process {
+                """
+                input[0] = file(params.fwd_primers)
+                input[1] = file(params.rev_primers)
+                input[2] = tuple(params.pair_id, [file(params.reads_r1), file(params.reads_r2)])
+                input[3] = params.cutadapt_minlen
+                input[4] = params.sequencer
+                input[5] = params.allowed_errors
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.sample_summary
+            assert process.out.amplicon_summary
+            assert process.out.demultiplexed_fastqs
+
+            assert path(process.out.sample_summary.get(0)).md5 == "acb88b54c867d608bed674e48f4aeced"
+            assert path(process.out.amplicon_summary.get(0)).md5 == "d030d0fa1e4ffb18b0190eed180ad20b"
+            
+            def outDir = path(process.out.demultiplexed_fastqs[0])
+            def amp1r1 = outDir.resolve("AMP1_sample1_trimmed_R1.fastq.gz")
+            def amp1r2 = outDir.resolve("AMP1_sample1_trimmed_R2.fastq.gz")
+            def amp2r1 = outDir.resolve("AMP2_sample1_trimmed_R1.fastq.gz")
+            def amp2r2 = outDir.resolve("AMP2_sample1_trimmed_R2.fastq.gz")
+            // read contents
+            def amp1r1_fastq = new GZIPInputStream(amp1r1.newInputStream())
+                            .getText("UTF-8")
+            def amp1r2_fastq = new GZIPInputStream(amp1r2.newInputStream())
+                            .getText("UTF-8")
+            def amp2r1_fastq = new GZIPInputStream(amp2r1.newInputStream())
+                            .getText("UTF-8")
+            def amp2r2_fastq = new GZIPInputStream(amp2r2.newInputStream())
+                            .getText("UTF-8")
+            // Check contents 
+            assert amp1r1_fastq.readLines().count { it.startsWith('@') } == 4
+            assert amp1r2_fastq.readLines().count { it.startsWith('@') } == 4
+            assert amp2r1_fastq.readLines().count { it.startsWith('@') } == 1
+            assert amp2r2_fastq.readLines().count { it.startsWith('@') } == 1
+
+            // expected sequences
+            assert amp1r1_fastq.contains("AAGTCAGGCGAAAAAGAGGAACATGTTA")
+            assert amp1r1_fastq.contains("AGAAGAAG")
+            assert amp1r1_fastq.contains("TAGTC")
+            assert amp1r1_fastq.contains("AAGTCAGGCGAAAAAGAGGGGGGGGGGG")
+
+            assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
+            assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
+            assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
+            assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
+
+            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAA")
+
+            assert amp2r2_fastq.contains("GTATATCATATAAATTATCA")
+
+        }
+
+    }
+
+    test("Should run without with nextseq flag") {
+        when {
+            params {
+                fwd_primers = "${projectDir}/tests/example_data/cutadapt_examples/dummy_fwd_primers.fasta"
+                rev_primers = "${projectDir}/tests/example_data/cutadapt_examples/dummy_rev_primers.fasta"
+                pair_id = "sample1"
+                reads_r1 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R1.fastq.gz"
+                reads_r2 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R2.fastq.gz"
+                cutadapt_minlen = 5
+                sequencer = "nextseq"
+                allowed_errors = 0
+            }
+            process {
+                """
+                input[0] = file(params.fwd_primers)
+                input[1] = file(params.rev_primers)
+                input[2] = tuple(params.pair_id, [file(params.reads_r1), file(params.reads_r2)])
+                input[3] = params.cutadapt_minlen
+                input[4] = params.sequencer
+                input[5] = params.allowed_errors
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.sample_summary
+            assert process.out.amplicon_summary
+            assert process.out.demultiplexed_fastqs
+
+            assert path(process.out.sample_summary.get(0)).md5 == "acb88b54c867d608bed674e48f4aeced"
+            assert path(process.out.amplicon_summary.get(0)).md5 == "d030d0fa1e4ffb18b0190eed180ad20b"
+            
+            def outDir = path(process.out.demultiplexed_fastqs[0])
+            def amp1r1 = outDir.resolve("AMP1_sample1_trimmed_R1.fastq.gz")
+            def amp1r2 = outDir.resolve("AMP1_sample1_trimmed_R2.fastq.gz")
+            def amp2r1 = outDir.resolve("AMP2_sample1_trimmed_R1.fastq.gz")
+            def amp2r2 = outDir.resolve("AMP2_sample1_trimmed_R2.fastq.gz")
+            // read contents
+            def amp1r1_fastq = new GZIPInputStream(amp1r1.newInputStream())
+                            .getText("UTF-8")
+            def amp1r2_fastq = new GZIPInputStream(amp1r2.newInputStream())
+                            .getText("UTF-8")
+            def amp2r1_fastq = new GZIPInputStream(amp2r1.newInputStream())
+                            .getText("UTF-8")
+            def amp2r2_fastq = new GZIPInputStream(amp2r2.newInputStream())
+                            .getText("UTF-8")
+            // Check contents 
+            assert amp1r1_fastq.readLines().count { it.startsWith('@') } == 4
+            assert amp1r2_fastq.readLines().count { it.startsWith('@') } == 4
+            assert amp2r1_fastq.readLines().count { it.startsWith('@') } == 1
+            assert amp2r2_fastq.readLines().count { it.startsWith('@') } == 1
+
+            // expected sequences
+            assert amp1r1_fastq.contains("AAGTCAGGCGAAAAAGAGGAACATGTTA")
+            assert amp1r1_fastq.contains("AAGAAGAA")
+            assert amp1r1_fastq.contains("TAGTC")
+            assert amp1r1_fastq.contains("AAGTCAGGCGAAAAAGA")
+
+            assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
+
+            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAA")
+
+            assert amp2r2_fastq.contains("GTATATCATATAAATTATCA")
+
+        }
+
+    }
+
+    test("Should run without with errors in primer") {
+        when {
+            params {
+                fwd_primers = "${projectDir}/tests/example_data/cutadapt_examples/dummy_fwd_primers.fasta"
+                rev_primers = "${projectDir}/tests/example_data/cutadapt_examples/dummy_rev_primers.fasta"
+                pair_id = "sample1"
+                reads_r1 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R1.fastq.gz"
+                reads_r2 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R2.fastq.gz"
+                cutadapt_minlen = 5
+                sequencer = "nextseq"
+                allowed_errors = 1
+            }
+            process {
+                """
+                input[0] = file(params.fwd_primers)
+                input[1] = file(params.rev_primers)
+                input[2] = tuple(params.pair_id, [file(params.reads_r1), file(params.reads_r2)])
+                input[3] = params.cutadapt_minlen
+                input[4] = params.sequencer
+                input[5] = params.allowed_errors
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.sample_summary
+            assert process.out.amplicon_summary
+            assert process.out.demultiplexed_fastqs
+
+            assert path(process.out.sample_summary.get(0)).md5 == "a5e15c6c0423f871f7e289c3bba60ac6"
+            assert path(process.out.amplicon_summary.get(0)).md5 == "b17c134ebaa61476e2b51e14ab2ca826"
+            
+            def outDir = path(process.out.demultiplexed_fastqs[0])
+            def amp1r1 = outDir.resolve("AMP1_sample1_trimmed_R1.fastq.gz")
+            def amp1r2 = outDir.resolve("AMP1_sample1_trimmed_R2.fastq.gz")
+            def amp2r1 = outDir.resolve("AMP2_sample1_trimmed_R1.fastq.gz")
+            def amp2r2 = outDir.resolve("AMP2_sample1_trimmed_R2.fastq.gz")
+            // read contents
+            def amp1r1_fastq = new GZIPInputStream(amp1r1.newInputStream())
+                            .getText("UTF-8")
+            def amp1r2_fastq = new GZIPInputStream(amp1r2.newInputStream())
+                            .getText("UTF-8")
+            def amp2r1_fastq = new GZIPInputStream(amp2r1.newInputStream())
+                            .getText("UTF-8")
+            def amp2r2_fastq = new GZIPInputStream(amp2r2.newInputStream())
+                            .getText("UTF-8")
+            // Check contents 
+            assert amp1r1_fastq.readLines().count { it.startsWith('@') } == 5
+            assert amp1r2_fastq.readLines().count { it.startsWith('@') } == 5
+            assert amp2r1_fastq.readLines().count { it.startsWith('@') } == 2
+            assert amp2r2_fastq.readLines().count { it.startsWith('@') } == 2
+
+            // expected sequences
+            assert amp1r1_fastq.contains("AAGTCAGGCGAAAAAGAGGAACATGTTA")
+            assert amp1r1_fastq.contains("AAGAAGAA")
+            assert amp1r1_fastq.contains("TAGTC")
+            assert amp1r1_fastq.contains("AAGTCAGGCGAAAAAGA")
+            assert amp1r1_fastq.contains("AAGTCAGGCGAAAAAGAGGAACGGGTTA")
+
+            assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
+            assert amp1r2_fastq.contains("GTATATCATATTTTTTATCA")
+
+            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAA")
+            assert amp2r1_fastq.contains("CGAAATGACATGAACAAGTCAGGCGAAA")
+
+            assert amp2r2_fastq.contains("GTATATCATATAAATTATCA")
+            assert amp2r2_fastq.contains("GAATATCATATAAATTATCA")
+
+        }
+
+    }
+
+}

@@ -16,13 +16,12 @@ workflow QC_ONLY {
 
   main:
 
-  read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
+  read_pairs = channel.fromFilePairs( reads, checkIfExists: true )
 
   DEMULTIPLEX_AMPLICONS(amplicon_info, read_pairs)
 
   // create a quality report with the raw data
   QUALITY_CONTROL(
-    amplicon_info,
     DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
     DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
     null,

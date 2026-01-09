@@ -1,0 +1,118 @@
+nextflow_pipeline {
+
+    name "Test Main Pipeline End-to-End"
+    script "main.nf"
+
+    test("Complete workflow should run successfully with default parameters") {
+
+        when {
+            params {
+                workflow_name = 'complete'
+                pools = 'D1,R1,R2'
+                readDIR = "${projectDir}/tests/example_data/example_fastq"
+                sequencer = 'miseq'
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+    
+    test("Complete workflow should run with nextseq sequencer and one pool") {
+
+        when {
+            params {
+                workflow_name = 'complete'
+                pools = 'D1'
+                readDIR = "${projectDir}/tests/example_data/example_fastq/"
+                sequencer = 'nextseq'
+                outDIR = 'results_test_nextseq'
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+    test("QC workflow should run successfully") {
+
+        when {
+            params {
+                workflow_name = 'qc'
+                pools = 'R2'
+                readDIR = "${projectDir}/tests/example_data/example_fastq/"
+                sequencer = 'miseq'
+                outDIR = 'results_test_qc'
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+    test("Postprocessing workflow with custom principal_resmarkers should run successfully") {
+
+        when {
+            params {
+                workflow_name = 'postprocessing'
+                pools = 'D1.1,R1.2,R2.1'
+                denoised_asvs = "${projectDir}/tests/example_data/subset_dada2.clusters.txt"
+                outDIR = 'results_test_postproc'
+                principal_resmarkers = "${projectDir}/tests/example_data/subset_principal_resistance_marker_info_table.tsv"
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+    test("Complete workflow should run with custom amplicon info and targeted reference sequence") {
+
+        when {
+            params {
+                workflow_name = 'complete'
+                pools = 'D1.1,R1.2,R2'
+                readDIR = "${projectDir}/tests/example_data/example_fastq/"
+                sequencer = 'miseq'
+                outDIR = 'results_test_custom_amplicon'
+                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+                refseq_fasta = "${projectDir}/tests/example_data/multi_pool_targeted_reference.fasta"
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+    test("Complete workflow should run with genome reference") {
+
+        when {
+            params {
+                workflow_name = 'complete'
+                pools = 'D1.1'
+                readDIR = "${projectDir}/tests/example_data/example_fastq"
+                sequencer = 'miseq'
+                outDIR = 'results_test_genome_ref'
+                genome = "${projectDir}/tests/example_data/chrom_one_genome.fasta"
+                amplicon_info = "${projectDir}/tests/example_data/chrom_one_info.tsv"
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+}
+
