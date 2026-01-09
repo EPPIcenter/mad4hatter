@@ -22,7 +22,6 @@ workflow QC_ONLY {
 
   // create a quality report with the raw data
   QUALITY_CONTROL(
-    amplicon_info,
     DEMULTIPLEX_AMPLICONS.out.sample_summary_ch,
     DEMULTIPLEX_AMPLICONS.out.amplicon_summary_ch,
     null,
