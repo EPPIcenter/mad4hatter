@@ -1,0 +1,45 @@
+---
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: bug
+---
+body: 
+  - type: markdown
+      attributes:
+        value: |
+          Before you post this issue, please check the documentation or see if there is already an issue open for this:
+          
+          - [Documentation](https://eppicenter.github.io/mad4hatter/)
+          - [Issues](https://github.com/EPPICenter/mad4hatter/issues)
+
+  - type: textarea
+      id: description
+      attributes:
+        label: Description of the bug
+        description: A clear and concise description of what the bug is.
+      validations:
+        required: true
+
+  - type: textarea
+    id: command_used
+    attributes:
+      label: Command used and terminal output
+      description: Steps to reproduce the behaviour. Please paste the command you used to launch the pipeline and the output from your terminal.
+      render: console
+      placeholder: |
+        $ nextflow run ...
+
+        Some output where something broke
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Provide details about your environment.
+      render: console
+      placeholder: |
+        Nextflow version: e.g. 24.10.4
+        Pipeline version: e.g. v0.2.1
+        Profile used: e.g. docker, conda, sge,apptainer
+        Operating System: e.g. Linux, macOS, Windows
+
