@@ -21,6 +21,8 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.trace.tasks().size() == 9
+            assert workflow.out.alleledata
+            assert path(workflow.out.alleledata.get(0)).md5 == "df876c048588de182f49ce5f36205ffb"
         }
 
     }
