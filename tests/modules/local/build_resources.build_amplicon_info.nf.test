@@ -9,7 +9,7 @@ nextflow_process {
         when {
             params {
                 pools = "D1 R1 R2"
-                amplicon_info_paths = "${projectDir}/tests/example_data/D1.1_amplicon_info.tsv ${projectDir}/tests/example_data/R1.2_amplicon_info.tsv ${projectDir}/tests/example_data/R2.1_amplicon_info.tsv"
+                amplicon_info_paths = "${projectDir}/panel_information/D1.1/D1.1_amplicon_info.tsv ${projectDir}/panel_information/R1.2/R1.2_amplicon_info.tsv ${projectDir}/panel_information/R2.1/R2.1_amplicon_info.tsv"
                 amplicon_info_output = "amplicon_info_test.tsv"
             }
             process {
@@ -24,7 +24,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.amplicon_info
-            assert path(process.out.amplicon_info.get(0)).md5 == "38199619a70401b0940098a2132ee11f"
+            assert path(process.out.amplicon_info.get(0)).md5 == "164168f4d8bc4db7016a8682e22c20cc"
         }
 
     }
@@ -34,7 +34,7 @@ nextflow_process {
         when {
             params {
                 pools = "R1"
-                amplicon_info_paths = "${projectDir}/tests/example_data/R1.2_amplicon_info.tsv"
+                amplicon_info_paths = "${projectDir}/panel_information/R1.2/R1.2_amplicon_info.tsv"
                 amplicon_info_output = "amplicon_info_test.tsv"
             }
             process {
@@ -49,7 +49,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.amplicon_info
-            assert path(process.out.amplicon_info.get(0)).md5 == "1459472afbb8d971186853bf454f9647"
+            assert path(process.out.amplicon_info.get(0)).md5 == "a6e68358fecfbf643f15cc38947eb855"
         }
 
     }
@@ -60,7 +60,7 @@ nextflow_process {
         when {
             params {
                 pools = "Something"
-                amplicon_info_paths = "${projectDir}/tests/example_data/R1.2_amplicon_info.tsv"
+                amplicon_info_paths = "${projectDir}/panel_information/R1.2/R1.2_amplicon_info.tsv"
                 amplicon_info_output = "amplicon_info_test.tsv"
             }
             process {
@@ -75,7 +75,31 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.amplicon_info
-            assert path(process.out.amplicon_info.get(0)).md5 == "d7df780bce1f6b597bd6d85218020002"
+            assert path(process.out.amplicon_info.get(0)).md5 == "02522fa61f678236a7419eb87d9c8639"
+        }
+
+    }
+
+    test("Build crazy name should run without failures") {
+
+        when {
+            params {
+                pools = "R2"
+                amplicon_info_paths = "${projectDir}/tests/example_data/amplicon_info_missing_cols.tsv"
+                amplicon_info_output = "amplicon_info_test.tsv"
+            }
+            process {
+                """
+                input[0] = params.pools
+                input[1] = params.amplicon_info_paths
+                input[2] = params.amplicon_info_output
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains("ValueError: File '/Users/kmurie/Documents/git_projects/mad4hatter/tests/example_data/amplicon_info_missing_cols.tsv' is missing required columns: ['target_id', 'chrom', 'insert_start', 'insert_end', 'fwd_primer']")
         }
 
     }

@@ -92,7 +92,7 @@ nextflow_process {
 
         then {
             assert process.failed
-            process.errorReport.contains("ERROR: No valid FASTA records were found.")
+            assert process.errorReport.contains("ERROR: No valid FASTA records were found.")
         }
 
     }

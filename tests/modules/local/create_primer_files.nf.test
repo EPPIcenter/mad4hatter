@@ -42,7 +42,7 @@ nextflow_process {
 
         then {
             assert process.failed
-            process.errorReport.contains("Must have 'fwd_primer' and 'rev_primer' in ")
+            assert process.errorReport.contains("Must have 'fwd_primer' and 'rev_primer' in ")
         }
 
     }

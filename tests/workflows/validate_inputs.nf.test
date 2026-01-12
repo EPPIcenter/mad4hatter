@@ -72,7 +72,7 @@ nextflow_workflow {
 
         then {
             assert workflow.failed
-            workflow.errorReport.contains("Invalid workflow specified: invalid. Allowed workflows are: qc, complete, postprocessing.")
+            assert workflow.stdout.contains("ERROR ~ Invalid workflow specified: invalid. Allowed workflows are: qc, complete, postprocessing.")
         }
 
     }
@@ -91,7 +91,7 @@ nextflow_workflow {
 
         then {
             assert workflow.failed
-            workflow.errorReport.contains("`--readDIR` must be specified but is missing.")
+            assert workflow.stdout.contains("ERROR ~ `--readDIR` must be specified but is missing.")
         }
 
     }
@@ -110,7 +110,7 @@ nextflow_workflow {
 
         then {
             assert workflow.failed
-            workflow.errorReport.contains("The following pools were not found in configuration: bad_pool, bad_pool2")
+            assert workflow.stdout.contains("ERROR ~ The following pools were not found in configuration: bad_pool, bad_pool2")
         }
 
     }
