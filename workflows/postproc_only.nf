@@ -38,4 +38,7 @@ workflow POSTPROC_ONLY {
       DENOISE_AMPLICONS_2.out.denoise_ch,
       DENOISE_AMPLICONS_2.out.results_ch
     )
+
+    emit: 
+    alleledata = BUILD_ALLELETABLE.out.alleledata
 }

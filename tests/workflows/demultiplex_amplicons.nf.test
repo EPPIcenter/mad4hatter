@@ -1,3 +1,4 @@
+import java.util.zip.GZIPInputStream
 nextflow_workflow {
 
     name "Test Workflow DEMULTIPLEX_AMPLICONS"
@@ -15,7 +16,7 @@ nextflow_workflow {
             }
             workflow {
                 """
-                input[0] = file("${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv")
+                input[0] = file("${projectDir}/tests/example_data/cutadapt_examples/dummy_amplicon_info.tsv")
                 input[1] = Channel.of(
                     tuple(
                         'sample1',
@@ -31,6 +32,50 @@ nextflow_workflow {
 
         then {
             assert workflow.success
+
+            assert workflow.out.sample_summary_ch
+            assert workflow.out.amplicon_summary_ch
+            assert workflow.out.demux_fastqs_ch
+
+            assert path(workflow.out.sample_summary_ch.get(0)).md5 == "acb88b54c867d608bed674e48f4aeced"
+            assert path(workflow.out.amplicon_summary_ch.get(0)).md5 == "d030d0fa1e4ffb18b0190eed180ad20b"
+            
+            def outDir = path(workflow.out.demux_fastqs_ch[0])
+            def amp1r1 = outDir.resolve("AMP1_sample1_trimmed_R1.fastq.gz")
+            def amp1r2 = outDir.resolve("AMP1_sample1_trimmed_R2.fastq.gz")
+            def amp2r1 = outDir.resolve("AMP2_sample1_trimmed_R1.fastq.gz")
+            def amp2r2 = outDir.resolve("AMP2_sample1_trimmed_R2.fastq.gz")
+            // read contents
+            def amp1r1_fastq = new GZIPInputStream(amp1r1.newInputStream())
+                            .getText("UTF-8")
+            def amp1r2_fastq = new GZIPInputStream(amp1r2.newInputStream())
+                            .getText("UTF-8")
+            def amp2r1_fastq = new GZIPInputStream(amp2r1.newInputStream())
+                            .getText("UTF-8")
+            def amp2r2_fastq = new GZIPInputStream(amp2r2.newInputStream())
+                            .getText("UTF-8")
+            // Check contents 
+            assert amp1r1_fastq.readLines().count { it.startsWith('@') } == 4
+            assert amp1r2_fastq.readLines().count { it.startsWith('@') } == 4
+            assert amp2r1_fastq.readLines().count { it.startsWith('@') } == 1
+            assert amp2r2_fastq.readLines().count { it.startsWith('@') } == 1
+
+            // expected sequences
+            assert amp1r1_fastq.contains("AAGTCAGGCGAAAAAGAGGAACATGTTA")
+            assert amp1r1_fastq.contains("AGAAGAAG")
+            assert amp1r1_fastq.contains("TAGTC")
+            assert amp1r1_fastq.contains("AAGTCAGGCGAAAAAGAGGGGGGGGGGG")
+
+            assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
+            assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
+            assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
+            assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
+
+            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAA")
+
+            assert amp2r2_fastq.contains("GTATATCATATAAATTATCA")
+
+
         }
 
     }

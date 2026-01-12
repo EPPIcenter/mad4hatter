@@ -27,4 +27,8 @@ workflow QC_ONLY {
     null,
     null
   )
+
+  emit:
+    sample_coverage_ch = QUALITY_CONTROL.out.sample_coverage
+    amplicon_coverage_ch = QUALITY_CONTROL.out.amplicon_coverage
 }
