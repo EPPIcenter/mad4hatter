@@ -33,4 +33,11 @@ workflow RESISTANCE_MARKER_MODULE {
         resmarkers_amplicon,
         reference
     )
+
+
+    emit:
+    resmarkers = BUILD_RESISTANCE_TABLE.out.resmarkers
+    resmarkers_by_locus = BUILD_RESISTANCE_TABLE.out.resmarkers_by_locus
+    microhaps = BUILD_RESISTANCE_TABLE.out.microhaps
+    new_mutations = BUILD_RESISTANCE_TABLE.out.new_mutations
 }

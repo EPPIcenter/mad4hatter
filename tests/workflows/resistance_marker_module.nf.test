@@ -27,6 +27,16 @@ nextflow_workflow {
 
         then {
             assert workflow.success
+
+            assert workflow.out.resmarkers
+            assert workflow.out.resmarkers_by_locus
+            assert workflow.out.microhaps
+            assert workflow.out.new_mutations
+
+            assert path(workflow.out.resmarkers.get(0)).md5 == "8871b4d144547c016c553b3383ed3434"
+            assert path(workflow.out.resmarkers_by_locus.get(0)).md5 == "8d0c664b670b18ba50cf3d725e994c94"
+            assert path(workflow.out.microhaps.get(0)).md5 == "2e69a34465f4430a3590209676855cdb"
+            assert path(workflow.out.new_mutations.get(0)).md5 == "dcc49e29d5f7741e70f0b1d926e9ef5c"
         }
 
     }
@@ -53,6 +63,16 @@ nextflow_workflow {
 
         then {
             assert workflow.success
+
+            assert workflow.out.resmarkers
+            assert workflow.out.resmarkers_by_locus
+            assert workflow.out.microhaps
+            assert workflow.out.new_mutations
+
+            assert path(workflow.out.resmarkers.get(0)).md5 == "a7a986edfbdf91685e24d9ff314b2187"
+            assert path(workflow.out.resmarkers_by_locus.get(0)).md5 == "81c511f220a00280738edb5e81cc72ae"
+            assert path(workflow.out.microhaps.get(0)).md5 == "08bee04c8774d8bc2d3c2677a2997c0f"
+            assert path(workflow.out.new_mutations.get(0)).md5 == "378fb66b1dcb728cc4898ed585fbea72"
         }
 
     }
