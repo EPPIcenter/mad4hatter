@@ -30,7 +30,7 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.amplicon_info_ch
-            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "164168f4d8bc4db7016a8682e22c20cc"
+            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "1a158bbd797e814e4e2866160f59740c"
         }
 
     }
@@ -61,12 +61,12 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.amplicon_info_ch
-            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "164168f4d8bc4db7016a8682e22c20cc"
+            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "1a158bbd797e814e4e2866160f59740c"
         }
 
     }
 
-        test("Should run without failures with single pool") {
+    test("Should run without failures with single pool") {
 
         when {
             params {
@@ -92,7 +92,7 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.amplicon_info_ch
-            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "2f43a17c9200e63bf3948b653e93fb8f"
+            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "fe70602ecc3d83dd94c4036cc3fbe0c2"
         }
 
     }
