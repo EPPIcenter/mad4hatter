@@ -10,7 +10,7 @@ nextflow_process {
             params {
                 alleledata = "${projectDir}/tests/example_data/test_resmarker_allele_data.txt"
                 alignment_data = "${projectDir}/tests/example_data/test_resmarker_alignments.txt"
-                resmarkers = "${projectDir}/tmp1"
+                resmarkers = "${projectDir}/tests/example_data/test_resmarker_info.txt"
                 refseq = "${projectDir}/tests/example_data/test_resmarker_reference.fasta"
             }
             process {
