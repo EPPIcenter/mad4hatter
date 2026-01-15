@@ -38,7 +38,7 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.reference_ch
-            assert path(workflow.out.reference_ch.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+            assert path(workflow.out.reference_ch.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
             assert workflow.trace.tasks().size() == 1
         }
 

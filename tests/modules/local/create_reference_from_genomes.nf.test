@@ -30,4 +30,29 @@ nextflow_process {
 
     }
 
+    test("Should fail when chromosome is missing from genome file") {
+
+        when {
+            params {
+                genome = "${projectDir}/tests/example_data/chrom_one_genome.fasta"
+                amplicon_info = "${projectDir}/tests/example_data/chrom_missing_info.tsv"
+                refseq_fasta = "output_name.fasta"
+            }
+            process {
+                """
+                input[0] = params.genome
+                input[1] = params.amplicon_info
+                input[2] = params.refseq_fasta
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains("Error: The following chromosomes were not found in the genome file:")
+            assert process.errorReport.contains("Pf3D7_99_v3")
+        }
+
+    }
+
 }

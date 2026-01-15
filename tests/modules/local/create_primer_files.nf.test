@@ -21,8 +21,8 @@ nextflow_process {
             assert process.success
             assert process.out.fwd_primers
             assert process.out.rev_primers
-            assert path(process.out.fwd_primers.get(0)).md5 == "9e4928d6a4203060deaf9b3f6d8d179e"
-            assert path(process.out.rev_primers.get(0)).md5 == "0b347e5fbc47d433b7b2f4acd331ea8f"
+            assert path(process.out.fwd_primers.get(0)).md5 == "6e7138c828b71bc0ad74ab20222a199b"
+            assert path(process.out.rev_primers.get(0)).md5 == "bb3e9cadb551f6f02494b47cfffb11b4"
         }
 
     }
@@ -42,7 +42,7 @@ nextflow_process {
 
         then {
             assert process.failed
-            assert process.errorReport.contains("Must have 'fwd_primer' and 'rev_primer' in ")
+            assert process.errorReport.contains("Must have 'target_id', 'fwd_primer' and 'rev_primer' in ")
         }
 
     }

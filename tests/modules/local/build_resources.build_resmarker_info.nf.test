@@ -24,7 +24,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.resmarker_info
-            assert path(process.out.resmarker_info.get(0)).md5 == "3d0ced7271b16dc7d3281c5a1b7347e1"
+            assert path(process.out.resmarker_info.get(0)).md5 == "e4c5a6b79e01bfeb2be66d3f9320545c"
         }
 
     }
@@ -34,7 +34,7 @@ nextflow_process {
 
         when {
             params {
-                amplicon_info = "${projectDir}/tests/example_data/D1.1_amplicon_info.tsv"
+                amplicon_info = "${projectDir}/panel_information/D1.1/D1.1_amplicon_info.tsv"
                 principal_resmarkers = "${projectDir}/tests/example_data/principal_resistance_marker_info_table.tsv"
                 resmarker_info_output_path = "output"
             }
@@ -58,7 +58,7 @@ nextflow_process {
 
         when {
             params {
-                amplicon_info = "${projectDir}/tests/example_data/dummy_amplicon_info_with_resmarker_multiple_targets_per_marker.tsv "
+                amplicon_info = "${projectDir}/tests/example_data/dummy_amplicon_info_with_resmarker_multiple_targets_per_marker.tsv"
                 principal_resmarkers = "${projectDir}/tests/example_data/dummy_resmarker_info.tsv"
                 resmarker_info_output_path = "output"
             }
@@ -74,7 +74,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.resmarker_info
-            assert path(process.out.resmarker_info.get(0)).md5 == "e7ff63f3af9d1c047bc3709d2b0aa8f7"
+            assert path(process.out.resmarker_info.get(0)).md5 == "537a795f5fab263f4e83633512e50146"
         }
 
     }
@@ -99,7 +99,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.resmarker_info
-            assert path(process.out.resmarker_info.get(0)).md5 == "af25da9b4ba014f97926b61577d2bc46"
+            assert path(process.out.resmarker_info.get(0)).md5 == "4648a4a3d6407669bf62bf742593e9cc"
         }
 
     }

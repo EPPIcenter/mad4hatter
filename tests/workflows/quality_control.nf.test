@@ -78,8 +78,8 @@ nextflow_workflow {
             assert workflow.success
             assert workflow.out.sample_coverage
             assert workflow.out.amplicon_coverage
-            assert path(workflow.out.sample_coverage.get(0)).md5 == "132e9b2b8b48f9553c69eec1ba630dbc"
-            assert path(workflow.out.amplicon_coverage.get(0)).md5 == "74bf05fb7fdbbc29ce3f52c6a481ca40"
+            assert path(workflow.out.sample_coverage.get(0)).md5 == "c5877466581b344bfd3714308b94c621"
+            assert path(workflow.out.amplicon_coverage.get(0)).md5 == "443c4acd9b6b94f08a665b7981bb58e0"
         }
 
     }

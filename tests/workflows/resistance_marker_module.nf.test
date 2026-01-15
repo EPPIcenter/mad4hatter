@@ -12,7 +12,7 @@ nextflow_workflow {
                 resmarker_info = null
                 amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
                 allele_data = "${projectDir}/tests/example_data/allele_data.txt"
-                alignment_data = "${projectDir}/tests/example_data/alignments.txt"
+                alignment_data = "${projectDir}/tests/example_data/masked.alignments.txt"
                 reference = "${projectDir}/tests/example_data/multi_pool_targeted_reference.fasta"
             }
             workflow {
@@ -33,10 +33,10 @@ nextflow_workflow {
             assert workflow.out.microhaps
             assert workflow.out.new_mutations
 
-            assert path(workflow.out.resmarkers.get(0)).md5 == "8871b4d144547c016c553b3383ed3434"
-            assert path(workflow.out.resmarkers_by_locus.get(0)).md5 == "8d0c664b670b18ba50cf3d725e994c94"
-            assert path(workflow.out.microhaps.get(0)).md5 == "2e69a34465f4430a3590209676855cdb"
-            assert path(workflow.out.new_mutations.get(0)).md5 == "dcc49e29d5f7741e70f0b1d926e9ef5c"
+            assert path(workflow.out.resmarkers.get(0)).md5 == "2c061752d5b2d197bc4b7ba82d5edf9f"
+            assert path(workflow.out.resmarkers_by_locus.get(0)).md5 == "4cdf4e84f99e27cee8bf155ca348cd9a"
+            assert path(workflow.out.microhaps.get(0)).md5 == "2dc6fe82402593ca42fcc85898178c58"
+            assert path(workflow.out.new_mutations.get(0)).md5 == "8d4dff2ba8f5e97bc9db17566ad180a7"
         }
 
     }

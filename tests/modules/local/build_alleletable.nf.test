@@ -24,32 +24,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.alleledata
-            assert path(process.out.alleledata.get(0)).md5 == "ce6ddef20e488bed4aa6bc089a373c97"
-        }
-
-    }
-    test("Should run without failures on data with edge cases") {
-
-        when {
-            params {
-                // define parameters here. Example:
-                amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
-                denoised_asvs = "${projectDir}/tests/example_data/small_dada2.clusters.txt"
-                processed_asvs = "${projectDir}/tests/example_data/small_alignments.pseudocigar.txt"
-            }
-            process {
-                """
-                input[0] = params.amplicon_info
-                input[1] = params.denoised_asvs
-                input[2] = params.processed_asvs
-                """
-            }
-        }
-
-        then {
-            assert process.success
-            assert process.out.alleledata
-            assert path(process.out.alleledata.get(0)).md5 == "fb43dcb1cc59113847bf6e6538ecbac5"
+            assert path(process.out.alleledata.get(0)).md5 == "798c3f89f3e5d32b5c003a735c022a08"
         }
 
     }

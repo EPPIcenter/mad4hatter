@@ -30,13 +30,13 @@ nextflow_workflow {
             assert workflow.success
 
             assert workflow.out.results_ch
-            assert path(workflow.out.results_ch.get(0)).md5 == "ad36677990a6a75dc6fed8cc2156b829"
+            assert path(workflow.out.results_ch.get(0)).md5 == "a6e6c4bfe0dc6e1bdd292f73228dd388"
 
             assert workflow.out.reference_ch
-            assert path(workflow.out.reference_ch.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+            assert path(workflow.out.reference_ch.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
 
             assert workflow.out.aligned_asv_table
-            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "2dcb5dae34de2ddb352bb2798116b696"
+            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "401c3726aa1126161df05c384743cc6b"
 
             assert workflow.trace.tasks().size() == 8
         }
@@ -68,13 +68,13 @@ nextflow_workflow {
             assert workflow.success
 
             assert workflow.out.results_ch
-            assert path(workflow.out.results_ch.get(0)).md5 == "ad36677990a6a75dc6fed8cc2156b829"
+            assert path(workflow.out.results_ch.get(0)).md5 == "a6e6c4bfe0dc6e1bdd292f73228dd388"
 
             assert workflow.out.reference_ch
-            assert path(workflow.out.reference_ch.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+            assert path(workflow.out.reference_ch.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
 
             assert workflow.out.aligned_asv_table
-            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "2dcb5dae34de2ddb352bb2798116b696"
+            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "401c3726aa1126161df05c384743cc6b"
 
             assert workflow.trace.tasks().size() == 7
         }
@@ -106,13 +106,13 @@ nextflow_workflow {
             assert workflow.success
 
             assert workflow.out.results_ch
-            assert path(workflow.out.results_ch.get(0)).md5 == "ad36677990a6a75dc6fed8cc2156b829"
+            assert path(workflow.out.results_ch.get(0)).md5 == "a6e6c4bfe0dc6e1bdd292f73228dd388"
 
             assert workflow.out.reference_ch
-            assert path(workflow.out.reference_ch.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+            assert path(workflow.out.reference_ch.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
 
             assert workflow.out.aligned_asv_table
-            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "2dcb5dae34de2ddb352bb2798116b696"
+            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "401c3726aa1126161df05c384743cc6b"
 
             assert workflow.trace.tasks().size() == 6
         }

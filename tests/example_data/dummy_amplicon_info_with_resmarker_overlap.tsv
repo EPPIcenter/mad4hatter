@@ -1,3 +1,3 @@
-amplicon	amplicon_start	amplicon_end	ampInsert_start	ampInsert_end	rev_primer	amplicon_length	ampInsert_length	fwd_primer	pool
+target_id	amplicon_start	amplicon_end	ampInsert_start	ampInsert_end	rev_primer	amplicon_length	ampInsert_length	fwd_primer	pool
 chr1_locus1	748105	748359	748129	748326	TCATTTACATTATCCACAGTTTCTTTGTTTAAA	254	197	CGACGTTTTCGATATTTATGCCAT	R1
 chr4_locus2	403479	403716	403500	403683	AAAGAACATAATCATACAAATAAAGTTGTGAGT	237	183	GACCTTAACAGATGGCTCACG	R1

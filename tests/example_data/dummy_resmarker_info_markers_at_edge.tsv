@@ -1,5 +1,5 @@
-GeneID	Gene	CodonID	chr	start	stop	strand	Locus	amplicon_length	ampInsert_length	CodonStart
-0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	Pf3D7_04_v3-codon_at_start	207	8	0
-0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	Pf3D7_04_v3-codon_one_base_in	207	9	1
-0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	Pf3D7_04_v3-codon_at_end	207	6	3
-0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	Pf3D7_04_v3-codon_one_in_from_end	207	7	3
+GeneID	Gene	CodonID	chr	start	stop	strand	Locus	ampInsert_length	CodonStart
+0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	codon_at_start	7	0
+0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	codon_one_base_in	8	1
+0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	codon_at_end	5	3
+0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	codon_one_in_from_end	6	3

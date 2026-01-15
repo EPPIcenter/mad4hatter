@@ -66,26 +66,26 @@ if (args$concat_non_overlaps) {
 
   amplicon.info <- amplicon.info %>%
     mutate(names = sapply(str_split(names, "_S(\\d+)"), head, 1)) %>%
-    mutate(amplicon = unlist(lapply(str_split(names, "_"), function(x) {
+    mutate(target_id = unlist(lapply(str_split(names, "_"), function(x) {
       paste(x[1:3], collapse = "_")
     }))) %>%
     inner_join(
       read.table(args$ampliconFILE, header = T) %>%
-        select(amplicon, ampInsert_length),
-      by = c("amplicon")
+        select(target_id, insert_length),
+      by = c("target_id")
     ) %>%
-    select(amplicon, ampInsert_length) %>%
+    select(target_id, insert_length) %>%
     mutate(
       sum.mean.length.reads = sapply(sapply(unlist(lapply(dadaFs, "[", "sequence"), recursive = F), nchar), mean) +
         sapply(sapply(unlist(lapply(dadaRs, "[", "sequence"), recursive = F), nchar), mean)
     )
 
   rownames(amplicon.info) <- names(dadaFs)
-
-  mergers.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) < sum.mean.length.reads))],
-    filtered_Fs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) < sum.mean.length.reads))],
-    dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) < sum.mean.length.reads))],
-    filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) < sum.mean.length.reads))],
+  #TODO: check this overlap logic makes sense with the new insert_length column
+  mergers.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
+    filtered_Fs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
+    dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
+    filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
     verbose = TRUE,
     justConcatenate = FALSE,
     trimOverhang = TRUE,
@@ -93,10 +93,10 @@ if (args$concat_non_overlaps) {
     maxMismatch = 1
   )
 
-  mergers.no.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
-    filtered_Fs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
-    dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
-    filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
+  mergers.no.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
+    filtered_Fs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
+    dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
+    filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
     verbose = TRUE,
     justConcatenate = TRUE
   )
@@ -142,10 +142,10 @@ seqtab.nochim.df[seqtab.nochim.df == 0] <- NA
 amplicon.table <- read.table(args$ampliconFILE, header = TRUE, sep = "\t")
 
 # find amplicons (use to select)
-pat <- paste(amplicon.table$amplicon, collapse = "|") # find amplicons specified in amplicon table
+pat <- paste(amplicon.table$target_id, collapse = "|") # find amplicons specified in amplicon table
 
 # create regex to extract sampleID (to be used with remove)
-pat.sampleID <- paste(sprintf("^%s_", amplicon.table$amplicon), collapse = "|") # find amplicons specified in amplicon table (with _)
+pat.sampleID <- paste(sprintf("^%s_", amplicon.table$target_id), collapse = "|") # find amplicons specified in amplicon table (with _)
 pat.sampleID <- paste(c(pat.sampleID, "_trimmed_merged.fastq.gz$"), collapse = "|") # remove _trimmed from end
 
 seqtab.nochim.df <- seqtab.nochim.df %>%
