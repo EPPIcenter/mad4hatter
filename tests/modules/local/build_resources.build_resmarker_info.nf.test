@@ -74,7 +74,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.resmarker_info
-            assert path(process.out.resmarker_info.get(0)).md5 == "537a795f5fab263f4e83633512e50146"
+            assert path(process.out.resmarker_info.get(0)).md5 == "e336779444934482cbb218fdb7213af3"
         }
 
     }

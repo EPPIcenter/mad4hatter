@@ -2,7 +2,6 @@
 import argparse
 import os
 import pandas as pd
-import sys
 
 
 def parse_args_build_amplicon_info():
@@ -41,7 +40,7 @@ def concatenate_tables(paths, pools):
     concatenated_df = concatenated_df.groupby(['target_id', 'chrom', 'insert_start', 'insert_end','fwd_primer','rev_primer'])['pool'].agg(lambda x: ','.join(x)).reset_index()
     concatenated_df.sort_values('target_id', inplace=True)
     concatenated_df.reset_index(inplace=True, drop=True)
-    concatenated_df['insert_length'] = concatenated_df['insert_end'] - concatenated_df['insert_start'] #TODO: rest of the pipeline uses this incorrectly (it thinks the insert length is -1)
+    #concatenated_df['insert_length'] = concatenated_df['insert_end'] - concatenated_df['insert_start'] #TODO: rest of the pipeline uses this incorrectly (it thinks the insert length is -1)
     return concatenated_df
 
 

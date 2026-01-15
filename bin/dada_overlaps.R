@@ -71,6 +71,7 @@ if (args$concat_non_overlaps) {
     }))) %>%
     inner_join(
       read.table(args$ampliconFILE, header = T) %>%
+        mutate(insert_length = insert_end - insert_start) %>%
         select(target_id, insert_length),
       by = c("target_id")
     ) %>%

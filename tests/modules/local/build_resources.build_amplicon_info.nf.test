@@ -24,7 +24,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.amplicon_info
-            assert path(process.out.amplicon_info.get(0)).md5 == "164168f4d8bc4db7016a8682e22c20cc"
+            assert path(process.out.amplicon_info.get(0)).md5 == "1a158bbd797e814e4e2866160f59740c"
         }
 
     }
@@ -49,7 +49,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.amplicon_info
-            assert path(process.out.amplicon_info.get(0)).md5 == "a6e68358fecfbf643f15cc38947eb855"
+            assert path(process.out.amplicon_info.get(0)).md5 == "f9d033ae3a7fc89779c98589ff351060"
         }
 
     }
@@ -75,12 +75,12 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.amplicon_info
-            assert path(process.out.amplicon_info.get(0)).md5 == "02522fa61f678236a7419eb87d9c8639"
+            assert path(process.out.amplicon_info.get(0)).md5 == "2e3385d7e8107a9c649fd8491f9c2015"
         }
 
     }
 
-    test("Build crazy name should run without failures") {
+    test("Build with missing columns should fail") {
 
         when {
             params {
@@ -99,7 +99,7 @@ nextflow_process {
 
         then {
             assert process.failed
-            assert process.errorReport.contains("ValueError: File '/Users/kmurie/Documents/git_projects/mad4hatter/tests/example_data/amplicon_info_missing_cols.tsv' is missing required columns: ['target_id', 'chrom', 'insert_start', 'insert_end', 'fwd_primer']")
+            assert process.errorReport.contains("tests/example_data/amplicon_info_missing_cols.tsv' is missing required columns: ['target_id', 'chrom', 'insert_start', 'insert_end', 'fwd_primer']")
         }
 
     }
