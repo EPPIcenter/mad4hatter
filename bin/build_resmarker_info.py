@@ -23,7 +23,7 @@ def build_resmarker_info():
         'GeneID': str}, sep='\t')
 
     data = {'GeneID': [], 'Gene': [], 'CodonID': [], 'chr': [], 'start': [], 'stop': [
-    ], 'strand': [], 'Locus': [], 'ampInsert_length': [], 'CodonStart': []}
+    ], 'strand': [], 'Locus': [], 'CodonStart': []}
 
     for _, row in full_resmarker_df.iterrows():
         chr = row.chr
@@ -42,7 +42,6 @@ def build_resmarker_info():
                 data['stop'].append(row.stop)
                 data['strand'].append(row.strand)
                 data['Locus'].append(overlap_row.target_id)
-                data['ampInsert_length'].append((overlap_row.insert_end-overlap_row.insert_start)-1) #TODO: set this to insert length instead of -1 and handle within the script calling resmarkers
                 codon_start = row.start-overlap_row.insert_start
                 data['CodonStart'].append(codon_start)
     resmarker_df = pd.DataFrame(data=data)
