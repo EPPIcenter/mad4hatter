@@ -82,7 +82,6 @@ if (args$concat_non_overlaps) {
     )
 
   rownames(amplicon.info) <- names(dadaFs)
-  #TODO: check this overlap logic makes sense with the new insert_length column
   mergers.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
     filtered_Fs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
     dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
