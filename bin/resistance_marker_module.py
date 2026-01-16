@@ -10,6 +10,7 @@ import numpy as np
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
+import sys
 
 
 def read_allele_data(allele_data_path, aligned_asv_table_path):
@@ -437,7 +438,45 @@ def main(args):
         masked_coords_dict)
     allele_data_per_resmarker = allele_data.merge(
         res_markers_info, on='Locus')
-
+    
+    # Check if there is any overlap between allele_data and res_markers_info
+    if allele_data_per_resmarker.empty:
+        warning_message = (
+            "WARNING: No overlap found between allele data and resistance marker information. "
+            "The resistance markers covered by the panel were not found in the data. "
+            "This may indicate that the panel does not cover any resistance markers present in your samples, "
+            "or that the marker information does not match the loci in your allele data. "
+            "Output tables will be empty."
+        )
+        logging.warning(warning_message)
+        # Print to both stdout and stderr to ensure visibility in Nextflow output
+        print(warning_message, file=sys.stdout)
+        print(warning_message, file=sys.stderr)
+        
+        # Create empty output files with headers so Nextflow process completes successfully
+        logging.info("Creating empty output files with headers.")
+        # resmarker_table.txt columns (collapsed, includes MultipleLoci)
+        empty_resmarker_collapsed_columns = ['SampleID', 'GeneID', 'Gene', 'CodonID', 'RefCodon', 'Codon',
+                                            'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'FollowsIndel', 'CodonMasked', 'MultipleLoci', 'Reads']
+        pd.DataFrame(columns=empty_resmarker_collapsed_columns).to_csv('resmarker_table.txt', sep='\t', index=False)
+        
+        # resmarker_table_by_locus.txt columns (includes Locus, no MultipleLoci)
+        empty_resmarker_by_locus_columns = ['SampleID', 'GeneID', 'Gene', 'Locus', 'CodonID', 'RefCodon',
+                                           'Codon', 'CodonRefAlt', 'RefAA', 'AA', 'AARefAlt', 'FollowsIndel', 'CodonMasked', 'Reads']
+        pd.DataFrame(columns=empty_resmarker_by_locus_columns).to_csv('resmarker_table_by_locus.txt', sep='\t', index=False)
+        
+        # resmarker_microhaplotype_table.txt columns
+        empty_mhap_columns = ['SampleID', 'GeneID', 'Gene', 'Locus', 'MicrohaplotypeCodonIDs',
+                             'RefMicrohap', 'Microhaplotype', 'MicrohapRefAlt', 'Reads']
+        pd.DataFrame(columns=empty_mhap_columns).to_csv('resmarker_microhaplotype_table.txt', sep='\t', index=False)
+        
+        # all_mutations_table.txt columns
+        empty_mutations_columns = ['SampleID', 'GeneID', 'Gene', 'Locus', 'LocusPosition', 'Alt', 'Ref', 'Reads']
+        pd.DataFrame(columns=empty_mutations_columns).to_csv('all_mutations_table.txt', sep='\t', index=False)
+        
+        logging.info("Empty output files created successfully.")
+        return
+    
     # Get unique asv information to process
     required_columns = ['Locus', 'ASV', 'PseudoCIGAR', 'strand', 'GeneID', 'Gene', 'CodonID', 'hapseq',
                         'refseq', 'CodonStart', 'relativeCodonStart', 'CodonEnd', 'RefCodon', 'RefAA', 'CodonMasked']
