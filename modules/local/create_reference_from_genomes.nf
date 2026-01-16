@@ -14,6 +14,11 @@ process CREATE_REFERENCE_FROM_GENOMES {
   path amplicon_info
   val refseq_fasta
 
+  publishDir(
+        path: "${params.outDIR}/panel_information",
+        mode: 'copy'
+  )
+
   output:
   path "${refseq_fasta}", emit: reference_fasta
 
