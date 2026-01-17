@@ -42,4 +42,45 @@ nextflow_process {
 
     }
 
+    test("Should run with warning when no resmarkers in allele table") {
+
+        when {
+            params {
+                alleledata = "${projectDir}/tests/example_data/allele_data.txt"
+                alignment_data = "${projectDir}/tests/example_data/alignments.pseudocigar.txt"
+                resmarkers = "${projectDir}/tests/example_data/test_resmarker_info.txt"
+                refseq = "${projectDir}/tests/example_data/test_resmarker_reference.fasta"
+            }
+            process {
+                """
+                input[0] = params.alleledata
+                input[1] = params.alignment_data
+                input[2] = params.resmarkers
+                input[3] = params.refseq
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            assert process.out.resmarkers
+            assert path(process.out.resmarkers.get(0)).md5 == "a7ff5dd3a268a3cfb1fa5724aa1c045d"
+
+            assert process.out.resmarkers_by_locus
+            assert path(process.out.resmarkers_by_locus.get(0)).md5 == "7fa9d8e6cd28118301636899f70a6631"
+
+            assert process.out.microhaps
+            assert path(process.out.microhaps.get(0)).md5 == "48bf9358b7229d5ec544969fcf0d10a6"
+
+            assert process.out.new_mutations
+            assert path(process.out.new_mutations.get(0)).md5 == "51e3d5d925bccdaa3df13a8739524ecb"
+
+            assert process.stdout.contains("WARNING: No overlap found between allele data and resistance marker information")
+            assert process.stdout.contains("The resistance markers covered by the panel were not found in the data")
+
+        }
+
+    }
+
 }
