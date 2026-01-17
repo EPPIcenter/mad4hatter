@@ -76,9 +76,7 @@ nextflow_process {
             assert process.out.new_mutations
             assert path(process.out.new_mutations.get(0)).md5 == "51e3d5d925bccdaa3df13a8739524ecb"
 
-            assert process.stdout.contains("WARNING: No overlap found between allele data and resistance marker information")
-            assert process.stdout.contains("The resistance markers covered by the panel were not found in the data")
-
+            assert process.stdout.contains("WARNING: No overlap found between allele data and resistance marker information. The resistance markers covered by the panel were not found in the data. This may indicate that the panel does not cover any resistance markers present in your samples, or that the marker information does not match the loci in your allele data. Output tables will be empty.")
         }
 
     }
