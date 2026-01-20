@@ -30,13 +30,13 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.reference_fasta
-            assert path(workflow.out.reference_fasta.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+            assert path(workflow.out.reference_fasta.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
             assert workflow.trace.tasks().size() == 1
         }
 
     }
 
-    test("Should run without failures with single pool") {
+    test("Should run without failures with multiple pools with spaces") {
 
         when {
             params {
@@ -62,13 +62,13 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.reference_fasta
-            assert path(workflow.out.reference_fasta.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+            assert path(workflow.out.reference_fasta.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
             assert workflow.trace.tasks().size() == 1
         }
 
     }
 
-    test("Should run without failures with multiple pools with spaces") {
+    test("Should run without failures with single pool") {
 
         when {
             params {
@@ -94,7 +94,7 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.reference_fasta
-            assert path(workflow.out.reference_fasta.get(0)).md5 == "61428c295629f58a728504a3f85da232"
+            assert path(workflow.out.reference_fasta.get(0)).md5 == "4aefbf26e7c503f1f9aba68dc90a8290"
             assert workflow.trace.tasks().size() == 1
         }
 

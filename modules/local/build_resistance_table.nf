@@ -7,7 +7,8 @@ process BUILD_RESISTANCE_TABLE {
 
   label 'process_medium'
   conda 'envs/resmarker-env.yml'
-
+  debug = true
+  
   publishDir(
     path: "${params.outDIR}/resistance_marker_module",
     mode: 'copy'

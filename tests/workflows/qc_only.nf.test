@@ -9,10 +9,12 @@ nextflow_workflow {
         when {
             params {
                 sequencer = 'miseq'
+                allowed_errors = 0
+                cutadapt_minlen=5
             }
             workflow {
                 """
-                input[0] = file("${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv")
+                input[0] = file("${projectDir}/tests/example_data/cutadapt_examples/dummy_amplicon_info.tsv")
                 input[1] = "${projectDir}/tests/example_data/cutadapt_examples/sample*_{R1,R2}.fastq.gz"
                 """
             }
@@ -24,8 +26,8 @@ nextflow_workflow {
 
             assert workflow.out.sample_coverage_ch
             assert workflow.out.amplicon_coverage_ch
-            assert path(workflow.out.sample_coverage_ch.get(0)).md5 == "85d0ccf268cc06aaac9eecaa03a749ae"
-            assert path(workflow.out.amplicon_coverage_ch.get(0)).md5 == "0324d9827903b14988a3b698f3ff8dce"
+            assert path(workflow.out.sample_coverage_ch.get(0)).md5 == "29f66ff1c2f1e7732b912b39fdec2652"
+            assert path(workflow.out.amplicon_coverage_ch.get(0)).md5 == "9af721fb34611297b15fc69d5a9718db"
         }
 
     }

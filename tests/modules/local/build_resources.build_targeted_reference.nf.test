@@ -92,7 +92,7 @@ nextflow_process {
 
         then {
             assert process.failed
-            process.errorReport.contains("ERROR: No valid FASTA records were found.")
+            assert process.errorReport.contains("ERROR: No valid FASTA records were found.")
         }
 
     }
@@ -124,7 +124,7 @@ nextflow_process {
 
         when {
             params {
-                reference_input_paths = "${projectDir}/tests/example_data/D1.1_reference.fasta ${projectDir}/tests/example_data/R1.2_reference.fasta ${projectDir}/tests/example_data/R2.1_reference.fasta"
+                reference_input_paths = "${projectDir}/panel_information/D1.1/D1.1_reference.fasta ${projectDir}/panel_information/R1.2/R1.2_reference.fasta ${projectDir}/panel_information/R2.1/R2.1_reference.fasta"
                 reference_output_path = "merged_reference.fasta"
             }
             process {
@@ -138,7 +138,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.reference_fasta
-            assert path(process.out.reference_fasta.get(0)).md5 == "cbc3e8aca784b9cdcec810b96eb59c57"
+            assert path(process.out.reference_fasta.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
         }
 
     }

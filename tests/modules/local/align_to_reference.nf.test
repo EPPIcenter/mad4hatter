@@ -24,7 +24,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.alignments
-            assert path(process.out.alignments.get(0)).md5 == "6655edc403c310471f09741ac1cb3c9f"
+            assert path(process.out.alignments.get(0)).md5 == "f711260d651906c94fe27ffd4bce7127"
         }
 
     }
