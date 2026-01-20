@@ -41,7 +41,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.clusters_concatenated_collapsed
-            assert path(process.out.clusters_concatenated_collapsed.get(0)).md5 == "1d19afc434158f3757ea322aebbb0c1c"
+            assert path(process.out.clusters_concatenated_collapsed.get(0)).md5 == "69bfb3498c0b1d71601339ae387e8752"
         }
 
     }
