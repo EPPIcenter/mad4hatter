@@ -23,7 +23,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.masked_alignments
-            assert path(process.out.masked_alignments.get(0)).md5 == "65be02cffb23692c4c8bb39fca2ae556"
+            assert path(process.out.masked_alignments.get(0)).md5 == "e74088206f0ce87668ed55b444850155"
         }
 
     }
@@ -47,7 +47,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.masked_alignments
-            assert path(process.out.masked_alignments.get(0)).md5 == "eb52cc5bcddc8e5bf6a14a3f801d1876"
+            assert path(process.out.masked_alignments.get(0)).md5 == "190fd44cbce0f4a65a37ae9ed1326969"
         }
 
     }
@@ -71,7 +71,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.masked_alignments
-            assert path(process.out.masked_alignments.get(0)).md5 == "bdc2b564d3523b0b772a6c6b7c577fad"
+            assert path(process.out.masked_alignments.get(0)).md5 == "a30476af7726d196318718b2f2a19eec"
         }
 
     }

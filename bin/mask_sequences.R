@@ -109,9 +109,17 @@ df_aln_references <- df_aln %>% select(refid, refseq) %>% distinct() %>%
 df_aln_references %<>% 
   mutate(masked_aligned_refseq = mapply(mask_aligned_sequence, all_positions, refseq))
 
+# Mask the hapseq sequences 
+df_aln_hapseq <- df_aln %>% select(refid,hapseq) %>% distinct() %>%
+  left_join(merged, by = "refid")
+
+df_aln_hapseq %<>% 
+  mutate(masked_hapseq = mapply(mask_aligned_sequence, all_positions, hapseq))
+
 # Update df_aln
 df_aln %<>% left_join(df_aln_references, by = c("refid", "refseq")) %>%
-  select(sampleID, asv, refid, hapseq, masked_aligned_refseq, score, indels) %>%
+  left_join(df_aln_hapseq, by = c("refid", "hapseq")) %>%
+  select(sampleID, asv, refid, hapseq, masked_aligned_refseq, masked_hapseq, score, indels) %>%
   dplyr::rename(refseq = masked_aligned_refseq)
 
 # Write the output to a file

@@ -36,7 +36,7 @@ workflow POSTPROC_ONLY {
     BUILD_ALLELETABLE(
       amplicon_info,
       DENOISE_AMPLICONS_2.out.denoise_ch,
-      DENOISE_AMPLICONS_2.out.results_ch
+      DENOISE_AMPLICONS_2.out.masked_pseudocigar
     )
 
     emit: 
