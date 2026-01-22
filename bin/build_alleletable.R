@@ -4,9 +4,9 @@ library(magrittr)
 parser <- ArgumentParser(description = "Create the allele table")
 parser$add_argument("--amplicon-info", type = "character", required = TRUE, help = "File containing amplicon information")
 parser$add_argument("--denoised-asvs", type = "character", required = TRUE, help = "File containing denoised ASVs")
-parser$add_argument("--processed-asvs-masked", type = "character", required = TRUE, help = "File containing processed ASVs")
-parser$add_argument("--processed-asvs-unmasked", type = "character", required = TRUE, help = "File containing unmasked ASVs")
-parser$add_argument("--aligned-asvs", type = "character", required = TRUE, help = "File containing aligned and masked ASVs")
+parser$add_argument("--masked-pseudocigar-table", type = "character", required = TRUE, help = "File containing processed ASVs")
+parser$add_argument("--unmasked-pseudocigar-table", type = "character", required = TRUE, help = "File containing unmasked ASVs")
+parser$add_argument("--masked-asv-table", type = "character", required = TRUE, help = "File containing aligned and masked ASVs")
 
 args <- parser$parse_args()
 print(args)
@@ -15,21 +15,21 @@ library(dplyr)
 
 df.amplicon_info <- read.csv(args$amplicon_info, sep = "\t", header = T)
 df.denoised <- read.csv(args$denoised_asvs, sep = "\t", header = T)
-df.processed_masked <- read.csv(args$processed_asvs_masked, sep = "\t", header = T)
-df.processed_unmasked <- read.csv(args$processed_asvs_unmasked, sep = "\t", header = T)
-df.aligned_asvs <- read.csv(args$aligned_asvs, sep = "\t", header = T)
+df.masked_pseudocigar <- read.csv(args$masked_pseudocigar_table, sep = "\t", header = T)
+df.unmasked_pseudocigar <- read.csv(args$unmasked_pseudocigar_table, sep = "\t", header = T)
+df.masked_asv_table <- read.csv(args$masked_asv_table, sep = "\t", header = T)
 
-df.processed_masked %<>%
+df.masked_pseudocigar %<>%
   dplyr::rename(pseudocigar_masked = pseudo_cigar)
 
 # TODO: Add in a catch that if masked_hapseq is not in the aligned_asvs table then use the unmasked hapseq
 allele.table <- df.denoised %>%
-  dplyr::inner_join(df.processed_unmasked, by = c("sampleID", "locus" = "refid", "asv")) %>%
-  dplyr::inner_join(df.processed_masked, by = c("sampleID", "locus" = "refid", "asv")) %>%
-  dplyr::inner_join(df.aligned_asvs, by = c("sampleID", "locus" = "refid", "asv")) %>%
+  dplyr::inner_join(df.unmasked_pseudocigar, by = c("sampleID", "locus" = "refid", "asv")) %>%
+  dplyr::inner_join(df.masked_pseudocigar, by = c("sampleID", "locus" = "refid", "asv")) %>%
+  dplyr::inner_join(df.masked_asv_table, by = c("sampleID", "locus" = "refid", "asv")) %>%
   select(sampleID, locus, asv, reads, pseudo_cigar, pseudocigar_masked, masked_hapseq) %>%
-  group_by(sampleID, locus, asv) %>%
-  mutate(reads = sum(reads)) %>%
+  #group_by(sampleID, locus, asv) %>%
+  #mutate(reads = sum(reads)) %>%
   arrange(locus) %>%
   dplyr::rename(
     sample_name = sampleID,
@@ -49,6 +49,15 @@ allele.table <- allele.table %>%
   dplyr::left_join(df.amplicon_info_filtered, by = c("target_name" = "target_id")) %>%
   select(sample_name, target_name, asv_raw, pseudocigar_unmasked, asv_masked, pseudocigar_masked, read_count, pool)
 write.table(allele.table, file = "microhaplotypes_info.tsv", quote = F, sep = "\t", col.names = T, row.names = F)
+
+allele.table.collapsed <- allele.table %>%
+  select(sample_name, target_name, asv_masked, pseudocigar_masked, read_count) %>%
+  group_by(sample_name, target_name, asv_masked, pseudocigar_masked) %>%
+  mutate(read_count = sum(read_count)) %>%
+  arrange(target_name) %>%
+  distinct()
+
+write.table(allele.table.collapsed, file = "microhaplotypes_info_collapsed.tsv", quote = F, sep = "\t", col.names = T, row.names = F)
 
 # Convert to the old format
 allele.table_old <- allele.table %>%
