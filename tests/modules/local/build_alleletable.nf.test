@@ -11,12 +11,16 @@ nextflow_process {
                 amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
                 denoised_asvs = "${projectDir}/tests/example_data/dada2.clusters.txt"
                 processed_asvs = "${projectDir}/tests/example_data/alignments.pseudocigar.txt"
+                processed_asvs_unmasked = "${projectDir}/tests/example_data/alignments.pseudocigar.unmasked.txt"
+                aligned_asv_table = "${projectDir}/tests/example_data/masked.alignments.txt"
             }
             process {
                 """
                 input[0] = params.amplicon_info
                 input[1] = params.denoised_asvs
                 input[2] = params.processed_asvs
+                input[3] = params.processed_asvs_unmasked
+                input[4] = params.aligned_asv_table
                 """
             }
         }
@@ -30,3 +34,5 @@ nextflow_process {
     }
 
 }
+
+// TODO: add tests for asserting new outputs 

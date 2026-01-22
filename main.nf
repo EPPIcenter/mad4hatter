@@ -1,5 +1,4 @@
 #!/usr/bin/env nextflow
-# TODO: tomorrow. fix up tests for changes to denoise_amplicons_2.nf. make other updates to create desired outputs.
 nextflow.enable.dsl = 2
 
 // Expand user directory if exists
@@ -140,7 +139,9 @@ workflow {
     BUILD_ALLELETABLE(
       amplicon_info,
       DENOISE_AMPLICONS_2.out.denoise_ch,
-      DENOISE_AMPLICONS_2.out.masked_pseudocigar
+      DENOISE_AMPLICONS_2.out.masked_pseudocigar,
+      DENOISE_AMPLICONS_2.out.unmasked_pseudocigar,
+      DENOISE_AMPLICONS_2.out.aligned_asv_table
     )
 
     // Create the quality report now

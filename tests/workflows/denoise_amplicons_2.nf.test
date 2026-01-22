@@ -36,7 +36,7 @@ nextflow_workflow {
             assert path(workflow.out.reference_ch.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
 
             assert workflow.out.aligned_asv_table
-            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "401c3726aa1126161df05c384743cc6b"
+            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "2f953482dfff121f1271dfdd2aa49aec"
 
             assert workflow.trace.tasks().size() == 9
         }
@@ -74,7 +74,7 @@ nextflow_workflow {
             assert path(workflow.out.reference_ch.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
 
             assert workflow.out.aligned_asv_table
-            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "401c3726aa1126161df05c384743cc6b"
+            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "2f953482dfff121f1271dfdd2aa49aec"
 
             assert workflow.trace.tasks().size() == 8
         }
@@ -112,7 +112,7 @@ nextflow_workflow {
             assert path(workflow.out.reference_ch.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
 
             assert workflow.out.aligned_asv_table
-            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "401c3726aa1126161df05c384743cc6b"
+            assert path(workflow.out.aligned_asv_table.get(0)).md5 == "2f953482dfff121f1271dfdd2aa49aec"
 
             assert workflow.trace.tasks().size() == 7
         }
