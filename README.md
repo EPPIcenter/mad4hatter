@@ -42,7 +42,7 @@ There are 3 workflows available that we will describe below. They can be specifi
 Below are the parameters that are essential for running the pipeline, regardless of workflow. 
 |Parameter|Description|
 |---|---|
-|pools|The pools that were used for sequencing. [Options: D1,R1,R2 - check panel.config for more options]|
+|pools|The pools or panel that was used for sequencing. [Options: D1,R1,R2 - check panel.config for more options]|
 |sequencer|The sequencer used to produce your data. [Options: miseq, nextseq]|
 
 ##### QC and complete workflows 
