@@ -19,6 +19,7 @@ def read_allele_data(allele_data_path, aligned_asv_table_path):
         f"Reading allele data from {allele_data_path} and aligned ASV data from {aligned_asv_table_path}.")
     try:
         allele_data = pd.read_csv(allele_data_path, sep='\t')
+        allele_data.rename(columns={'sample_name': 'SampleID', 'target_name': 'Locus', 'asv': 'ASV', 'pseudocigar_masked': 'PseudoCIGAR', 'reads': 'Reads'}, inplace=True)
         aligned_asv_data = pd.read_csv(aligned_asv_table_path, sep='\t')
         merged_data = allele_data.merge(
             aligned_asv_data, left_on=['SampleID', 'Locus', 'ASV'],

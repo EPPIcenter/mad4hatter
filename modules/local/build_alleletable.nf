@@ -8,9 +8,9 @@ process BUILD_ALLELETABLE {
   label 'process_single'
   conda 'envs/postproc-env.yml'
 
-  publishDir(path: "${params.outDIR}/standard_output", pattern: "microhaplotypes_info*.tsv",mode: 'copy')
   publishDir(path: "${params.outDIR}", pattern: "allele_data.txt", mode: 'copy')
-
+  publishDir(path: "${params.outDIR}", pattern: "allele_data_collapsed.txt", mode: 'copy')
+  
   input:
   path amplicon_info
   path denoised_asvs 
@@ -20,8 +20,7 @@ process BUILD_ALLELETABLE {
 
   output:
   path("allele_data.txt"), emit: alleledata
-  path("microhaplotypes_info.tsv"), emit: microhaplotypes_info
-  path("microhaplotypes_info_collapsed.tsv"), emit: microhaplotypes_info_collapsed
+  path("allele_data_collapsed.txt"), emit: alleledata_collapsed
 
   script:
   """

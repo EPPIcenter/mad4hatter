@@ -34,8 +34,6 @@ allele.table <- df.denoised %>%
   dplyr::rename(
     sample_name = sampleID,
     target_name = locus,
-    asv_raw = asv,
-    read_count = reads,
     pseudocigar_unmasked = pseudo_cigar,
     asv_masked = masked_hapseq
   ) %>%
@@ -47,21 +45,14 @@ df.amplicon_info_filtered <- df.amplicon_info %>%
 # Merge the amplicon info based on the locus and add the pool column
 allele.table <- allele.table %>%
   dplyr::left_join(df.amplicon_info_filtered, by = c("target_name" = "target_id")) %>%
-  select(sample_name, target_name, asv_raw, pseudocigar_unmasked, asv_masked, pseudocigar_masked, read_count, pool)
-write.table(allele.table, file = "microhaplotypes_info.tsv", quote = F, sep = "\t", col.names = T, row.names = F)
+  select(sample_name, target_name, asv, pseudocigar_unmasked, asv_masked, pseudocigar_masked, reads, pool)
+write.table(allele.table, file = "allele_data.txt", quote = F, sep = "\t", col.names = T, row.names = F)
 
 allele.table.collapsed <- allele.table %>%
-  select(sample_name, target_name, asv_masked, pseudocigar_masked, read_count) %>%
+  select(sample_name, target_name, asv_masked, pseudocigar_masked, reads, pool) %>%
   group_by(sample_name, target_name, asv_masked, pseudocigar_masked) %>%
-  mutate(read_count = sum(read_count)) %>%
+  mutate(reads = sum(reads)) %>%
   arrange(target_name) %>%
   distinct()
 
-write.table(allele.table.collapsed, file = "microhaplotypes_info_collapsed.tsv", quote = F, sep = "\t", col.names = T, row.names = F)
-
-# Convert to the old format
-allele.table_old <- allele.table %>%
-  select(sample_name, target_name, asv_raw, read_count, pseudocigar_masked, pool) %>%
-  dplyr::rename(SampleID = sample_name, Locus = target_name, ASV = asv_raw, PseudoCIGAR = pseudocigar_masked, Reads = read_count, Pool = pool)
-
-write.table(allele.table_old, file = "allele_data.txt", quote = F, sep = "\t", col.names = T, row.names = F)
+write.table(allele.table.collapsed, file = "allele_data_collapsed.txt", quote = F, sep = "\t", col.names = T, row.names = F)

@@ -45,9 +45,9 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
     )  %>%
     left_join(allele.data  %>%
       ungroup()  %>%
-      select(SampleID,Reads) %>%
-      group_by(SampleID) %>%
-      summarise(OutputPostprocessing = sum(Reads)), by = c("SampleID")
+      select(sample_name,reads) %>%
+      group_by(sample_name) %>%
+      summarise(OutputPostprocessing = sum(reads)), by = c("SampleID"="sample_name")
     )  %>%
     mutate(across(everything(), as.character)) %>%    
     pivot_longer(cols = c(Input, `No Dimers`, Amplicons, OutputDada2, OutputPostprocessing))
@@ -70,9 +70,9 @@ if (!is.null(args$amplicon_coverage) && file.exists(args$amplicon_coverage)) {
       by = c("SampleID" = "sampleID", "Locus" = "locus"),
       ) %>%
     left_join(allele.data %>%
-      group_by(SampleID,Locus) %>%
-      summarise(OutputPostprocessing = sum(Reads)),
-          by = c("SampleID", "Locus"))
+      group_by(sample_name,target_name) %>%
+      summarise(OutputPostprocessing = sum(reads)),
+          by = c("SampleID" = "sample_name", "Locus" = "target_name"))
    qc.postproc$OutputDada2[is.na(qc.postproc$OutputDada2)] <- 0
    qc.postproc$OutputPostprocessing[is.na(qc.postproc$OutputPostprocessing)] <- 0
 

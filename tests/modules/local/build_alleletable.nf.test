@@ -28,7 +28,10 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.alleledata
-            assert path(process.out.alleledata.get(0)).md5 == "798c3f89f3e5d32b5c003a735c022a08"
+            assert process.out.alleledata_collapsed
+
+            assert path(process.out.alleledata.get(0)).md5 == "bd7a59407f8955079a7c81d0ffc9674c"
+            assert path(process.out.alleledata_collapsed.get(0)).md5 == '1e1337889117a47e04bb7646fc46b42a'
         }
 
     }
