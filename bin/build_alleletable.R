@@ -27,9 +27,14 @@ allele.table <- df.denoised %>%
   dplyr::inner_join(df.unmasked_pseudocigar, by = c("sampleID", "locus" = "refid", "asv")) %>%
   dplyr::inner_join(df.masked_pseudocigar, by = c("sampleID", "locus" = "refid", "asv")) %>%
   dplyr::inner_join(df.masked_asv_table, by = c("sampleID", "locus" = "refid", "asv")) %>%
+  {
+    if (!"masked_hapseq" %in% colnames(.)) {
+      dplyr::rename(., masked_hapseq = hapseq)
+    } else {
+      .
+    }
+  } %>%
   select(sampleID, locus, asv, reads, pseudo_cigar, pseudocigar_masked, masked_hapseq) %>%
-  #group_by(sampleID, locus, asv) %>%
-  #mutate(reads = sum(reads)) %>%
   arrange(locus) %>%
   dplyr::rename(
     sample_name = sampleID,

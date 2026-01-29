@@ -44,4 +44,5 @@ workflow POSTPROC_ONLY {
 
     emit: 
     alleledata = BUILD_ALLELETABLE.out.alleledata
+    alleledata_collapsed = BUILD_ALLELETABLE.out.alleledata_collapsed
 }
