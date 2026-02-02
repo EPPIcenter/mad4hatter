@@ -37,5 +37,3 @@ nextflow_process {
     }
 
 }
-
-// TODO: add tests for asserting new outputs 

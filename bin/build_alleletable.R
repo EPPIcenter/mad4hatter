@@ -22,7 +22,6 @@ df.masked_asv_table <- read.csv(args$masked_asv_table, sep = "\t", header = T)
 df.masked_pseudocigar %<>%
   dplyr::rename(pseudocigar_masked = pseudo_cigar)
 
-# TODO: Add in a catch that if masked_hapseq is not in the aligned_asvs table then use the unmasked hapseq
 allele.table <- df.denoised %>%
   dplyr::inner_join(df.unmasked_pseudocigar, by = c("sampleID", "locus" = "refid", "asv")) %>%
   dplyr::inner_join(df.masked_pseudocigar, by = c("sampleID", "locus" = "refid", "asv")) %>%
