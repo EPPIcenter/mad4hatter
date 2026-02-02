@@ -25,8 +25,8 @@ nextflow_workflow {
             assert workflow.out.alleledata
             assert workflow.out.alleledata_collapsed
 
-            assert path(workflow.out.alleledata.get(0)).md5 == "fe0c7ad96d0d0ccca4c5eae929e9fb8a"
-            assert path(workflow.out.alleledata_collapsed.get(0)).md5 == "8fc7ea411b326cc14701f7f9a77b9b9b"
+            assert path(workflow.out.alleledata.get(0)).md5 == "21641c43f52d7231b034761bb26a8052"
+            assert path(workflow.out.alleledata_collapsed.get(0)).md5 == "ca924e4513edfbcbed4f1969bfb117ee"
         }
 
     }

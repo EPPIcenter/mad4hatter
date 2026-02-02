@@ -89,6 +89,37 @@ mask_aligned_sequence <- function(pos, refseq) {
   return(newstring)
 }
 
+mask_aligned_hapseq <- function(masking_positions, refseq, hapseq) {
+
+  # Early exit if nothing to mask
+  if (is.null(masking_positions) || length(masking_positions) == 0) {
+    return(hapseq)
+  }
+
+  # Find one-based insertion (gap) positions in refseq
+  insertion_positions <- which(strsplit(refseq, "")[[1]] == "-")
+
+  # Shift masking positions to account for insertions
+  for (insertion_position in insertion_positions) {
+    masking_positions <- ifelse(
+      masking_positions >= insertion_position,
+      masking_positions + 1,
+      masking_positions
+    )
+  }
+
+  # Apply mask to hapseq using updated coordinates
+  hapseq_chars <- strsplit(hapseq, "")[[1]]
+  hapseq_chars[masking_positions] <- "n"
+  hapseq <- paste(hapseq_chars, collapse = "")
+
+  # Remove indels inside masking regions (N[ACTG]N -> NN)
+  hapseq <- gsub("n[ACTG]n", "nn", hapseq)
+
+  return(hapseq)
+}
+
+
 # ---------------------------
 # EXECUTE MAIN SCRIPT
 # ---------------------------
@@ -110,11 +141,11 @@ df_aln_references %<>%
   mutate(masked_aligned_refseq = mapply(mask_aligned_sequence, all_positions, refseq))
 
 # Mask the hapseq sequences 
-df_aln_hapseq <- df_aln %>% select(refid,hapseq) %>% distinct() %>%
+df_aln_hapseq <- df_aln %>% select(refid,refseq,hapseq) %>% distinct() %>%
   left_join(merged, by = "refid")
 
 df_aln_hapseq %<>% 
-  mutate(masked_hapseq = mapply(mask_aligned_sequence, all_positions, hapseq))
+  mutate(masked_hapseq = mapply(mask_aligned_hapseq, all_positions, refseq, hapseq))
 
 # Update df_aln
 df_aln %<>% left_join(df_aln_references, by = c("refid", "refseq")) %>%
