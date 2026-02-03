@@ -1,4 +1,4 @@
-SampleID	Locus	Reads	OutputDada2	OutputPostprocessing
+sample_name	target_name	reads	OutputDada2	OutputPostprocessing
 SRR26819135_S1_L001	PKNH_12_v2-0198893-0199083	0	0	0
 SRR26819135_S1_L001	Pf3D7_01_v3-0145420-0145630	54	54	54
 SRR26819135_S1_L001	Pf3D7_01_v3-0162888-0163092	400	398	398

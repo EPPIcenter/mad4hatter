@@ -1,4 +1,4 @@
-SampleID	Stage	Reads
+sample_name	stage	reads
 SRR26819135_S1_L001	Input	50000
 SRR26819135_S1_L001	No Dimers	49494
 SRR26819135_S1_L001	Amplicons	40259
