@@ -30,13 +30,13 @@ nextflow_process {
             assert path(process.out.resmarkers.get(0)).md5 == "a7a986edfbdf91685e24d9ff314b2187"
 
             assert process.out.resmarkers_by_locus
-            assert path(process.out.resmarkers_by_locus.get(0)).md5 == "81c511f220a00280738edb5e81cc72ae"
+            assert path(process.out.resmarkers_by_locus.get(0)).md5 == "05879ab17d01ac88a5e841734bd303f2"
 
             assert process.out.microhaps
-            assert path(process.out.microhaps.get(0)).md5 == "08bee04c8774d8bc2d3c2677a2997c0f"
+            assert path(process.out.microhaps.get(0)).md5 == "70e3120fc9eb85c3dd208a9e8a30642b"
 
             assert process.out.new_mutations
-            assert path(process.out.new_mutations.get(0)).md5 == "378fb66b1dcb728cc4898ed585fbea72"
+            assert path(process.out.new_mutations.get(0)).md5 == "97a26fcb8984717c9e2a3b66355fdede"
 
         }
 
@@ -68,13 +68,13 @@ nextflow_process {
             assert path(process.out.resmarkers.get(0)).md5 == "a7ff5dd3a268a3cfb1fa5724aa1c045d"
 
             assert process.out.resmarkers_by_locus
-            assert path(process.out.resmarkers_by_locus.get(0)).md5 == "7fa9d8e6cd28118301636899f70a6631"
+            assert path(process.out.resmarkers_by_locus.get(0)).md5 == "e429d667bb0e56586a8bdb25bf22244c"
 
             assert process.out.microhaps
-            assert path(process.out.microhaps.get(0)).md5 == "48bf9358b7229d5ec544969fcf0d10a6"
+            assert path(process.out.microhaps.get(0)).md5 == "e27a80a0c303e01df1085fc169068093"
 
             assert process.out.new_mutations
-            assert path(process.out.new_mutations.get(0)).md5 == "51e3d5d925bccdaa3df13a8739524ecb"
+            assert path(process.out.new_mutations.get(0)).md5 == "1df635f64bde6061ddaca98dbd226506"
         }
 
     }
