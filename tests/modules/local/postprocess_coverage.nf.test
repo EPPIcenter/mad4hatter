@@ -27,8 +27,8 @@ nextflow_process {
             assert process.success
             assert process.out.postprocess_sample_coverage
             assert process.out.postprocess_amplicon_coverage
-            assert path(process.out.postprocess_sample_coverage.get(0)).md5 == "ad1bd1a491ab08b0965f4d1e9bc014c4"
-            assert path(process.out.postprocess_amplicon_coverage.get(0)).md5 == "0d483ad5011ffbebe59e01c4e1401e54"
+            assert path(process.out.postprocess_sample_coverage.get(0)).md5 == "82786763e7b58a0e4507c889ca65182d"
+            assert path(process.out.postprocess_amplicon_coverage.get(0)).md5 == "2546b1f7834c0227dd2dc1cfaa889c1f"
         }
 
     }

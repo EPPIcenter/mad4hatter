@@ -30,7 +30,7 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.amplicon_info_ch
-            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "1a158bbd797e814e4e2866160f59740c"
+            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "12a4d58807138684bbd3bf39497ec28e"
         }
 
     }
@@ -61,7 +61,7 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.amplicon_info_ch
-            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "1a158bbd797e814e4e2866160f59740c"
+            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "12a4d58807138684bbd3bf39497ec28e"
         }
 
     }
@@ -92,7 +92,7 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.amplicon_info_ch
-            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "fe70602ecc3d83dd94c4036cc3fbe0c2"
+            assert path(workflow.out.amplicon_info_ch.get(0)).md5 == "4bd53fb046c3b4a7203b89be3ba60b28"
         }
 
     }
