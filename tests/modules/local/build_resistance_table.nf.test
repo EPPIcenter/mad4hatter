@@ -27,16 +27,16 @@ nextflow_process {
             assert process.success
 
             assert process.out.resmarkers
-            assert path(process.out.resmarkers.get(0)).md5 == "a7a986edfbdf91685e24d9ff314b2187"
+            assert path(process.out.resmarkers.get(0)).md5 == "79b326cf78f07ebc07656b0aca2a2ab9"
 
             assert process.out.resmarkers_by_locus
-            assert path(process.out.resmarkers_by_locus.get(0)).md5 == "05879ab17d01ac88a5e841734bd303f2"
+            assert path(process.out.resmarkers_by_locus.get(0)).md5 == "857c21f65cbcde613a613a14015841f6"
 
             assert process.out.microhaps
-            assert path(process.out.microhaps.get(0)).md5 == "70e3120fc9eb85c3dd208a9e8a30642b"
+            assert path(process.out.microhaps.get(0)).md5 == "6e09680f7ac2d16eaee73620c59b3b1b"
 
             assert process.out.new_mutations
-            assert path(process.out.new_mutations.get(0)).md5 == "97a26fcb8984717c9e2a3b66355fdede"
+            assert path(process.out.new_mutations.get(0)).md5 == "0117f9728399730b3238c3bf7bc1c033"
 
         }
 
@@ -65,16 +65,16 @@ nextflow_process {
             assert process.success
 
             assert process.out.resmarkers
-            assert path(process.out.resmarkers.get(0)).md5 == "a7ff5dd3a268a3cfb1fa5724aa1c045d"
+            assert path(process.out.resmarkers.get(0)).md5 == "849183bad94addb9103560b05e691a76"
 
             assert process.out.resmarkers_by_locus
-            assert path(process.out.resmarkers_by_locus.get(0)).md5 == "e429d667bb0e56586a8bdb25bf22244c"
+            assert path(process.out.resmarkers_by_locus.get(0)).md5 == "e32c1947acf01c0e9826eb2fba9c1d7e"
 
             assert process.out.microhaps
-            assert path(process.out.microhaps.get(0)).md5 == "e27a80a0c303e01df1085fc169068093"
+            assert path(process.out.microhaps.get(0)).md5 == "a9aa17a6274b0c8f515e80f2d0848b74"
 
             assert process.out.new_mutations
-            assert path(process.out.new_mutations.get(0)).md5 == "1df635f64bde6061ddaca98dbd226506"
+            assert path(process.out.new_mutations.get(0)).md5 == "2c0bd8aac24eb68331d27242cbedf0af"
         }
 
     }
