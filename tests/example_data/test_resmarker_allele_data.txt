@@ -1,4 +1,4 @@
-sample_name	target_name	ASV	Reads	Allele	PseudoCIGAR
+sample_name	target_name	ASV	reads	Allele	PseudoCIGAR
 sample1	locus1	ACTGACTAAG	10	1	.
 sample1	locus1	ACTGACTGAG	50	2	8G
 sample2	locus1	ACTGAACTGAG	15	3	6I=A8G
