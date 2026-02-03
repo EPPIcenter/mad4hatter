@@ -41,7 +41,7 @@ def build_resmarker_info():
                 data['start'].append(row.start)
                 data['stop'].append(row.stop)
                 data['strand'].append(row.strand)
-                data['Locus'].append(overlap_row.target_id)
+                data['Locus'].append(overlap_row.target_name)
                 codon_start = row.start-overlap_row.insert_start
                 data['CodonStart'].append(codon_start)
     resmarker_df = pd.DataFrame(data=data)

@@ -1,4 +1,4 @@
-target_id	amplicon_start	amplicon_end	ampInsert_start	ampInsert_end	amplicon_length	ampInsert_length	fwd_primer	pool
+target_name	amplicon_start	amplicon_end	ampInsert_start	ampInsert_end	amplicon_length	ampInsert_length	fwd_primer	pool
 PKNH_12_v2-198869-199113	198869	199113	198894	199083	244	189	CTCCAATAAAGTGGAACAGACAAGA	D1
 Pf3D7_01_v3-145388-145662	145388	145662	145421	145630	274	209	CCTGAGTTTTAAGTGAATGAATATATTTTTGTT	D1
 Pf3D7_01_v3-162867-163115	162867	163115	162889	163092	248	203	TACTACCGATCATCAAGCCGAA	D1

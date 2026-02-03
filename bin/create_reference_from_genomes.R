@@ -49,7 +49,7 @@ final_seqs <- foreach(idx = 1:nrow(amplicon_info), .combine = "c") %dopar% {
   #TODO: allow trim to be input by user
   rs <- Biostrings::subseq(s, start = start + 2, end = end - 1)
 
-  names(rs) <- info[["target_id"]]
+  names(rs) <- info[["target_name"]]
 
   as.character(rs[1])
 }

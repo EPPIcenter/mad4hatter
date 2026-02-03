@@ -45,10 +45,10 @@ allele.table <- df.denoised %>%
 
 # Filter amplicon info to only include 'amplicon' and 'pool' columns
 df.amplicon_info_filtered <- df.amplicon_info %>%
-  select(target_id, pool)
+  select(target_name, pool)
 # Merge the amplicon info based on the locus and add the pool column
 allele.table <- allele.table %>%
-  dplyr::left_join(df.amplicon_info_filtered, by = c("target_name" = "target_id")) %>%
+  dplyr::left_join(df.amplicon_info_filtered, by = c("target_name")) %>%
   select(sample_name, target_name, asv, pseudocigar_unmasked, asv_masked, pseudocigar_masked, reads, pool)
 write.table(allele.table, file = "allele_data.txt", quote = F, sep = "\t", col.names = T, row.names = F)
 
