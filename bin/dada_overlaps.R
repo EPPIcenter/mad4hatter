@@ -90,7 +90,7 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = 0
   )
 
   mergers.no.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
@@ -121,7 +121,7 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = 0
   )
 }
 
