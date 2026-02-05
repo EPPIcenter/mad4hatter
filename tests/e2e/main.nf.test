@@ -38,6 +38,25 @@ nextflow_pipeline {
 
     }
 
+    test("Complete workflow should run successfully with bespoke pool and genome set.") {
+
+        when {
+            params {
+                workflow_name = 'complete'
+                pools = 'bespoke_pool'
+                readDIR = "${projectDir}/tests/example_data/example_fastq"
+                sequencer = 'miseq'
+                genome = "${projectDir}/tests/example_data/chrom_one_genome.fasta"
+                amplicon_info = "${projectDir}/tests/example_data/chrom_one_info.tsv"
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
     test("QC workflow should run successfully") {
 
         when {
