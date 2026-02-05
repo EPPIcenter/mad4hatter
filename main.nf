@@ -104,7 +104,7 @@ workflow {
 
   VALIDATE_INPUTS()
 
-  def amplicon_info = (params.amplicon_info == null) ? GENERATE_AMPLICON_INFO().amplicon_info_ch : params.amplicon_info
+  def amplicon_info = (params.amplicon_info == null) ? GENERATE_AMPLICON_INFO().amplicon_info_ch : file(params.amplicon_info)
   // Convert workflow to lowercase
   def workflow_name = params.workflow_name?.toLowerCase()
 

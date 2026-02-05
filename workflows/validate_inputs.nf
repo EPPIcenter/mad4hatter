@@ -77,9 +77,10 @@ def check_pools() {
                 log.error "Pools were not found in configuration: ${invalidPools.join(', ')}. `--amplicon_info` and either `--refseq_fasta` or `--genome` must be provided when using bespoke pools."
                 exit 1
             }
-        } else {
-            log.warn "The following pools were not found in configuration: ${invalidPools.join(', ')}. Proceeding with bespoke pools."
-        }
+        } 
+        
+        log.warn "The following pools were not found in configuration: ${invalidPools.join(', ')}. Proceeding with bespoke pools."
+        
     }
 
     if (!warnings.isEmpty()) {
