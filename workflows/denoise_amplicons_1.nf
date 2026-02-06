@@ -23,6 +23,7 @@ workflow DENOISE_AMPLICONS_1 {
     params.band_size,
     params.omega_a,
     params.maxEE,
+    params.maxMismatch,
     params.just_concatenate
   )
 
