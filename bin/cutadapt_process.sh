@@ -4,14 +4,12 @@ set -e
 
 # Function to print help
 usage() {
-    echo "Usage: $0 -1 forward_read -2 reverse_read -m cutadapt_minlen -f fwd_primers_file -r rev_primers_file -g gtrim -e allowed_errors -c cores -o output"
+    echo "Usage: $0 -1 forward_read -2 reverse_read -m cutadapt_minlen -f fwd_primers_file -r rev_primers_file -g gtrim -q quality_score -e allowed_errors -c cores -o output"
     exit 1
 }
 
 # default settings
 cores=1
-allowed_errors=0 # allow no mismatches in the adapter sequence
-
 # Parse command-line options
 while getopts "1:2:m:f:r:q:h:g:e:c:o:" OPTION
 do
@@ -36,6 +34,9 @@ do
 			;;
         g)
             gtrim=$OPTARG
+            ;;
+        q)
+            quality_score=$OPTARG
             ;;
         c)
 			cores=$OPTARG
@@ -115,9 +116,9 @@ printf "%s\t%s\n" "Input" ${total_pairs} > ${sample_id}.SAMPLEsummary.txt
 printf "%s\t%s\n" "No Dimers" ${no_dimers} >> ${sample_id}.SAMPLEsummary.txt
 
 if [ "$gtrim" == "false" ]; then
-    qualfilter="--trim-n -q 10"
+    qualfilter="--trim-n -q ${quality_score}"
 else
-    qualfilter="--nextseq-trim=20"
+    qualfilter="--trim-n --nextseq-trim=${quality_score}"
 fi
 
 cutadapt \

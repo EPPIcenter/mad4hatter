@@ -15,6 +15,7 @@ workflow DEMULTIPLEX_AMPLICONS {
     read_pairs,
     params.cutadapt_minlen,
     params.gtrim,
+    params.quality_score,
     params.allowed_errors
   )
 

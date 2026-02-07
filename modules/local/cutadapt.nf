@@ -16,6 +16,7 @@ process CUTADAPT {
     tuple val(pair_id), file(reads)
     val cutadapt_minlen
     val gtrim
+    val quality_score
     val allowed_errors
 
     output:
@@ -32,6 +33,7 @@ process CUTADAPT {
         -f ${fwd_primers} \
         -m ${cutadapt_minlen} \
         -g ${gtrim} \
+        -q ${quality_score} \
         -e ${allowed_errors} \
         -c ${task.cpus} \
         -o demultiplexed_fastqs
