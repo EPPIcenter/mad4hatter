@@ -8,7 +8,6 @@ nextflow_workflow {
 
         when {
             params {
-                sequencer = 'miseq'
                 allowed_errors = 0
                 cutadapt_minlen=5
             }

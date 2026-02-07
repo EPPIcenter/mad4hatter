@@ -17,8 +17,6 @@ workflow VALIDATE_INPUTS {
     // Check params based on workflow
     if (workflow_name == 'complete' || workflow_name == 'qc') {
         check_readdir_presence()
-        // Check sequencer input
-        check_sequencer()
     } else if (workflow_name == 'postprocessing') {
         check_denoised_asvs_presence()
     }
@@ -85,14 +83,6 @@ def check_pools() {
 
     if (!warnings.isEmpty()) {
         warnings.each { warning -> log.warn warning }
-    }
-}
-
-// Helper function to check if sequencer parameter is provided
-def check_sequencer() {
-    if (params.sequencer == null) {
-        log.error "`--sequencer` must be specified."
-        exit 1
     }
 }
 

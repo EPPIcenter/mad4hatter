@@ -15,7 +15,7 @@ nextflow_process {
                 reads_r1 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R1.fastq.gz"
                 reads_r2 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R2.fastq.gz"
                 cutadapt_minlen = 5
-                sequencer = "miseq"
+                gtrim = false
                 allowed_errors = 0
             }
             process {
@@ -24,7 +24,7 @@ nextflow_process {
                 input[1] = file(params.rev_primers)
                 input[2] = tuple(params.pair_id, [file(params.reads_r1), file(params.reads_r2)])
                 input[3] = params.cutadapt_minlen
-                input[4] = params.sequencer
+                input[4] = params.gtrim
                 input[5] = params.allowed_errors
                 """
             }
@@ -70,7 +70,7 @@ nextflow_process {
             assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
             assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
 
-            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAA")
+            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAAGGG")
 
             assert amp2r2_fastq.contains("GTATATCATATAAATTATCA")
 
@@ -78,7 +78,7 @@ nextflow_process {
 
     }
 
-    test("Should run without with nextseq flag") {
+    test("Should run without with gtrim flag") {
         when {
             params {
                 fwd_primers = "${projectDir}/tests/example_data/cutadapt_examples/dummy_fwd_primers.fasta"
@@ -87,7 +87,7 @@ nextflow_process {
                 reads_r1 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R1.fastq.gz"
                 reads_r2 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R2.fastq.gz"
                 cutadapt_minlen = 5
-                sequencer = "nextseq"
+                gtrim = true
                 allowed_errors = 0
             }
             process {
@@ -96,7 +96,7 @@ nextflow_process {
                 input[1] = file(params.rev_primers)
                 input[2] = tuple(params.pair_id, [file(params.reads_r1), file(params.reads_r2)])
                 input[3] = params.cutadapt_minlen
-                input[4] = params.sequencer
+                input[4] = params.gtrim
                 input[5] = params.allowed_errors
                 """
             }
@@ -139,7 +139,7 @@ nextflow_process {
 
             assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
 
-            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAA")
+            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAA\n")
 
             assert amp2r2_fastq.contains("GTATATCATATAAATTATCA")
 
@@ -156,7 +156,7 @@ nextflow_process {
                 reads_r1 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R1.fastq.gz"
                 reads_r2 = "${projectDir}/tests/example_data/cutadapt_examples/sample1_R2.fastq.gz"
                 cutadapt_minlen = 5
-                sequencer = "nextseq"
+                gtrim = false
                 allowed_errors = 1
             }
             process {
@@ -165,7 +165,7 @@ nextflow_process {
                 input[1] = file(params.rev_primers)
                 input[2] = tuple(params.pair_id, [file(params.reads_r1), file(params.reads_r2)])
                 input[3] = params.cutadapt_minlen
-                input[4] = params.sequencer
+                input[4] = params.gtrim
                 input[5] = params.allowed_errors
                 """
             }
@@ -210,7 +210,7 @@ nextflow_process {
             assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
             assert amp1r2_fastq.contains("GTATATCATATTTTTTATCA")
 
-            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAA")
+            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAAGGG")
             assert amp2r1_fastq.contains("CGAAATGACATGAACAAGTCAGGCGAAA")
 
             assert amp2r2_fastq.contains("GTATATCATATAAATTATCA")

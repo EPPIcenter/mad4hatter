@@ -30,11 +30,10 @@ def helpMessage() {
   log.info """
     Usage:
       The typical command for running the pipeline is as follows:
-      nextflow run main.nf --readDIR path/to/read_dir --target v4
+      nextflow run main.nf --readDIR path/to/read_dir --pools D1,R1,R2
 
     Mandatory arguments:
       --pools     The pools that were used for sequencing. [Options: D1,R1,R2 - see panel.config for more options]
-      --sequencer	The sequencer used to produce your data. [Options: miseq, nextseq]
 
     Mandatory for `complete` (default) or `qc` workflow: 
       --readDIR		Path to folder containing fastq files
@@ -69,7 +68,7 @@ def helpMessage() {
 
     Examples:
       More advanced usage 
-      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --pools D1,R1,R2 --sequencer nextseq -config custom.config
+      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --pools D1,R1,R2 -config custom.config
 
       Change runtime param to use Docker
       nextflow run main.nf --readDIR path/to/read_dir --outDIR results --pools D1,R1,R2 -profile docker
