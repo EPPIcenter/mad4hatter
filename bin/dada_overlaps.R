@@ -14,6 +14,7 @@ parser$add_argument("--omega-a", type = "double", default = 1e-120)
 parser$add_argument("--concat-non-overlaps", action = "store_true")
 parser$add_argument("--use-quals", type = "character", default = "false")
 parser$add_argument("--maxEE", type = "integer", default = 3)
+parser$add_argument("--max-mismatch", type = "integer", default = 0)
 parser$add_argument("--self-consist", action = "store_true")
 parser$add_argument("--omega-c", type = "double", default = 1e-40)
 parser$add_argument("--cores", type = "integer", default = 1)
@@ -91,7 +92,7 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = args$max_mismatch
   )
 
   mergers.no.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
@@ -122,7 +123,7 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = args$max_mismatch
   )
 }
 
