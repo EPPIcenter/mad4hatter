@@ -25,8 +25,8 @@ nextflow_workflow {
             assert workflow.out.alleledata
             assert workflow.out.alleledata_collapsed
 
-            assert path(workflow.out.alleledata.get(0)).md5 == "21641c43f52d7231b034761bb26a8052"
-            assert path(workflow.out.alleledata_collapsed.get(0)).md5 == "ca924e4513edfbcbed4f1969bfb117ee"
+            assert path(workflow.out.alleledata.get(0)).md5 == "28379fcc5ca5c6b881d6c6caf1944fc9"
+            assert path(workflow.out.alleledata_collapsed.get(0)).md5 == "7f2083116c5fd43f38a21820eaa73b6c"
         }
 
     }
@@ -54,8 +54,8 @@ nextflow_workflow {
             assert workflow.out.alleledata
             assert workflow.out.alleledata_collapsed
 
-            assert path(workflow.out.alleledata.get(0)).md5 == "428f9d51a8f563f99f298484b89dbd26"
-            assert path(workflow.out.alleledata_collapsed.get(0)).md5 == "208a1c3a9ec1ba214ed894fb845a219b"
+            assert path(workflow.out.alleledata.get(0)).md5 == "1a8b3cc3a9c00d797b1c592cb2d5bac3"
+            assert path(workflow.out.alleledata_collapsed.get(0)).md5 == "d3e80c1d238330f28cb8a5e8cad52916"
         }
 
     }
