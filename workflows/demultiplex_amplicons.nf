@@ -14,7 +14,8 @@ workflow DEMULTIPLEX_AMPLICONS {
     CREATE_PRIMER_FILES.out.rev_primers,
     read_pairs,
     params.cutadapt_minlen,
-    params.sequencer,
+    params.gtrim,
+    params.quality_score,
     params.allowed_errors
   )
 
