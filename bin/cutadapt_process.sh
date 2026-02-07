@@ -113,12 +113,10 @@ total_pairs=$(jq '.read_counts.input' ${cutadapt_json})
 no_dimers=$(jq '.read_counts.filtered.discard_untrimmed' ${cutadapt_json})
 printf "%s\t%s\n" "Input" ${total_pairs} > ${sample_id}.SAMPLEsummary.txt
 printf "%s\t%s\n" "No Dimers" ${no_dimers} >> ${sample_id}.SAMPLEsummary.txt
-echo "gtrim: $gtrim"
+
 if [ "$gtrim" == "false" ]; then
-    echo "No gtrim"
     qualfilter="--trim-n -q 10"
 else
-    echo "gtrim"
     qualfilter="--nextseq-trim=20"
 fi
 
