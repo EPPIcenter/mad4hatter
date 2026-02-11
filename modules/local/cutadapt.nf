@@ -15,7 +15,8 @@ process CUTADAPT {
     file rev_primers
     tuple val(pair_id), file(reads)
     val cutadapt_minlen
-    val sequencer
+    val gtrim
+    val quality_score
     val allowed_errors
 
     output:
@@ -31,7 +32,8 @@ process CUTADAPT {
         -r ${rev_primers} \
         -f ${fwd_primers} \
         -m ${cutadapt_minlen} \
-        -s ${sequencer} \
+        -g ${gtrim} \
+        -q ${quality_score} \
         -e ${allowed_errors} \
         -c ${task.cpus} \
         -o demultiplexed_fastqs

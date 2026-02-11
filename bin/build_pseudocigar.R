@@ -292,6 +292,7 @@ library(argparse)
 
 parser <- ArgumentParser(description = "Create the pseudoCIGAR string using masked or unmasked ASVs")
 parser$add_argument("--alignments", type = "character", required = TRUE, help = "File containing aligned ASVs")
+parser$add_argument("--output_suffix", type = "character", default = "", help = "Name of suffix for output file")
 parser$add_argument("--ncores", type = "integer", default = 1, help = "Number of cores to use for parallel processing")
 
 args <- parser$parse_args()
@@ -327,4 +328,5 @@ pseudo_cigar_table <- pseudo_cigar_table %>%
   select(sampleID, refid, asv, pseudo_cigar)
 
 # Write out the data frame
-write.table(pseudo_cigar_table, file = "alignments.pseudocigar.txt", quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
+filename <- paste0("alignments.pseudocigar", args$output_suffix, ".txt")
+write.table(pseudo_cigar_table, file = filename, quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)

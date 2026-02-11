@@ -8,11 +8,12 @@ nextflow_process {
 
         when {
             params {
-                alignments = "${projectDir}/tests/example_data/small_alignments_with_SNPs.alignments.txt "
+                alignments = "${projectDir}/tests/example_data/small_alignments_with_SNPs.alignments.txt"
             }
             process {
                 """
                 input[0] = params.alignments
+                input[1] = "snps"
                 """
             }
         }
@@ -34,6 +35,7 @@ nextflow_process {
             process {
                 """
                 input[0] = params.alignments
+                input[1] = "masked"
                 """
             }
         }
@@ -55,6 +57,7 @@ nextflow_process {
             process {
                 """
                 input[0] = params.alignments
+                input[1] = "indels"
                 """
             }
         }
@@ -63,6 +66,8 @@ nextflow_process {
             assert process.success
             assert process.out.pseudocigar
             assert path(process.out.pseudocigar.get(0)).md5 == "00093da0d57d8e0b442645af0a46f9a2"
+            def pseudocigarpath = process.out.pseudocigar[0]
+            assert pseudocigarpath.endsWith('indels.txt')
         }
 
     }

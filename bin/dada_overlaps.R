@@ -14,6 +14,7 @@ parser$add_argument("--omega-a", type = "double", default = 1e-120)
 parser$add_argument("--concat-non-overlaps", action = "store_true")
 parser$add_argument("--use-quals", type = "character", default = "false")
 parser$add_argument("--maxEE", type = "integer", default = 3)
+parser$add_argument("--max-mismatch", type = "integer", default = 0)
 parser$add_argument("--self-consist", action = "store_true")
 parser$add_argument("--omega-c", type = "double", default = 1e-40)
 parser$add_argument("--cores", type = "integer", default = 1)
@@ -64,6 +65,7 @@ if (args$concat_non_overlaps) {
     names = sapply(strsplit(names(dadaFs), "_trimmed"), "[", 1)
   )
 
+  #TODO: come back to this to remove dependency on format of target name
   amplicon.info <- amplicon.info %>%
     mutate(names = sapply(str_split(names, "_S(\\d+)"), head, 1)) %>%
     mutate(target_id = unlist(lapply(str_split(names, "_"), function(x) {
@@ -72,8 +74,8 @@ if (args$concat_non_overlaps) {
     inner_join(
       read.table(args$ampliconFILE, header = T) %>%
         mutate(insert_length = insert_end - insert_start) %>%
-        select(target_id, insert_length),
-      by = c("target_id")
+        select(target_name, insert_length),
+      by = c("target_id"="target_name")
     ) %>%
     select(target_id, insert_length) %>%
     mutate(
@@ -90,7 +92,7 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = args$max_mismatch
   )
 
   mergers.no.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
@@ -121,7 +123,7 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = args$max_mismatch
   )
 }
 
@@ -142,10 +144,10 @@ seqtab.nochim.df[seqtab.nochim.df == 0] <- NA
 amplicon.table <- read.table(args$ampliconFILE, header = TRUE, sep = "\t")
 
 # find amplicons (use to select)
-pat <- paste(amplicon.table$target_id, collapse = "|") # find amplicons specified in amplicon table
+pat <- paste(amplicon.table$target_name, collapse = "|") # find amplicons specified in amplicon table
 
 # create regex to extract sampleID (to be used with remove)
-pat.sampleID <- paste(sprintf("^%s_", amplicon.table$target_id), collapse = "|") # find amplicons specified in amplicon table (with _)
+pat.sampleID <- paste(sprintf("^%s_", amplicon.table$target_name), collapse = "|") # find amplicons specified in amplicon table (with _)
 pat.sampleID <- paste(c(pat.sampleID, "_trimmed_merged.fastq.gz$"), collapse = "|") # remove _trimmed from end
 
 seqtab.nochim.df <- seqtab.nochim.df %>%

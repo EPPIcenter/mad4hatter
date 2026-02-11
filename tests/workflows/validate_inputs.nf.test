@@ -12,7 +12,6 @@ nextflow_workflow {
                 pools='D1.1,R1,R2'
 
                 readDIR='${projectDir}/tests/example_data/'
-                sequencer='miseq'
             }
         }
 
@@ -30,7 +29,6 @@ nextflow_workflow {
                 pools='D1.1,R1,R2'
 
                 readDIR='${projectDir}/tests/example_data/'
-                sequencer='miseq'
             }
         }
 
@@ -48,7 +46,6 @@ nextflow_workflow {
                 pools='D1.1,R1,R2'
 
                 readDIR='${projectDir}/tests/example_data/'
-                sequencer='miseq'
             }
         }
 
@@ -66,7 +63,6 @@ nextflow_workflow {
                 pools='D1.1,R1,R2'
 
                 readDIR='${projectDir}/tests/example_data/'
-                sequencer='miseq'
             }
         }
 
@@ -85,7 +81,6 @@ nextflow_workflow {
                 pools='D1.1,R1,R2'
 
                 readDIR=null
-                sequencer='miseq'
             }
         }
 
@@ -96,7 +91,7 @@ nextflow_workflow {
 
     }
 
-    test("Running complete workflow checks should fail with invalid pool name") {
+    test("Running complete workflow checks should fail with invalid pool name and no amplicon info set") {
 
         when {
             params {
@@ -104,17 +99,87 @@ nextflow_workflow {
                 pools='D1.1,R1,bad_pool ,bad_pool2'
 
                 readDIR='${projectDir}/tests/example_data/'
-                sequencer='miseq'
+                genome = '${projectDir}/tests/example_data/chrom_one_genome.fasta'
             }
         }
 
         then {
             assert workflow.failed
-            assert workflow.stdout.contains("ERROR ~ The following pools were not found in configuration: bad_pool, bad_pool2")
+            assert workflow.stdout.contains("ERROR ~ Pools were not found in configuration: bad_pool, bad_pool2. `--amplicon_info` and either `--refseq_fasta` or `--genome` must be provided when using bespoke pools.")
         }
 
     }
+    
+    test("Running postprocessing workflow checks should fail with invalid pool name and no genome or refseq set") {
 
+        when {
+            params {
+                workflow_name='postprocessing'
+                pools='D1.1,R1,bad_pool ,bad_pool2'
+                amplicon_info = '${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv'
+
+                readDIR='${projectDir}/tests/example_data/'
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.stdout.contains("ERROR ~ Pools were not found in configuration: bad_pool, bad_pool2. `--amplicon_info` and either `--refseq_fasta` or `--genome` must be provided when using bespoke pools.")
+        }
+
+    }
+    test("Running qc workflow checks should fail with invalid pool name and no amplicon info") {
+
+        when {
+            params {
+                workflow_name='qc'
+                pools='D1.1,R1,bad_pool ,bad_pool2'
+
+                readDIR='${projectDir}/tests/example_data/'
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.stdout.contains("ERROR ~ Pools were not found in configuration: bad_pool, bad_pool2. `--amplicon_info` must be specified when using bespoke pools.")
+        }
+
+    }
+    test("Running qc workflow with invalid pools and amplicon info should pass") {
+
+        when {
+            params {
+                workflow_name='qc'
+                pools='D1.1,R1,badpool'
+
+                readDIR='${projectDir}/tests/example_data/'
+                amplicon_info = '${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv'
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+    test("Running complete workflow with invalid pools and amplicon info and genome should pass") {
+
+        when {
+            params {
+                workflow_name='complete'
+                pools='D1.1,R1,badpool'
+
+                readDIR='${projectDir}/tests/example_data/'
+                amplicon_info = '${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv'
+                genome = '${projectDir}/tests/example_data/chrom_one_genome.fasta'
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
     test("Running postprocessing workflow checks should pass") {
 
         when {

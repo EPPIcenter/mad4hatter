@@ -37,8 +37,8 @@ nextflow_workflow {
             assert workflow.success
             assert workflow.out.sample_coverage
             assert workflow.out.amplicon_coverage
-            assert path(workflow.out.sample_coverage.get(0)).md5 == "3ccbcdc873b904fed77aeea8606322b9"
-            assert path(workflow.out.amplicon_coverage.get(0)).md5 == "6e4ecd2939db1982d9cd746cc2711503"
+            assert path(workflow.out.sample_coverage.get(0)).md5 == "5be6f0346ea876679ccc646251583e3f"
+            assert path(workflow.out.amplicon_coverage.get(0)).md5 == "73695b40aaf9830570f4f55a6a9f3a1c"
         }
 
     }
@@ -78,8 +78,8 @@ nextflow_workflow {
             assert workflow.success
             assert workflow.out.sample_coverage
             assert workflow.out.amplicon_coverage
-            assert path(workflow.out.sample_coverage.get(0)).md5 == "c5877466581b344bfd3714308b94c621"
-            assert path(workflow.out.amplicon_coverage.get(0)).md5 == "443c4acd9b6b94f08a665b7981bb58e0"
+            assert path(workflow.out.sample_coverage.get(0)).md5 == "11733857dc8d75fbc0debe1168560fae"
+            assert path(workflow.out.amplicon_coverage.get(0)).md5 == "637da14a5ec87115737cc5a6eb064f29"
         }
 
     }

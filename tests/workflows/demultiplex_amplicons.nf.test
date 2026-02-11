@@ -10,7 +10,7 @@ nextflow_workflow {
         when {
             params {
                 cutadapt_minlen = 5
-                sequencer = "miseq"
+                sequencer = false
                 allowed_errors = 0
                 
             }
@@ -71,7 +71,7 @@ nextflow_workflow {
             assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
             assert amp1r2_fastq.contains("GTATATCATATAAATTATCA")
 
-            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAA")
+            assert amp2r1_fastq.contains("CAAAATGACATGAACAAGTCAGGCGAAAGGG")
 
             assert amp2r2_fastq.contains("GTATATCATATAAATTATCA")
 

@@ -1,4 +1,4 @@
-GeneID	Gene	CodonID	chr	start	stop	strand	Locus	ampInsert_length	CodonStart
+GeneID	Gene	CodonID	chrom	start	stop	strand	target_name	ampInsert_length	CodonStart
 1	gene1	1	Pf3D7_01_v3	748132	748135	+	locus1	10	7
 2	gene2	2	Pf3D7_02_v3	1725338	1725341	+	locus2	10	7
 3	gene3	3	Pf3D7_02_v3	3	4	+	locus3	10	7

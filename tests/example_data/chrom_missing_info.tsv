@@ -1,2 +1,2 @@
-chrom	target_id	insert_start	insert_end	rev_primer	fwd_primer	pool
+chrom	target_name	insert_start	insert_end	rev_primer	fwd_primer	pool
 Pf3D7_99_v3	test_target_missing_chrom_in_genome	120	180	AAAATGTCCAATATGTCAAGGTATATTAAAGT	CCTGAGTTTTAAGTGAATGAATATATTTTTGTT	D1

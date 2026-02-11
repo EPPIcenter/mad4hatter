@@ -17,10 +17,13 @@ workflow VALIDATE_INPUTS {
     // Check params based on workflow
     if (workflow_name == 'complete' || workflow_name == 'qc') {
         check_readdir_presence()
-        // Check sequencer input
-        check_sequencer()
     } else if (workflow_name == 'postprocessing') {
         check_denoised_asvs_presence()
+    }
+    
+    // Add warning if both params.refseq_fasta and params.genome are not null that params.refseq_fasta will be used
+    if (params.refseq_fasta != null && params.genome != null) {
+        log.warn "Both --refseq_fasta and --genome are specified. --refseq_fasta will be used and --genome will be ignored."
     }
 }
 
@@ -59,20 +62,27 @@ def check_pools() {
 
     // Report all invalid pools at once
     if (!invalidPools.isEmpty()) {
-        log.error "The following pools were not found in configuration: ${invalidPools.join(', ')}"
-        exit 1
+        // Using pools outside of preset in configuration is okay as long as other required files are provided.
+        def workflow_name = params.workflow_name?.toLowerCase()
+        
+        if (workflow_name == 'qc') {
+            if (params.amplicon_info == null) {
+                log.error "Pools were not found in configuration: ${invalidPools.join(', ')}. `--amplicon_info` must be specified when using bespoke pools."
+                exit 1
+            }
+        } else if (workflow_name == 'complete' || workflow_name == 'postprocessing') {
+            if (params.amplicon_info == null || (params.refseq_fasta == null && params.genome == null)) {
+                log.error "Pools were not found in configuration: ${invalidPools.join(', ')}. `--amplicon_info` and either `--refseq_fasta` or `--genome` must be provided when using bespoke pools."
+                exit 1
+            }
+        } 
+        
+        log.warn "The following pools were not found in configuration: ${invalidPools.join(', ')}. Proceeding with bespoke pools."
+        
     }
 
     if (!warnings.isEmpty()) {
         warnings.each { warning -> log.warn warning }
-    }
-}
-
-// Helper function to check if sequencer parameter is provided
-def check_sequencer() {
-    if (params.sequencer == null) {
-        log.error "`--sequencer` must be specified."
-        exit 1
     }
 }
 

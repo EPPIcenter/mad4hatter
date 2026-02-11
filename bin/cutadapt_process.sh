@@ -4,16 +4,14 @@ set -e
 
 # Function to print help
 usage() {
-    echo "Usage: $0 -1 forward_read -2 reverse_read -m cutadapt_minlen -f fwd_primers_file -r rev_primers_file -s sequencer -e allowed_errors -c cores -o output"
+    echo "Usage: $0 -1 forward_read -2 reverse_read -m cutadapt_minlen -f fwd_primers_file -r rev_primers_file -g gtrim -q quality_score -e allowed_errors -c cores -o output"
     exit 1
 }
 
 # default settings
 cores=1
-allowed_errors=0 # allow no mismatches in the adapter sequence
-
 # Parse command-line options
-while getopts "1:2:m:f:r:q:h:s:e:c:o:" OPTION
+while getopts "1:2:m:f:r:q:h:g:e:c:o:" OPTION
 do
     case $OPTION in
         1)
@@ -34,8 +32,11 @@ do
         e)
 			allowed_errors=$OPTARG
 			;;
-        s)
-            sequencer=$OPTARG
+        g)
+            gtrim=$OPTARG
+            ;;
+        q)
+            quality_score=$OPTARG
             ;;
         c)
 			cores=$OPTARG
@@ -53,7 +54,7 @@ do
 done
 
 # Validate inputs
-if [[ -z "$forward_read" || -z "$reverse_read" || -z "$cutadapt_minlen" || -z "$fwd_primers_file" || -z "$rev_primers_file" || -z "$sequencer" || -z "$trimmed_demuxed_fastqs" ]]; then
+if [[ -z "$forward_read" || -z "$reverse_read" || -z "$cutadapt_minlen" || -z "$fwd_primers_file" || -z "$rev_primers_file" || -z "$gtrim" || -z "$trimmed_demuxed_fastqs" ]]; then
     usage
 fi
 
@@ -114,10 +115,10 @@ no_dimers=$(jq '.read_counts.filtered.discard_untrimmed' ${cutadapt_json})
 printf "%s\t%s\n" "Input" ${total_pairs} > ${sample_id}.SAMPLEsummary.txt
 printf "%s\t%s\n" "No Dimers" ${no_dimers} >> ${sample_id}.SAMPLEsummary.txt
 
-if [ "$sequencer" == "miseq" ]; then
-    qualfilter="--trim-n -q 10"
+if [ "$gtrim" == "false" ]; then
+    qualfilter="--trim-n -q ${quality_score}"
 else
-    qualfilter="--nextseq-trim=20"
+    qualfilter="--trim-n --nextseq-trim=${quality_score}"
 fi
 
 cutadapt \

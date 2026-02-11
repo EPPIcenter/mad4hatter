@@ -42,8 +42,7 @@ There are 3 workflows available that we will describe below. They can be specifi
 Below are the parameters that are essential for running the pipeline, regardless of workflow. 
 |Parameter|Description|
 |---|---|
-|pools|The pools or panel that was used for sequencing. [Options: D1,R1,R2 - check panel.config for more options]|
-|sequencer|The sequencer used to produce your data. [Options: miseq, nextseq]|
+|pools|The pools that were used for sequencing. [Options: D1,R1,R2 - check panel.config for more options]|
 
 ##### QC and complete workflows 
 To run the qc (`--workflow qc`) or complete (`--workflow complete` (default)) workflow the below parameters are required. 
@@ -54,13 +53,13 @@ To run the qc (`--workflow qc`) or complete (`--workflow complete` (default)) wo
 Here is an example of running the complete workflow: 
 
 ```bash
-nextflow run main.nf --readDIR /path/to/data --pools D1,R1,R2 -profile sge,apptainer --sequencer miseq
+nextflow run main.nf --readDIR /path/to/data --pools D1,R1,R2 -profile sge,apptainer
 ``` 
 
 Here is an example of running the qc workflow: 
 
 ```bash
-nextflow run main.nf --readDIR /path/to/data --pools D1,R1,R2 -profile sge,apptainer --sequencer miseq --workflow qc
+nextflow run main.nf --readDIR /path/to/data --pools D1,R1,R2 -profile sge,apptainer --workflow qc
 ``` 
 ##### Postprocessing workflow
 
@@ -72,7 +71,7 @@ To run the postprocessing workflow (`--workflow postprocessing`) the below param
 Here is an example of running the postprocessing workflow: 
 
 ```bash
-nextflow run main.nf --denoised_asvs /path/to/denoised_asvs/dada2_clusters.txt --pools D1,R1,R2 -profile sge,apptainer --sequencer nextseq --workflow postprocessing
+nextflow run main.nf --denoised_asvs /path/to/denoised_asvs/dada2_clusters.txt --pools D1,R1,R2 -profile sge,apptainer --workflow postprocessing
 ``` 
 
 #### Optional Parameters
@@ -90,7 +89,7 @@ Below are parameters that are optional to running the pipeline.
 Below is an example of how you may run the pipeline setting the above parameters. 
 
 ```bash
-nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results --pools D1,R1,R2 -profile docker --sequencer miseq --workflow qc -config conf/custom.config 
+nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results --pools D1,R1,R2 -profile docker --workflow qc -config conf/custom.config 
 ``` 
 
 ##### DADA parameters

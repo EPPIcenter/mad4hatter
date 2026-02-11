@@ -24,7 +24,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.resmarker_info
-            assert path(process.out.resmarker_info.get(0)).md5 == "71f76c81d69aa11fa663e298f004c675"
+            assert path(process.out.resmarker_info.get(0)).md5 == "ed8c3f3bfe2a75e064a7f8e6d0ddeba0"
         }
 
     }
@@ -74,7 +74,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.resmarker_info
-            assert path(process.out.resmarker_info.get(0)).md5 == "3dec10fc9cc311d369a8aaa4565df32b"
+            assert path(process.out.resmarker_info.get(0)).md5 == "f778b6f2d8970abbc633783386cd5a29"
         }
 
     }
@@ -99,7 +99,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.resmarker_info
-            assert path(process.out.resmarker_info.get(0)).md5 == "b9e9d75166a5a13540de908a04915d1e"
+            assert path(process.out.resmarker_info.get(0)).md5 == "9ee4cc9db1d550305ddc847658f07920"
         }
 
     }
