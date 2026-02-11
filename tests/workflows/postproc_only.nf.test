@@ -20,9 +20,42 @@ nextflow_workflow {
 
         then {
             assert workflow.success
-            assert workflow.trace.tasks().size() == 9
+            assert workflow.trace.tasks().size() == 10
+
             assert workflow.out.alleledata
-            assert path(workflow.out.alleledata.get(0)).md5 == "c02419e5f72e53aecdd92550cbf52f11"
+            assert workflow.out.alleledata_collapsed
+
+            assert path(workflow.out.alleledata.get(0)).md5 == "28379fcc5ca5c6b881d6c6caf1944fc9"
+            assert path(workflow.out.alleledata_collapsed.get(0)).md5 == "7f2083116c5fd43f38a21820eaa73b6c"
+        }
+
+    }
+
+    test("Should run without failures when not masking") {
+
+        when {
+            params {
+                pools="D1,R1"
+                mask_tandem_repeats=false
+                mask_homopolymers=false
+            }
+            workflow {
+                """
+                input[0] = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
+                input[1] = "${projectDir}/tests/example_data/subset_dada2.clusters.txt"
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.trace.tasks().size() == 7
+
+            assert workflow.out.alleledata
+            assert workflow.out.alleledata_collapsed
+
+            assert path(workflow.out.alleledata.get(0)).md5 == "1a8b3cc3a9c00d797b1c592cb2d5bac3"
+            assert path(workflow.out.alleledata_collapsed.get(0)).md5 == "d3e80c1d238330f28cb8a5e8cad52916"
         }
 
     }

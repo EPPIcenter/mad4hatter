@@ -28,7 +28,7 @@ nextflow_workflow {
             assert workflow.success
             assert workflow.out.masked_alignments
             assert workflow.trace.tasks().size() == 3
-            assert path(workflow.out.masked_alignments.get(0)).md5 == "bdc2b564d3523b0b772a6c6b7c577fad"
+            assert path(workflow.out.masked_alignments.get(0)).md5 == "639c25675c53ba693d9a66dee19282ce"
         }
 
     }
@@ -57,7 +57,7 @@ nextflow_workflow {
             assert workflow.success
             assert workflow.out.masked_alignments
             assert workflow.trace.tasks().size() == 2
-            assert path(workflow.out.masked_alignments.get(0)).md5 == "65be02cffb23692c4c8bb39fca2ae556"
+            assert path(workflow.out.masked_alignments.get(0)).md5 == "867ff838694316f3d48e25257830b20f"
         }
 
     }
@@ -86,7 +86,7 @@ nextflow_workflow {
             assert workflow.success
             assert workflow.out.masked_alignments
             assert workflow.trace.tasks().size() == 2
-            assert path(workflow.out.masked_alignments.get(0)).md5 == "eb52cc5bcddc8e5bf6a14a3f801d1876"
+            assert path(workflow.out.masked_alignments.get(0)).md5 == "82aa2f65bf345bd64c1acdf7b6edae2e"
         }
 
     }

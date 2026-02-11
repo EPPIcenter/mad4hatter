@@ -34,26 +34,26 @@ if (!is.null(args$sample_coverage) && file.exists(args$sample_coverage)) {
   sample.coverage = read.table(args$sample_coverage, header = TRUE, sep = "\t")
   print(str(sample.coverage))
   sample.coverage <- sample.coverage %>%
-    pivot_wider(names_from = "Stage", values_from = "Reads")
+    pivot_wider(names_from = "stage", values_from = "reads")
 
   qc.postproc <- sample.coverage %>%
     left_join(clusters  %>%
       ungroup()  %>%
       select(sampleID,reads) %>%
       group_by(sampleID) %>%
-      summarise(OutputDada2 = sum(reads)), by = c("SampleID"="sampleID")
+      summarise(OutputDada2 = sum(reads)), by = c("sample_name"="sampleID")
     )  %>%
     left_join(allele.data  %>%
       ungroup()  %>%
-      select(SampleID,Reads) %>%
-      group_by(SampleID) %>%
-      summarise(OutputPostprocessing = sum(Reads)), by = c("SampleID")
+      select(sample_name,reads) %>%
+      group_by(sample_name) %>%
+      summarise(OutputPostprocessing = sum(reads)), by = c("sample_name")
     )  %>%
     mutate(across(everything(), as.character)) %>%    
     pivot_longer(cols = c(Input, `No Dimers`, Amplicons, OutputDada2, OutputPostprocessing))
 
-  qc.postproc %<>% dplyr::rename("Stage" = "name", "Reads" = "value")
-  qc.postproc$Reads[is.na(qc.postproc$Reads)] <- 0
+  qc.postproc %<>% dplyr::rename("stage" = "name", "reads" = "value")
+  qc.postproc$reads[is.na(qc.postproc$reads)] <- 0
 
   write.table(qc.postproc, quote=F,sep='\t',col.names = TRUE, row.names = F, file = args$sample_coverage_out)
 }
@@ -67,12 +67,12 @@ if (!is.null(args$amplicon_coverage) && file.exists(args$amplicon_coverage)) {
     left_join(clusters %>%
       group_by(sampleID,locus) %>%
       summarise(OutputDada2 = sum(reads)),
-      by = c("SampleID" = "sampleID", "Locus" = "locus"),
-      ) %>%
+      by = c("sample_name" = "sampleID", "target_name" = "locus"),
+      ) %>% 
     left_join(allele.data %>%
-      group_by(SampleID,Locus) %>%
-      summarise(OutputPostprocessing = sum(Reads)),
-          by = c("SampleID", "Locus"))
+      group_by(sample_name,target_name) %>%
+      summarise(OutputPostprocessing = sum(reads)),
+          by = c("sample_name", "target_name"))
    qc.postproc$OutputDada2[is.na(qc.postproc$OutputDada2)] <- 0
    qc.postproc$OutputPostprocessing[is.na(qc.postproc$OutputPostprocessing)] <- 0
 

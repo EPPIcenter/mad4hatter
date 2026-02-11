@@ -22,8 +22,8 @@ def build_resmarker_info():
     full_resmarker_df = pd.read_csv(args.principal_resmarkers, dtype={
         'GeneID': str}, sep='\t')
 
-    data = {'GeneID': [], 'Gene': [], 'CodonID': [], 'chr': [], 'start': [], 'stop': [
-    ], 'strand': [], 'Locus': [], 'CodonStart': []}
+    data = {'GeneID': [], 'Gene': [], 'CodonID': [], 'chrom': [], 'start': [], 'stop': [
+    ], 'strand': [], 'target_name': [], 'CodonStart': []}
 
     for _, row in full_resmarker_df.iterrows():
         chr = row.chr
@@ -37,11 +37,11 @@ def build_resmarker_info():
                 data['GeneID'].append(row.GeneID)
                 data['Gene'].append(row.Gene)
                 data['CodonID'].append(row.CodonID)
-                data['chr'].append(row.chr)
+                data['chrom'].append(row.chr)
                 data['start'].append(row.start)
                 data['stop'].append(row.stop)
                 data['strand'].append(row.strand)
-                data['Locus'].append(overlap_row.target_id)
+                data['target_name'].append(overlap_row.target_name)
                 codon_start = row.start-overlap_row.insert_start
                 data['CodonStart'].append(codon_start)
     resmarker_df = pd.DataFrame(data=data)

@@ -1,2 +1,2 @@
-chrom	insert_start	insert_end	target_id	fwd_primer	rev_primer
+chrom	insert_start	insert_end	target_name	fwd_primer	rev_primer
 Pf3D7_11_v3	1294307	1294498	Pf3D7_11_v3-1294307-1294498	CCATCAGGGAAATGTCCAGT	TTTCCTGCATGTCTTGAACA

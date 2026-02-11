@@ -1,5 +1,4 @@
 #!/usr/bin/env nextflow
-
 nextflow.enable.dsl = 2
 
 // Expand user directory if exists
@@ -31,11 +30,10 @@ def helpMessage() {
   log.info """
     Usage:
       The typical command for running the pipeline is as follows:
-      nextflow run main.nf --readDIR path/to/read_dir --target v4
+      nextflow run main.nf --readDIR path/to/read_dir --pools D1,R1,R2
 
     Mandatory arguments:
       --pools     The pools that were used for sequencing. [Options: D1,R1,R2 - see panel.config for more options]
-      --sequencer	The sequencer used to produce your data. [Options: miseq, nextseq]
 
     Mandatory for `complete` (default) or `qc` workflow: 
       --readDIR		Path to folder containing fastq files
@@ -70,7 +68,7 @@ def helpMessage() {
 
     Examples:
       More advanced usage 
-      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --pools D1,R1,R2 --sequencer nextseq -config custom.config
+      nextflow run main.nf --readDIR path/to/read_dir --outDIR results --pools D1,R1,R2 -config custom.config
 
       Change runtime param to use Docker
       nextflow run main.nf --readDIR path/to/read_dir --outDIR results --pools D1,R1,R2 -profile docker
@@ -105,7 +103,7 @@ workflow {
 
   VALIDATE_INPUTS()
 
-  def amplicon_info = (params.amplicon_info == null) ? GENERATE_AMPLICON_INFO().amplicon_info_ch : params.amplicon_info
+  def amplicon_info = (params.amplicon_info == null) ? GENERATE_AMPLICON_INFO().amplicon_info_ch : file(params.amplicon_info)
   // Convert workflow to lowercase
   def workflow_name = params.workflow_name?.toLowerCase()
 
@@ -140,7 +138,9 @@ workflow {
     BUILD_ALLELETABLE(
       amplicon_info,
       DENOISE_AMPLICONS_2.out.denoise_ch,
-      DENOISE_AMPLICONS_2.out.results_ch
+      DENOISE_AMPLICONS_2.out.masked_pseudocigar,
+      DENOISE_AMPLICONS_2.out.unmasked_pseudocigar,
+      DENOISE_AMPLICONS_2.out.aligned_asv_table
     )
 
     // Create the quality report now

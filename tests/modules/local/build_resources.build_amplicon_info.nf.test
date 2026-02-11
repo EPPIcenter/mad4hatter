@@ -24,7 +24,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.amplicon_info
-            assert path(process.out.amplicon_info.get(0)).md5 == "1a158bbd797e814e4e2866160f59740c"
+            assert path(process.out.amplicon_info.get(0)).md5 == "12a4d58807138684bbd3bf39497ec28e"
         }
 
     }
@@ -49,7 +49,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.amplicon_info
-            assert path(process.out.amplicon_info.get(0)).md5 == "f9d033ae3a7fc89779c98589ff351060"
+            assert path(process.out.amplicon_info.get(0)).md5 == "789ae2fb564ca55f1ce692119fba3110"
         }
 
     }
@@ -75,7 +75,7 @@ nextflow_process {
         then {
             assert process.success
             assert process.out.amplicon_info
-            assert path(process.out.amplicon_info.get(0)).md5 == "2e3385d7e8107a9c649fd8491f9c2015"
+            assert path(process.out.amplicon_info.get(0)).md5 == "56c21df597782f756cc2b444a7e8be21"
         }
 
     }
@@ -99,7 +99,7 @@ nextflow_process {
 
         then {
             assert process.failed
-            assert process.errorReport.contains("tests/example_data/amplicon_info_missing_cols.tsv' is missing required columns: ['target_id', 'chrom', 'insert_start', 'insert_end', 'fwd_primer']")
+            assert process.errorReport.contains("tests/example_data/amplicon_info_missing_cols.tsv' is missing required columns: ['target_name', 'chrom', 'insert_start', 'insert_end', 'fwd_primer']")
         }
 
     }

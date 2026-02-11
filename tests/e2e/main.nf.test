@@ -10,7 +10,6 @@ nextflow_pipeline {
                 workflow_name = 'complete'
                 pools = 'D1,R1,R2'
                 readDIR = "${projectDir}/tests/example_data/example_fastq"
-                sequencer = 'miseq'
             }
         }
 
@@ -20,15 +19,33 @@ nextflow_pipeline {
 
     }
     
-    test("Complete workflow should run with nextseq sequencer and one pool") {
+    test("Complete workflow should run with gtrim and one pool") {
 
         when {
             params {
                 workflow_name = 'complete'
                 pools = 'D1'
                 readDIR = "${projectDir}/tests/example_data/example_fastq/"
-                sequencer = 'nextseq'
+                gtrim = true
                 outDIR = 'results_test_nextseq'
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+
+    }
+
+    test("Complete workflow should run successfully with bespoke pool and genome set.") {
+
+        when {
+            params {
+                workflow_name = 'complete'
+                pools = 'bespoke_pool'
+                readDIR = "${projectDir}/tests/example_data/example_fastq"
+                genome = "${projectDir}/tests/example_data/chrom_one_genome.fasta"
+                amplicon_info = "${projectDir}/tests/example_data/chrom_one_info.tsv"
             }
         }
 
@@ -45,7 +62,6 @@ nextflow_pipeline {
                 workflow_name = 'qc'
                 pools = 'R2'
                 readDIR = "${projectDir}/tests/example_data/example_fastq/"
-                sequencer = 'miseq'
                 outDIR = 'results_test_qc'
             }
         }
@@ -81,7 +97,6 @@ nextflow_pipeline {
                 workflow_name = 'complete'
                 pools = 'D1.1,R1.2,R2'
                 readDIR = "${projectDir}/tests/example_data/example_fastq/"
-                sequencer = 'miseq'
                 outDIR = 'results_test_custom_amplicon'
                 amplicon_info = "${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv"
                 refseq_fasta = "${projectDir}/tests/example_data/multi_pool_targeted_reference.fasta"
@@ -101,7 +116,6 @@ nextflow_pipeline {
                 workflow_name = 'complete'
                 pools = 'D1.1'
                 readDIR = "${projectDir}/tests/example_data/example_fastq"
-                sequencer = 'miseq'
                 outDIR = 'results_test_genome_ref'
                 genome = "${projectDir}/tests/example_data/chrom_one_genome.fasta"
                 amplicon_info = "${projectDir}/tests/example_data/chrom_one_info.tsv"

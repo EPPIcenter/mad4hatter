@@ -27,7 +27,7 @@ def concatenate_tables(paths, pools):
         else:
             df = pd.read_csv(file, sep='\t')
             # Check if required columns exist
-            required_columns = ['target_id', 'chrom', 'insert_start', 'insert_end', 'fwd_primer', 'rev_primer']
+            required_columns = ['target_name', 'chrom', 'insert_start', 'insert_end', 'fwd_primer', 'rev_primer']
             missing_columns = [col for col in required_columns if col not in df.columns]
             if missing_columns:
                 raise ValueError(f"File '{file}' is missing required columns: {missing_columns}")
@@ -37,8 +37,8 @@ def concatenate_tables(paths, pools):
             df['pool'] = pool
             df_list.append(df)
     concatenated_df = pd.concat(df_list)
-    concatenated_df = concatenated_df.groupby(['target_id', 'chrom', 'insert_start', 'insert_end','fwd_primer','rev_primer'])['pool'].agg(lambda x: ','.join(x)).reset_index()
-    concatenated_df.sort_values('target_id', inplace=True)
+    concatenated_df = concatenated_df.groupby(['target_name', 'chrom', 'insert_start', 'insert_end','fwd_primer','rev_primer'])['pool'].agg(lambda x: ','.join(x)).reset_index()
+    concatenated_df.sort_values('target_name', inplace=True)
     concatenated_df.reset_index(inplace=True, drop=True)
     return concatenated_df
 
