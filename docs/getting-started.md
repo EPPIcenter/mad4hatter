@@ -1,73 +1,159 @@
----
-layout: default
-title: Getting Started
-nav_order: 2
-has_children: false
----
-
 # Getting Started
 
-The mad4hatter pipeline uses [nextflow](https://www.nextflow.io/) and will need to be installed prior to using the pipeline. Information about how to [install](https://www.nextflow.io/) and use the [command line tool](https://www.nextflow.io/docs/latest/cli.html) can be found on their [website](https://www.nextflow.io/). The tool is also available from other package managers such as [conda](https://anaconda.org/bioconda/nextflow) if you would like an alternative installation pathway. 
+This guide will help you get started, even if you're new to bioinformatics pipelines.
+
+## Prerequisites
+
+Before you begin, you'll need:
+
+1. **Nextflow** - The workflow management system that runs the pipeline
+    - Installation instructions: [Nextflow website](https://www.nextflow.io/)
+    - Alternative: Install via [conda](https://anaconda.org/bioconda/nextflow): `conda install -c bioconda nextflow`
+
+2. **Java 11 or higher** - Required by Nextflow
+    - Check if you have Java: `java -version`
+    - If not installed, download from [Oracle](https://www.oracle.com/java/technologies/downloads/) or use your system's package manager
+
+3. **One of the following runtime environments** (choose based on your setup):
+    - **Docker** - For local computers (recommended for beginners)
+    - **Apptainer/Singularity** - For HPC clusters
+    - **Conda** - Alternative dependency management
+
+## Quick Start Guide
+
+### Step 1: Choose Your Environment
+
+- **Are you running on:**
+    - **Your local computer?** → Use [Docker](#docker)
+    - **A computing cluster/HPC?** → Use [Apptainer](#apptainer)
+    - **Prefer conda?** → Use [Conda](#conda-alternative-option)
+
+### Step 2: Prepare Your Data
+
+Make sure your sequencing data is organized:
+- Forward reads (R1) and reverse reads (R2) in FASTQ format
+- Files should be in a single folder
+- Example: `/path/to/data/sample1_R1.fastq.gz` and `/path/to/data/sample1_R2.fastq.gz`
+
+### Step 3: Run the Pipeline
+
+Follow the instructions for your chosen environment below.
+
+---
+
+## Docker
+
+**Best for:** Running on your own computer (Mac, or Linux). Docker automatically handles all software dependencies. The pipeline will download the required Docker image automatically on first run - no manual setup needed!
 
 
-{: .note }
-Nextflow requires the Java 11 (or higher) Runtime Environment.
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
 
-## Runtime Profiles
+### Basic Command
 
-Runtime profiles will provide all dependencies and setup needed for different computing environments. As an example, if you are using a cluster, grid or HPC environment, `apptainer` would be an appropriate profile as it supplies an image with all dependencies ready. If you are using a local computer, `docker` would be more appropriate. You can also choose to install the dependencies independently and run the pipeline that way if you choose to, but it is not recommended. 
+```bash
+nextflow run main.nf \
+  --readDIR tests/example_data/example_fastq \
+  --pools D1,R1,R2 \
+  -profile docker
+```
 
-Currently, [Sun of Grid Engine (SGE)](http://star.mit.edu/cluster/docs/0.93.3/guides/sge.html) is the only supported cluster environment.
+!!! tip "First Time Running?"
+    The first time you run with Docker, it will download the pipeline image (this may take a few minutes). Subsequent runs will be much faster!
 
-### Apptainer
+---
 
-{: .note }
-[Apptainer](https://github.com/apptainer/apptainer/releases) is a prerequisite.
+## Apptainer
 
-Apptainer should be used if you are using a computing cluster or grid. You will first need to build the apptainer image before you can use the image. 
+**Best for:** High-performance computing clusters, grid computing, or shared computing resources
 
-To build the image, run the command below:
+### Prerequisites
+- [Apptainer](https://github.com/apptainer/apptainer/releases) installed on your cluster
+- Access to a cluster with a job scheduler (currently supports SGE or slurm)
+
+### Step 1: Build the Apptainer Image
+
+First, pull the container image onto your cluster:
+
+```bash
+apptainer pull docker://eppicenter/mad4hatter:latest
+```
+
+Alternatively, you can build the container image from scratch on your cluster:
 
 ```bash
 apptainer build mad4hatter.sif Apptainer
 ```
 
-And then include the `apptainer` profile on the command line. 
+This creates a file called `mad4hatter.sif` that contains all the software needed.
+
+!!! note "One-Time Setup"
+    You typically only need to build/pull the image once. After that, you can reuse the `mad4hatter.sif` file.
+
+### Step 2: Run the Pipeline
 
 ```bash
-nextflow run main.nf --readDIR /wynton/scratch/data/AAD1017 --target v4 -profile sge,apptainer -c conf/custom.config
+nextflow run main.nf \
+  --readDIR tests/example_data/example_fastq \
+  --pools D1,R1,R2 \
+  -profile sge,apptainer \
+  -c conf/custom.config
 ```
 
-{: .note }
-You should also include the job scheduler you will be using. In this case, `sge` is the job scheduler that will be used. Contact your system administrator if you are unsure about this setting.
+**Important parameters:**
+- `-profile sge,apptainer` - Use a job scheduler (e.g., SGE or slurm) with Apptainer
+- `-c conf/custom.config` - Configuration file for resource allocation
 
-### Docker
+!!! note "Job Scheduler"
+    Replace `sge` with your cluster's job scheduler if different. Contact your system administrator if you're unsure which scheduler your cluster uses.
 
-{: .note }
-[Docker](https://www.docker.com/) is a prerequisite.
+---
 
-The pipeline can be easily run with docker and is the recommended way to run it when not using an HPC.
+## Conda (Alternative Option)
 
-The EPPIcenter has a repository for images, and the docker image for the pipeline will be automatically pulled in the background when first running the pipeline. The image will then be stored locally on your machine and reused. 
+**Best for:** Users who prefer conda for package management. 
 
-To run the  with docker, simply add `-profile docker` in your command. 
+!!! tip "Using conda"
+    This is not a recommended way to run the pipeline and limitted support will be available for running using conda.
+
+### Prerequisites
+- [Conda](https://docs.conda.io/en/latest/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) installed
+
+### Basic Command
 
 ```bash
-nextflow run main.nf --readDIR /wynton/scratch/data/AAD1017 --outDIR /wynton/scratch/results -profile docker --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --target v4 -config conf/custom.config
+nextflow run main.nf \
+  --readDIR tests/example_data/example_fastq \
+  --pools D1,R1,R2 \
+  -profile conda
 ```
 
-Alternatively, you can build the docker image on your machine using the Dockerfile recipe, although this is not the recommended way to set up the docker image.
+!!! note "Conda Environments"
+    Conda will automatically create and manage the required software environments. This may take longer on the first run as it installs dependencies.
 
-If you would like to build the docker image yourself, you may run the command below:
+---
 
-```bash
-docker build -t eppicenter/mad4hatter:latest .
-```
+## No-Code Option: Terra Platform
 
-### Conda
+**Don't want to use the command line?** The pipeline is also available on Terra, a cloud-based platform with a graphical interface.
 
-To use conda, you must first install either [conda](https://docs.conda.io/en/latest/) or [miniconda](https://docs.conda.io/en/latest/miniconda.html). Once installed, include the `conda` profile on the command line.
+- Access the workspace: [Terra MAD4HATTER Workspace](https://app.terra.bio/#workspaces/gates-malaria/Mad4Hatter)
+- No installation required!
 
-```bash
-nextflow run main.nf --readDIR /wynton/scratch/data --outDIR /wynton/scratch/results -profile conda --genome /wynton/share/PlasmoDB-59_Pfalciparum3D7_Genome.fasta --target v4 -config conf/custom.config
-```
+---
+
+## Next Steps
+
+1. **Review the outputs** - See [Pipeline Outputs](pipeline-outputs.md) for details
+2. **Understand pipeline usage** - Check the [Running the Pipeline](execution.md) page for more advanced ways of running the pipeline. 
+
+## Getting Help
+
+- **Command-line help**: See all available parameters and options by running:
+  ```bash
+  nextflow run main.nf --help
+  ```
+  This will display the complete help message with all pipeline parameters and their descriptions.
+
+- **Documentation**: Browse the other pages in this documentation
+- **Getting in touch**: Report bugs, feature requests, and questions as an issue on the [GitHub repository](https://github.com/EPPIcenter/mad4hatter/issues). Alternatively, reach out to the EPPIcenter team (kathryn.murie@ucsf.edu).
