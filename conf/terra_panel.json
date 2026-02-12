@@ -91,6 +91,7 @@
         "spotmalaria_spec": {
             "amplicon_info_path": "/opt/mad4hatter/panel_information/spotmalaria_spec/spotmalaria_spec_amplicon_info.tsv",
             "targeted_reference_path": "/opt/mad4hatter/panel_information/spotmalaria_spec/spotmalaria_spec_reference.fasta"
+        },
         "amplseq": {
             "amplicon_info_path": "/opt/mad4hatter/panel_information/AMPLseq/AMPLseq_amplicon_info.tsv",
             "targeted_reference_path": "/opt/mad4hatter/panel_information/AMPLseq/AMPLseq_reference.fasta"
