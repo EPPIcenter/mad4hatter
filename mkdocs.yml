@@ -1,0 +1,97 @@
+site_name: mad4hatter
+site_description: Multiplex Amplicons for Drugs, Diagnostics, Diversity, and Differentiation using High Throughput Targeted Resequencing
+site_url: https://eppicenter.github.io/mad4hatter/
+site_author: EPPIcenter
+
+repo_name: eppicenter/mad4hatter
+repo_url: https://github.com/eppicenter/mad4hatter
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2024 EPPIcenter
+
+use_directory_urls: true
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+    - toc.integrate
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Running the Pipeline: execution.md
+  - Advanced Pipeline Parameters: parameters.md
+  - Pipeline Outputs: pipeline-outputs.md
+  - Pipeline Resources: resources.md
+  - Bespoke Pools/Panels: custom-pools.md
+  - Pipeline Steps: pipeline-steps.md 
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  version:
+    provider: mike
+
+extra_css:
+  - assets/css/custom.css
+

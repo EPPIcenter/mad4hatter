@@ -1,0 +1,299 @@
+/* Custom CSS for MkDocs Material theme */
+
+/* EPPIcenter blue color from logo - professional research blue */
+:root {
+  --eppicenter-blue: #50b1d4ff;
+  --eppicenter-blue-dark: #08407fff;
+  --eppicenter-blue-light: #82cbdc;
+}
+
+/* Header styling with EPPIcenter blue */
+.md-header {
+  background-color: var(--eppicenter-blue) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.md-header__inner {
+  background-color: var(--eppicenter-blue) !important;
+}
+
+.md-header__title {
+  color: white !important;
+}
+
+.md-header__button {
+  color: white !important;
+}
+
+.md-header__button:hover {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Make header logo larger */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  width: 120px !important;
+  height: auto !important;
+}
+
+@media screen and (max-width: 768px) {
+  .md-header__button.md-logo img,
+  .md-header__button.md-logo svg {
+    width: 100px !important;
+  }
+}
+
+/* Navigation tabs styling to match blue theme */
+.md-tabs {
+  background-color: var(--eppicenter-blue-dark) !important;
+}
+
+.md-tabs__link {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.md-tabs__link--active {
+  color: white !important;
+  border-bottom-color: white !important;
+}
+
+.md-tabs__link:hover {
+  color: white !important;
+}
+
+/* Move table of contents to the left side (between nav and content) */
+@media screen and (min-width: 76.25em) {
+  .md-main__inner {
+    display: flex;
+    flex-direction: row;
+  }
+  
+  .md-sidebar--secondary {
+    order: 1;
+    margin-left: 0;
+    margin-right: 2.4rem;
+  }
+  
+  .md-sidebar--primary {
+    order: 0;
+  }
+  
+  .md-content {
+    order: 2;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  [dir="rtl"] .md-sidebar--secondary {
+    margin-right: 0;
+    margin-left: 2.4rem;
+  }
+  
+  [dir="rtl"] .md-content {
+    margin-right: 0;
+    margin-left: 0;
+  }
+}
+
+/* Home page title and logo side-by-side */
+.title-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin: 2rem 0;
+  flex-wrap: wrap;
+}
+
+.title-section {
+  flex: 1;
+  min-width: 300px;
+}
+
+.title-section h1 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.logo-section {
+  flex-shrink: 0;
+}
+
+.home-logo {
+  max-width: 80px;
+  width: 80%;
+  height: auto;
+  display: block;
+}
+
+@media screen and (max-width: 768px) {
+  .title-logo-container {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .title-section {
+    min-width: auto;
+  }
+  
+  .home-logo {
+    max-width: 80px;
+  }
+}
+
+/* Contributors styling */
+.contributors-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.contributors-list li {
+  display: inline-block;
+  margin: 0;
+}
+
+.contributors-list a {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+.contributors-list a:hover {
+  transform: scale(1.1);
+}
+
+.contributors-list img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--md-default-fg-color--lighter);
+}
+
+/* Platform buttons styling */
+.platform-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  margin: 2rem 0;
+  justify-content: center;
+}
+
+.platform-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  border: 2px solid var(--md-default-fg-color--lighter);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  min-width: 280px;
+  max-width: 320px;
+  background-color: var(--md-default-bg-color);
+}
+
+.platform-button:hover {
+  border-color: var(--md-primary-fg-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  text-decoration: none;
+  color: inherit;
+}
+
+.platform-logo {
+  width: 120px;
+  height: auto;
+  margin-bottom: 1rem;
+  object-fit: contain;
+}
+
+.platform-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--md-primary-fg-color);
+}
+
+.platform-description {
+  font-size: 0.9rem;
+  color: var(--md-default-fg-color--light);
+  text-align: center;
+  line-height: 1.4;
+}
+
+@media screen and (max-width: 768px) {
+  .platform-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .platform-button {
+    max-width: 100%;
+  }
+}
+
+/* EPPIcenter logo in footer - subtle placement */
+.md-footer {
+  position: relative;
+}
+
+.md-footer__inner {
+  position: relative;
+}
+
+/* Add EPPIcenter logo to footer */
+.md-footer::after {
+  content: '';
+  position: absolute;
+  bottom: 0.8rem;
+  right: 1.2rem;
+  width: 80px;
+  height: auto;
+  background-image: url('../images/eppicenter_logo.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@media screen and (max-width: 768px) {
+  .md-footer::after {
+    width: 60px;
+    bottom: 0.6rem;
+    right: 0.8rem;
+  }
+}
+
+/* Alternative: Add EPPIcenter logo next to copyright text */
+.md-footer-meta {
+  position: relative;
+}
+
+.md-footer-copyright::after {
+  content: '';
+  display: inline-block;
+  width: 60px;
+  height: 20px;
+  margin-left: 1rem;
+  background-image: url('../images/eppicenter_logo.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.5;
+  vertical-align: middle;
+}
+
+@media screen and (max-width: 768px) {
+  .md-footer-copyright::after {
+    display: block;
+    margin-left: 0;
+    margin-top: 0.5rem;
+    width: 50px;
+  }
+}
+
