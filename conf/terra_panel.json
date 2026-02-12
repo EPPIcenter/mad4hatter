@@ -64,14 +64,6 @@
             "amplicon_info_path": "/opt/mad4hatter/panel_information/R1.2/R1.2_amplicon_info.tsv",
             "targeted_reference_path": "/opt/mad4hatter/panel_information/R1.2/R1.2_reference.fasta"
         },
-        "4cast": {
-            "amplicon_info_path": "/opt/mad4hatter/panel_information/4cast/4cast_amplicon_info.tsv",
-            "targeted_reference_path": "/opt/mad4hatter/panel_information/4cast/4cast_reference.fasta"
-        },
-        "ama1": {
-            "amplicon_info_path": "/opt/mad4hatter/panel_information/ama1/ama1_amplicon_info.tsv",
-            "targeted_reference_path": "/opt/mad4hatter/panel_information/ama1/ama1_reference.fasta"
-        },
         "v1": {
             "amplicon_info_path": "/opt/mad4hatter/panel_information/v1/v1_amplicon_info.tsv",
             "targeted_reference_path": "/opt/mad4hatter/panel_information/v1/v1_reference.fasta"
@@ -79,6 +71,14 @@
         "v2": {
             "amplicon_info_path": "/opt/mad4hatter/panel_information/v2/v2_amplicon_info.tsv",
             "targeted_reference_path": "/opt/mad4hatter/panel_information/v2/v2_reference.fasta"
+        },
+        "4cast": {
+            "amplicon_info_path": "/opt/mad4hatter/panel_information/4cast/4cast_amplicon_info.tsv",
+            "targeted_reference_path": "/opt/mad4hatter/panel_information/4cast/4cast_reference.fasta"
+        },
+        "ama1": {
+            "amplicon_info_path": "/opt/mad4hatter/panel_information/ama1/ama1_amplicon_info.tsv",
+            "targeted_reference_path": "/opt/mad4hatter/panel_information/ama1/ama1_reference.fasta"
         },
         "spotmalaria_grc1": {
             "amplicon_info_path": "/opt/mad4hatter/panel_information/spotmalaria_grc1/spotmalaria_grc1_amplicon_info.tsv",
@@ -91,6 +91,9 @@
         "spotmalaria_spec": {
             "amplicon_info_path": "/opt/mad4hatter/panel_information/spotmalaria_spec/spotmalaria_spec_amplicon_info.tsv",
             "targeted_reference_path": "/opt/mad4hatter/panel_information/spotmalaria_spec/spotmalaria_spec_reference.fasta"
+        "amplseq": {
+            "amplicon_info_path": "/opt/mad4hatter/panel_information/AMPLseq/AMPLseq_amplicon_info.tsv",
+            "targeted_reference_path": "/opt/mad4hatter/panel_information/AMPLseq/AMPLseq_reference.fasta"
         }
     },
     "principal_resmarkers": "/opt/mad4hatter/panel_information/principal_resistance_marker_info_table.tsv"
