@@ -80,6 +80,18 @@
             "amplicon_info_path": "/opt/mad4hatter/panel_information/ama1/ama1_amplicon_info.tsv",
             "targeted_reference_path": "/opt/mad4hatter/panel_information/ama1/ama1_reference.fasta"
         },
+        "spotmalaria_grc1": {
+            "amplicon_info_path": "/opt/mad4hatter/panel_information/spotmalaria_grc1/spotmalaria_grc1_amplicon_info.tsv",
+            "targeted_reference_path": "/opt/mad4hatter/panel_information/spotmalaria_grc1/spotmalaria_grc1_reference.fasta"
+        },
+        "spotmalaria_grc2": {
+            "amplicon_info_path": "/opt/mad4hatter/panel_information/spotmalaria_grc2/spotmalaria_grc2_amplicon_info.tsv",
+            "targeted_reference_path": "/opt/mad4hatter/panel_information/spotmalaria_grc2/spotmalaria_grc2_reference.fasta"
+        },
+        "spotmalaria_spec": {
+            "amplicon_info_path": "/opt/mad4hatter/panel_information/spotmalaria_spec/spotmalaria_spec_amplicon_info.tsv",
+            "targeted_reference_path": "/opt/mad4hatter/panel_information/spotmalaria_spec/spotmalaria_spec_reference.fasta"
+        },
         "amplseq": {
             "amplicon_info_path": "/opt/mad4hatter/panel_information/AMPLseq/AMPLseq_amplicon_info.tsv",
             "targeted_reference_path": "/opt/mad4hatter/panel_information/AMPLseq/AMPLseq_reference.fasta"

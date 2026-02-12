@@ -81,6 +81,9 @@ Version 1 of the MADHatTeR panel
 #### v2 
 Version 2 of the MADHatTeR panel
 
+#### SpotMalaria
+A 136 target panel consisting of three pools: spotmalaria_grc1, spotmalaria_grc2, spotmalaria_spec. Targets cover a 100 SNP barcode, 2 markers for species identification, and key drug resistance markers. For more information, see [Jacob CG et al. (2021)](https://doi.org/10.7554/eLife.62997).
+
 ## Adding new pools 
 
 * Create a directory under `panel_information` with the new pool name (e.g. R1.3).
