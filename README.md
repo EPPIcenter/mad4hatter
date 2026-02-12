@@ -1,6 +1,6 @@
 # MAD4HATTER Amplicon Sequencing Pipeline
 
-MAD4HATTER is a bioinformatics analysis pipeline used to process amplicon sequencing data. More information can be found below and [here](https://eppicenter.github.io/mad4hatter/).
+MAD4HATTER is a bioinformatics analysis pipeline used to process amplicon sequencing data. Full documentation can be found here [here](https://eppicenter.github.io/mad4hatter/). Quick start for running the complete pipeline can be found below. 
 
 ## Contents
 
@@ -22,7 +22,7 @@ MAD4HATTER is a bioinformatics analysis pipeline used to process amplicon sequen
 
 The mad4hatter pipeline uses [nextflow](https://www.nextflow.io/) and this will need to be installed prior to using the pipeline. Information about how to [install](https://www.nextflow.io/) and use the [command line tool](https://www.nextflow.io/docs/latest/cli.html) can be found on their [website](https://www.nextflow.io/). The tool is also available from other package managers such as [conda](https://anaconda.org/bioconda/nextflow) if you would like an alternative installation pathway. 
 
-One of the useful features of Nextflow is that it caches your job history, so if for any reason your pipeline fails midway you can make changes to fix the failure and use the `-resume` flag to pick up where you left off. See more information [here](https://www.nextflow.io/blog/2019/demystifying-nextflow-resume.html)
+One of the useful features of Nextflow is that it caches your job history, so if for any reason your pipeline fails midway you can make changes to fix the failure and use the `-resume` flag to pick up where you left off. See more information [here](https://www.nextflow.io/blog/2019/demystifying-nextflow-resume.html).
 
 ### Setting Parameters
 
@@ -32,14 +32,10 @@ To view the parameters and examples on the command line run:
 nextflow run main.nf --help 
 ```
 
-There are 3 workflows available that we will describe below. They can be specified using the `--workflow` flag. If `--workflow` is not specified then `complete` will run as default.
-* `qc` : Only runs the QC portion of the pipeline.
-* `complete` : Runs the pipeline end-to-end, including analysing resmarkers. 
-* `postprocessing` : Only runs the postprocessing steps to denoise asvs further. 
-
 #### Mandatory Parameters
 
-Below are the parameters that are essential for running the pipeline, regardless of workflow. 
+Below are the parameters that are essential for running the pipeline.
+ 
 |Parameter|Description|
 |---|---|
 |pools|The pools that were used for sequencing. [Options: D1,R1,R2 - check panel.config for more options]|
