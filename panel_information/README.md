@@ -70,7 +70,7 @@ R1.2 is a reduced version of primer pool R1.1, containing 47 targets, designed t
 A single-target panel for analyzing diversity in the apical membrane antigen 1 (AMA1) gene, which is important for invasion of red blood cells by Plasmodium parasites. This panel is useful for studying AMA1 genetic diversity and population structure. For more information, see [Miller et al. (2017)](https://pubmed.ncbi.nlm.nih.gov/29246158/).
 
 #### AMPLseq 
-A 129-locus panel composed of drug resistance markers, highly diverse loci for inferring relatedness, and a locus to detect Plasmodium vivax co-infection. For more information, see [Miller et al. (2017)](https://pubmed.ncbi.nlm.nih.gov/29246158/). 
+A 129-locus panel composed of drug resistance markers, highly diverse loci for inferring relatedness, and a locus to detect Plasmodium vivax co-infection. For more information, see [LaVerriere et al. (2021)](https://doi.org/10.1111/1755-0998.13622). 
 
 #### 4cast 
 4CAST is a small multiplex of four highly polymorphic antigenic loci: CSP, AMA1, SERA2 and TRAP. For more information, see [LaVerriere et al. (2021)](https://doi.org/10.1111/1755-0998.13622).
