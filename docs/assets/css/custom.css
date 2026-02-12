@@ -2,9 +2,9 @@
 
 /* EPPIcenter blue color from logo - professional research blue */
 :root {
-  --eppicenter-blue: #0052CC;
-  --eppicenter-blue-dark: #003D99;
-  --eppicenter-blue-light: #0066FF;
+  --eppicenter-blue: #50b1d4ff;
+  --eppicenter-blue-dark: #08407fff;
+  --eppicenter-blue-light: #82cbdc;
 }
 
 /* Header styling with EPPIcenter blue */
