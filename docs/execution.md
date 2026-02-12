@@ -80,8 +80,12 @@ The pipeline includes several pre-configured pools that are ready to use. These 
 | **M2.1** | 15 targets for drug and diagnostic resistance, Plasmodium spp. identification, csp, and 10 diversity targets. "Minimal" set for prioritary markers and TES classification. Complements M1.1 for missing codons | M2 | - |
 | **M1.addon** | 4 targets for P. vivax, P. malariae, P. ovale and P. knowlesii mitochondrial cytb targets for increased sensitivity in non-Pf detection (recommended to add to M1.1) | - | - |
 | **Other Pools/ Panels** |
-| **4cast** | A single-target panel for analyzing diversity in the apical membrane antigen 1 (AMA1) gene, which is important for invasion of red blood cells by Plasmodium parasites. This panel is useful for studying AMA1 genetic diversity and population structure. For more information, see Miller et al. (2017). | - | - |
-| **ama1** | 4CAST is a small multiplex of four highly polymorphic antigenic loci: CSP, AMA1, SERA2 and TRAP. For more information, see LaVerriere et al. (2021). | - | - |
+| **4cast** | 4CAST is a small multiplex of four highly polymorphic antigenic loci: CSP, AMA1, SERA2 and TRAP. For more information, see LaVerriere et al. (2021). | - | - |
+| **ama1** | A single-target panel for analyzing diversity in the apical membrane antigen 1 (AMA1) gene, which is important for invasion of red blood cells by Plasmodium parasites. This panel is useful for studying AMA1 genetic diversity and population structure. For more information, see Miller et al. (2017). | - | - |
+| **AMPLseq** | 129-locus panel composed of drug resistance markers, highly diverse loci for inferring relatedness, and a locus to detect Plasmodium vivax co-infection. For more information, see LaVerriere et al. (2021). | - | - |
+| **spotmalaria_grc1** | Spot malaria pool for GRC1 targets. For more information, see Jacob CG et al. (2021)| - | - |
+| **spotmalaria_grc2** | Spot malaria pool for GRC2 targets. For more information, see Jacob CG et al. (2021)| - | - |
+| **spotmalaria_spec** | Spot malaria pool for species identification targets. For more information, see Jacob CG et al. (2021)| - | - |
 | **v1** | Version 1 of the MADHatTeR panel | - | - |
 | **v2** | Version 2 of the MADHatTeR panel | - | - |
 
