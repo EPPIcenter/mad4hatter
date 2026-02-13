@@ -2,15 +2,13 @@
 
 MAD4HATTER is a bioinformatics analysis pipeline used to process amplicon sequencing data. 
 
-A quick start guide for running the complete pipeline is below and comprehensive documentation can be found here [here](https://eppicenter.github.io/wonderland-docs/).
+A quick start guide for running the complete pipeline is below and comprehensive documentation can be found [here](https://eppicenter.github.io/wonderland-docs/).
 
 ## Contents
 
 - [Setup](#setup)
 - [Setting Parameters](#setting-parameters)
     - [Mandatory Parameters](#mandatory-parameters)
-        - [QC and complete workflows](#qc-and-complete-workflows)
-        - [Postprocessing workflow](#postprocessing-workflow)
     - [Optional Parameters](#optional-parameters)
         - [DADA parameters](#dada-parameters)
         - [Post processing parameters](#post-processing-parameters)
@@ -28,7 +26,7 @@ One of the useful features of Nextflow is that it caches your job history, so if
 
 ### Setting Parameters
 
-To view the parameters and examples on the command line run:
+To view the parameters and examples on the command line, run:
 
 ```bash 
 nextflow run main.nf --help 
@@ -51,15 +49,15 @@ nextflow run main.nf --readDIR /path/to/data --pools D1,R1,R2 -profile sge,appta
 
 #### Optional Parameters
 
-Below are parameters that are optional to running the pipeline.
+Below are parameters that are optional for running the pipeline.
 
 |Parameter|Description|
 |---|---|
-| outDIR | The folder where you want the resulting data to be save (default 'results') |
+| outDIR | The folder where you want the resulting data to be saved (default 'results') |
 | workflow_name | Workflow option to be run [Options: complete (default), qc, postprocessing] |
 |**Nextflow parameters**||
 |profile|The infrastructure you wish to run the pipeline on. The different profiles are listed below under `Runtime Profiles`, including any setup that is required. **Please read that section for more details.**|
-|config|Resource configurations for each process that will override any defaults set in the pipeline. It is recommend to use the provided `custom.config` file to make these resource modifications.|
+|config|Resource configurations for each process that will override any defaults set in the pipeline. It is recommended to use the provided `custom.config` file to make these resource modifications.|
 
 Below is an example of how you may run the pipeline setting the above parameters. 
 
@@ -75,9 +73,9 @@ DADA2 infers amplicon sequences exactly and can be tuned depending on your needs
 |---|---|
 |omega_a|This controls the abundance threshold used to determine whether a sequence is overly abundant such that it is likely a true variant and not an error produced by DADA. (default `1e-120`)|
 |dada2_pool|The method for information sharing across samples (default `pseudo`)|
-|band_size|An alignment heursitic that controls whether an alignment will occur between sequences if the number of indels exceed this threshold (default `16`)|
+|band_size|An alignment heuristic that controls whether an alignment will occur between sequences if the number of indels exceeds this threshold (default `16`)|
 |maxEE|During filtering and trimming, reads that exceed the number of expected errors will be discarded (default `3`)|
-|just_concatenate|Setting this to true will concatenate any DADA sequences that were unable to be merged. Reads that are concatenated will have 10 Ns separating the forward and reverse read (ie. `N`) Setting this to false will discard reads that did not have enough bases to merge. The minimum overlap required to merge forward and reverse reads is 12 bases. (default true)|
+|just_concatenate|Setting this to true will concatenate any DADA sequences that were unable to be merged. Reads that are concatenated will have 10 Ns separating the forward and reverse reads (i.e. `N`). Setting this to false will discard reads that did not have enough bases to merge. The minimum overlap required to merge forward and reverse reads is 12 bases. (default true)|
 TODO: come back to this 
 
 For more information about DADA2 and the parameters that can be set, please refer to their [documentation](https://www.bioconductor.org/packages/release/bioc/manuals/dada2/man/dada2.pdf). 
@@ -90,7 +88,7 @@ nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile 
 
 ##### Post processing parameters
 
-By default the pipeline will use the `--pools` parameter and `panel.config` to find the paths to the reference sequences for each of the pools. This can be overriden by setting either the `refseq_fasta` **or** `genome` parameter as detailed below. 
+By default the pipeline will use the `--pools` parameter and `panel.config` to find the paths to the reference sequences for each of the pools. This can be overridden by setting either the `refseq_fasta` **or** `genome` parameter as detailed below. 
 
 Below are parameters that you can set to control the postprocessing module.
 
@@ -99,7 +97,7 @@ Below are parameters that you can set to control the postprocessing module.
 |refseq_fasta **or** genome|Path to targeted reference sequence **or** a specified genome that covers all targets. If neither are specified then a reference will be built from the fasta files under `panel_information` based on the pools supplied.|
 |homopolymer_threshold|Homopolymers greater than this threshold will be masked (default `5`)|
 |trf_min_score|Used by Tandem Repeat Finder. This will control the alignment score required to call a sequence a tandem repeat and mask it (default `25`)|
-|trf_max_period|Used by Tandem Repeat Finder. This will limit the range of the pattern size of a tandem repeat to be masked(default `3`)|
+|trf_max_period|Used by Tandem Repeat Finder. This will limit the range of the pattern size of a tandem repeat to be masked (default `3`)|
 
 Below is a continuation of the example above that shows how these parameters may be modified on the command line. Note that `--refseq_fasta` OR `--genome` OR no flag can be set to provide a reference. If no reference is provided (neither `--refseq_fasta` OR `--genome` are set) then the pipeline will build a targeted reference from the reference for each pool, stored under the resources directory. 
 
@@ -112,7 +110,7 @@ nextflow run main.nf --readDIR /path/to/data --outDIR /path/to/results -profile 
 ```
 ##### Resmarker Module Parameters 
 
-By defualt the pipeline will check if any of the markers in the principal list (`panel_information/principal_resistance_marker_info_table.tsv`) are covered by any of the loci in the panel. If markers are covered then the resmarker module will run. This can be overriden and a customised table can be supplied using the following parameter.
+By default the pipeline will check if any of the markers in the principal list (`panel_information/principal_resistance_marker_info_table.tsv`) are covered by any of the loci in the panel. If markers are covered then the resmarker module will run. This can be overridden and a customized table can be supplied using the following parameter.
 
 |Parameter|Description|
 |---|---|
@@ -160,7 +158,7 @@ The pipeline can be easily run with docker and is the recommended way to run it 
 
 The EPPIcenter has a repository for images, and the docker image for the pipeline will be automatically pulled in the background when first running the pipeline. The image will then be stored locally on your machine and reused. 
 
-To run the  with docker, simply add `-profile docker` in your command. 
+To run the pipeline with Docker, simply add `-profile docker` to your command. 
 
 ```bash
 nextflow run main.nf --readDIR /path/to/data -profile docker --pools D1,R1,R2
