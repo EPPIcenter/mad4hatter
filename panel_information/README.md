@@ -26,13 +26,13 @@
 Below is a summary of the pools currently supported by the pipeline. 
 
 ### MADHatTeR Pools 
-The recommended configuration to maximize information retrieval and sensitivity for low parasitemia samples are two mPCR reactions, one with D1 and R1.2 primers, and one with R2 primers. More detailed information on the protocol can be found [here](https://eppicenter.ucsf.edu/resources).
+The recommended configuration to maximize information retrieval and sensitivity for low parasitemia samples is two mPCR reactions, one with D1 and R1.2 primers, and one with R2 primers. More detailed information on the protocol can be found [here](https://eppicenter.ucsf.edu/resources).
 
 #### Diversity pools
 
 ##### D1.1 (D1)
 
-A primer pool targeting 165 high diversity targets and 5 loci targetting the ldh gene in P. falciparum and in 4 non-falciparum Plasmodium species (P. vivax, P. malariae, P. ovale, and P. knowlesi). This pool was previously named 1A.
+A primer pool targeting 165 high diversity targets and 5 loci targeting the ldh gene in P. falciparum and in 4 non-falciparum Plasmodium species (P. vivax, P. malariae, P. ovale, and P. knowlesi). This pool was previously named 1A.
 
 #### Resistance pools
 
@@ -54,15 +54,15 @@ R1.2 is a reduced version of primer pool R1.1, containing 47 targets, designed t
 
 #### M1.1 (M1)
 
-41 targets for drug and diagnostic resistance, Plasmodium spp. identification, csp, and 10 diversity targets. "Minimal" set for prioritary markers and TES classification
+41 targets for drug and diagnostic resistance, Plasmodium spp. identification, csp, and 10 diversity targets. "Minimal" set for priority markers and TES classification
 
 #### M2.1 (M2) 
 
-15 targets for drug and diagnostic resistance, Plasmodium spp. identification, csp, and 10 diversity targets. "Minimal" set for prioritary markers and TES classification. Complements M1.1 for missing codons.
+15 targets for drug and diagnostic resistance, Plasmodium spp. identification, csp, and 10 diversity targets. "Minimal" set for priority markers and TES classification. Complements M1.1 for missing codons.
 
 #### M1.addon1
 
-4 targets for P. vivax, P. malariae, P. ovale and P. knowlesii mitochondrial cytb targets for increased sensitivity in non-Pf detection (recommended to add to M1.1).
+4 targets for P. vivax, P. malariae, P. ovale and P. knowlesi mitochondrial cytb targets for increased sensitivity in non-Pf detection (recommended to add to M1.1).
 
 ### Other Pools 
 
@@ -70,7 +70,7 @@ R1.2 is a reduced version of primer pool R1.1, containing 47 targets, designed t
 A single-target panel for analyzing diversity in the apical membrane antigen 1 (AMA1) gene, which is important for invasion of red blood cells by Plasmodium parasites. This panel is useful for studying AMA1 genetic diversity and population structure. For more information, see [Miller et al. (2017)](https://pubmed.ncbi.nlm.nih.gov/29246158/).
 
 #### AMPLseq 
-A 129-locus panel composed of drug resistance markers, highly diverse loci for inferring relatedness, and a locus to detect Plasmodium vivax co-infection. For more information, see [Miller et al. (2017)](https://pubmed.ncbi.nlm.nih.gov/29246158/). 
+A 129-locus panel composed of drug resistance markers, highly diverse loci for inferring relatedness, and a locus to detect Plasmodium vivax co-infection. For more information, see [LaVerriere et al. (2021)](https://doi.org/10.1111/1755-0998.13622). 
 
 #### 4cast 
 4CAST is a small multiplex of four highly polymorphic antigenic loci: CSP, AMA1, SERA2 and TRAP. For more information, see [LaVerriere et al. (2021)](https://doi.org/10.1111/1755-0998.13622).
@@ -98,8 +98,7 @@ A 136 target panel consisting of three pools: spotmalaria_grc1, spotmalaria_grc2
 * Resistance markers: 
     * In the output you generated before there will be a file called `panel_information/resmarker_info.tsv` if the pool covers any of the resmarkers in `panel_information/principal_resistance_marker_info_table.tsv`.
     * Check this file includes everything you want. If there are markers missing then add these to `panel_information/principal_resistance_marker_info_table.tsv` and re-run the pipeline to double check your resmarkers have been included. 
-    * Add `panel_information/resmarker_info.tsv` from the output directory to the pool directory you created in the repo. This is purely informative as the pipeline will automatically regenerate this file everytime the pipeline is run, unless the 
-* If this new pool has superceded an old version of a pool update the default in `panel.config` and update the warnings in the `check_pools` function in `workflows/validate_inputs.nf`.
+* If this new pool has superseded an old version of a pool update the default in `panel.config` and update the warnings in the `check_pools` function in `workflows/validate_inputs.nf`.
 * Update documentation 
     * Make sure the help message options are up to date. 
     * Make sure the README and documentation is updated.
