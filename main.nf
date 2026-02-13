@@ -57,7 +57,7 @@ def helpMessage() {
       --just_concatenate        Whether to concatenate sequences that DADA2 was unable to merge [Default: true]
 
       (Post processing parameters)
-      --just_concatenate        Whether to collapse concatenated reads that DADA2 was able to merge [Default: true]
+      --just_concatenate        Whether to collapse reads that DADA2 was not able to merge but concatenated [Default: true]
       --refseq_fasta            Path to targeted reference 
       --genome                  Path to full genome covering all targets 
       --homopolymer_threshold   The length a homopolymer must reach to be masked [Default: 5]
