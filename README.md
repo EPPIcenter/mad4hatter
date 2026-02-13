@@ -76,7 +76,6 @@ DADA2 infers amplicon sequences exactly and can be tuned depending on your needs
 |band_size|An alignment heuristic that controls whether an alignment will occur between sequences if the number of indels exceeds this threshold (default `16`)|
 |maxEE|During filtering and trimming, reads that exceed the number of expected errors will be discarded (default `3`)|
 |just_concatenate|Setting this to true will concatenate any DADA sequences that were unable to be merged. Reads that are concatenated will have 10 Ns separating the forward and reverse reads (i.e. `N`). Setting this to false will discard reads that did not have enough bases to merge. The minimum overlap required to merge forward and reverse reads is 12 bases. (default true)|
-TODO: come back to this 
 
 For more information about DADA2 and the parameters that can be set, please refer to their [documentation](https://www.bioconductor.org/packages/release/bioc/manuals/dada2/man/dada2.pdf). 
 
