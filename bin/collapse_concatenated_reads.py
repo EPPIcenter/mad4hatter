@@ -10,14 +10,16 @@ def main():
     parser = argparse.ArgumentParser(description='Collapse concatenated reads with 10 Ns')
     parser.add_argument('--clusters', required=True, help='Path to clustered ASV table file')
     parser.add_argument('--output', help='Output file path (default: clusters.concatenated.collapsed.txt)')
-    
+    parser.add_argument('--amplicon_info', help='Path to amplicon information file')
+
     args = parser.parse_args()
     
     try:
         # Read the ASV table
         print(f"Reading clusters from: {args.clusters}", file=sys.stderr)
         df = pd.read_csv(args.clusters, sep='\t')
-        
+        amplicon_info = pd.read_csv(args.amplicon_info, sep='\t')
+
         # Check if required columns exist
         required_columns = ['asv', 'sampleID', 'locus', 'reads']
         missing_columns = [col for col in required_columns if col not in df.columns]
@@ -37,7 +39,7 @@ def main():
         
         # Process concatenated ASVs if any exist
         if len(concatenated_df) > 0:
-            collapsed_df = collapse_asvs(concatenated_df)
+            collapsed_df = collapse_asvs(concatenated_df, amplicon_info)
             print(f"Collapsed concatenated ASVs: {len(collapsed_df)} rows", file=sys.stderr)
     
             # Combine with non-concatenated ASVs (leave unconcatenated rows untouched)
@@ -69,7 +71,7 @@ def main():
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-def collapse_asvs(concat_clusters):
+def collapse_asvs(concat_clusters, amplicon_info):
     # Work on a copy to avoid SettingWithCopyWarning
     concat_clusters = concat_clusters.copy()
     concat_clusters.loc[:, 'left'] = concat_clusters['asv'].str.split('NNNNNNNNNN').str[0]
@@ -79,12 +81,12 @@ def collapse_asvs(concat_clusters):
     # Avoid groupby.apply deprecation by iterating groups explicitly
     outputs = []
     for (_, _), g in concat_clusters.groupby(['sampleID', 'locus'], sort=False):
-        outputs.append(collapse_group(g))
+        outputs.append(collapse_group(g, amplicon_info))
     if len(outputs) == 0:
         return pd.DataFrame(columns=['sampleID','locus','asv','reads','allele'])
     return pd.concat(outputs, ignore_index=True)
      
-def collapse_group(df):
+def collapse_group(df, amplicon_info):
     """Collapse sequences within a group by finding common prefixes and suffixes."""
     options = []
     for _, row in df.iterrows():
@@ -118,12 +120,17 @@ def collapse_group(df):
     df_new = df.groupby(['sampleID', 'locus', 'new_left', 'new_right']).reads.sum().reset_index()
     df_new['asv'] = df_new.new_left + 'NNNNNNNNNN' + df_new.new_right
     df_new = df_new[['sampleID', 'locus', 'asv', 'reads']]
-    
+
     # Add allele column
     allele_df = df[['locus','asv','allele']].drop_duplicates()
     df_new = df_new.merge(allele_df, on=['locus','asv'], how='left')
-    # Convert concat to single N 
-    df_new['asv'] = df_new.asv.str.replace('NNNNNNNNNN','N')
+
+    df_new = df_new.merge(amplicon_info, on='locus', how='left')
+    df_new['expected_sequence_length'] = df_new['right_start'] - df_new['left_end'] - 2 
+    df_new['sequence_length_difference'] = df_new['expected_sequence_length'] - (df_new['asv'].str.len()-10)
+
+    # Convert concat to N*length_difference
+    df_new['asv'] = df_new.asv.str.replace('NNNNNNNNNN','N'*df_new['sequence_length_difference'])
     return df_new
 
 if __name__ == "__main__":
