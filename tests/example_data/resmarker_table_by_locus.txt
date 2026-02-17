@@ -1,4 +1,4 @@
-SampleID	GeneID	Gene	target_name	CodonID	RefCodon	Codon	CodonRefAlt	RefAA	AA	AARefAlt	FollowsIndel	CodonMasked	Reads
+sample_name	gene_id gene	target_name	aa_position	ref_codon	codon	codon_ref_alt	ref_aa	aa	aa_ref_alt	follows_indel	codon_masked	reads
 sample1	1	gene1	locus1	1	TAA	TAA	REF	*	*	REF	False	False	10
 sample1	1	gene1	locus1	1	TAA	TGA	ALT	*	*	REF	False	False	50
 sample1	2	gene2	locus2	2	TAA	TGA	ALT	*	*	REF	False	True	5

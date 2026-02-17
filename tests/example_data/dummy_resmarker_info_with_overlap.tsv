@@ -1,4 +1,4 @@
-GeneID	Gene	CodonID	chrom	start	stop	strand	target_name	amplicon_length	ampInsert_length	CodonStart
+gene_id	Gene	CodonID	chrom	start	stop	strand	target_name	amplicon_length	ampInsert_length	CodonStart
 0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	Pf3D7_04_v3-748105-748359	254	197	4
 0417200	dhfr	51	Pf3D7_04_v3	748237	748240	+	Pf3D7_04_v3-748105-748359	254	197	109
 0417200	dhfr	59	Pf3D7_04_v3	748261	748264	+	Pf3D7_04_v3-748105-748359	254	197	133

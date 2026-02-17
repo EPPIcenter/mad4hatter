@@ -1,4 +1,4 @@
-SampleID	GeneID	Gene	target_name	MicrohaplotypeCodonIDs	RefMicrohap	Microhaplotype	MicrohapRefAlt	Reads
+sample_name	 gene_id	gene	target_name	mhap_aa_positions	ref_mhap	mhap	mhap_ref_alt	reads
 sample1	1	gene1	locus1	1	*	*	REF	60
 sample1	2	gene2	locus2	2	*	*	REF	5
 sample1	3	gene3	locus3	3	*	*	REF	25
