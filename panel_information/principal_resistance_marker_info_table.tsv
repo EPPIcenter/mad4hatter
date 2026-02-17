@@ -1,4 +1,4 @@
-GeneID	Gene	CodonID	chr	start	stop	strand
+gene_id	gene	aa_position	chrom	start	stop	strand
 0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+
 0417200	dhfr	51	Pf3D7_04_v3	748237	748240	+
 0417200	dhfr	59	Pf3D7_04_v3	748261	748264	+

@@ -33,10 +33,10 @@ nextflow_workflow {
             assert workflow.out.microhaps
             assert workflow.out.new_mutations
 
-            assert path(workflow.out.resmarkers.get(0)).md5 == "0fe2c45d9e02a987312aff6dc0c93cb2"
-            assert path(workflow.out.resmarkers_by_locus.get(0)).md5 == "b658e124526dd980d6cddc372c896fcf"
-            assert path(workflow.out.microhaps.get(0)).md5 == "2721adfedae1d14776875d0b77e4375d"
-            assert path(workflow.out.new_mutations.get(0)).md5 == "e93ca011b7b77dc8a4fa8f470fa62ff8"
+            assert path(workflow.out.resmarkers.get(0)).md5 == "69f77caf8440472688e323b4a87654bd"
+            assert path(workflow.out.resmarkers_by_locus.get(0)).md5 == "6ee873d723e7ca8a1283adb8da12d6f9"
+            assert path(workflow.out.microhaps.get(0)).md5 == "c546739f47af70d2e214e3bd3e764f20"
+            assert path(workflow.out.new_mutations.get(0)).md5 == "f21dfb6179fb996cd7e9a9aa89a7cbcb"
         }
 
     }
@@ -69,10 +69,10 @@ nextflow_workflow {
             assert workflow.out.microhaps
             assert workflow.out.new_mutations
 
-            assert path(workflow.out.resmarkers.get(0)).md5 == "79b326cf78f07ebc07656b0aca2a2ab9"
-            assert path(workflow.out.resmarkers_by_locus.get(0)).md5 == "857c21f65cbcde613a613a14015841f6"
-            assert path(workflow.out.microhaps.get(0)).md5 == "6e09680f7ac2d16eaee73620c59b3b1b"
-            assert path(workflow.out.new_mutations.get(0)).md5 == "0117f9728399730b3238c3bf7bc1c033"
+            assert path(workflow.out.resmarkers.get(0)).md5 == "16286b7cee3c53fa03e68f72323973d0"
+            assert path(workflow.out.resmarkers_by_locus.get(0)).md5 == "7297599313cbf8c6050bb51e12882611"
+            assert path(workflow.out.microhaps.get(0)).md5 == "5fd7b708ba35e55435dc1c0a1886e727"
+            assert path(workflow.out.new_mutations.get(0)).md5 == "6b9f5177a9387f06d913dbecd52c7b20"
         }
 
     }
