@@ -1,0 +1,34 @@
+nextflow_workflow {
+
+    name "Test Workflow QC_ONLY"
+    script "workflows/qc_only.nf"
+    workflow "QC_ONLY"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                allowed_errors = 0
+                cutadapt_minlen=5
+            }
+            workflow {
+                """
+                input[0] = file("${projectDir}/tests/example_data/cutadapt_examples/dummy_amplicon_info.tsv")
+                input[1] = "${projectDir}/tests/example_data/cutadapt_examples/sample*_{R1,R2}.fastq.gz"
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.trace.tasks().size() == 5
+
+            assert workflow.out.sample_coverage_ch
+            assert workflow.out.amplicon_coverage_ch
+            assert path(workflow.out.sample_coverage_ch.get(0)).md5 == "04fab933ca064bc2e486d722ed6c145b"
+            assert path(workflow.out.amplicon_coverage_ch.get(0)).md5 == "fd3612f8982a6b7b1c9d82a61598ab42"
+        }
+
+    }
+
+}

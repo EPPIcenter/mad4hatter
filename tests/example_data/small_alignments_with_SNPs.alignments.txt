@@ -1,0 +1,9 @@
+sampleID	asv	refid	hapseq	refseq	score	indels
+sample_no_snp_no_mask	ATATCGAGCATGT	test_loci_1	ATATCGAGCATGT	ATATCGAGCATGT	100	1
+sample_no_snp_with_mask	ATATCGAGCATGT	test_loci_1	ATATCGAGCATGT	ANATCGNNNATGN	100	1
+sample_snp_before_mask	ATATGGAGCATGT	test_loci_1	ATATGGAGCATGT	ANATCGNNNATGN	100	1
+sample_snp_after_mask	ATATCGAGCAAGT	test_loci_1	ATATCGAGCAAGT	ANATCGNNNATGN	100	1
+sample_snp_at_start	TTATCGAGCATGT	test_loci_1	TTATCGAGCATGT	ANATCGNNNATGN	100	1
+sample_snp_at_end	ATATCGAGCATGG	test_loci_1	ATATCGAGCATGG	ANATCGNNNATGT	100	1
+sample_snp_in_mask	ATATCGAACATGG	test_loci_1	ATATCGAACATGG	ANATCGNNNATGN	100	1
+sample_multi_snp	AATTCGTGCACGT	test_loci_1	AATTCGTGCACGT	ANATCGNNNATGN	100	1

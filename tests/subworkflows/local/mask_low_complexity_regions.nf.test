@@ -1,0 +1,122 @@
+nextflow_workflow {
+
+    name "Test Workflow MASK_LOW_COMPLEXITY_REGIONS"
+    script "subworkflows/local/mask_low_complexity_regions.nf"
+    workflow "MASK_LOW_COMPLEXITY_REGIONS"
+    
+    test("Mask homopolymers and tandem repeats should run without failures") {
+
+        when {
+            params {
+                mask_tandem_repeats = true
+                trf_min_score = 25
+                trf_max_period = 3
+                mask_homopolymers = true
+                homopolymer_threshold = 4
+                reference = "${projectDir}/tests/example_data/dummy_targeted_ref.fasta"
+                alignments = "${projectDir}/tests/example_data/dummy_alignments.txt"
+            }
+            workflow {
+                """
+                input[0] = params.reference
+                input[1] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.masked_alignments
+            assert workflow.trace.tasks().size() == 3
+            assert path(workflow.out.masked_alignments.get(0)).md5 == "639c25675c53ba693d9a66dee19282ce"
+        }
+
+    }
+
+    test("Mask homopolymers only should run without failures") {
+
+        when {
+            params {
+                mask_tandem_repeats = false
+                trf_min_score = 25
+                trf_max_period = 3
+                mask_homopolymers = true
+                homopolymer_threshold = 4
+                reference = "${projectDir}/tests/example_data/dummy_targeted_ref.fasta"
+                alignments = "${projectDir}/tests/example_data/dummy_alignments.txt"
+            }
+            workflow {
+                """
+                input[0] = params.reference
+                input[1] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.masked_alignments
+            assert workflow.trace.tasks().size() == 2
+            assert path(workflow.out.masked_alignments.get(0)).md5 == "867ff838694316f3d48e25257830b20f"
+        }
+
+    }
+
+    test("Mask tandem repeats only should run without failures") {
+
+        when {
+            params {
+                mask_tandem_repeats = true
+                trf_min_score = 25
+                trf_max_period = 3
+                mask_homopolymers = false
+                homopolymer_threshold = 4
+                reference = "${projectDir}/tests/example_data/dummy_targeted_ref.fasta"
+                alignments = "${projectDir}/tests/example_data/dummy_alignments.txt"
+            }
+            workflow {
+                """
+                input[0] = params.reference
+                input[1] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.masked_alignments
+            assert workflow.trace.tasks().size() == 2
+            assert path(workflow.out.masked_alignments.get(0)).md5 == "82aa2f65bf345bd64c1acdf7b6edae2e"
+        }
+
+    }
+
+    test("No mask requested should output null") {
+
+        when {
+            params {
+                mask_tandem_repeats = false
+                trf_min_score = 25
+                trf_max_period = 3
+                mask_homopolymers = false
+                homopolymer_threshold = 4
+                reference = "${projectDir}/tests/example_data/dummy_targeted_ref.fasta"
+                alignments = "${projectDir}/tests/example_data/dummy_alignments.txt"
+            }
+            workflow {
+                """
+                input[0] = params.reference
+                input[1] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert !workflow.out.masked_alignments
+            assert workflow.trace.tasks().size() == 0
+        }
+
+    }
+
+}

@@ -11,13 +11,14 @@ include { QUALITY_CONTROL} from './quality_control.nf'
 
 workflow QC_ONLY {
   take:
+  amplicon_info
   reads
 
   main:
 
-  read_pairs = channel.fromFilePairs( params.reads, checkIfExists: true )
+  read_pairs = channel.fromFilePairs( reads, checkIfExists: true )
 
-  DEMULTIPLEX_AMPLICONS(read_pairs)
+  DEMULTIPLEX_AMPLICONS(amplicon_info, read_pairs)
 
   // create a quality report with the raw data
   QUALITY_CONTROL(
@@ -26,4 +27,8 @@ workflow QC_ONLY {
     null,
     null
   )
+
+  emit:
+    sample_coverage_ch = QUALITY_CONTROL.out.sample_coverage
+    amplicon_coverage_ch = QUALITY_CONTROL.out.amplicon_coverage
 }

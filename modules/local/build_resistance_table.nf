@@ -7,7 +7,8 @@ process BUILD_RESISTANCE_TABLE {
 
   label 'process_medium'
   conda 'envs/resmarker-env.yml'
-
+  debug = true
+  
   publishDir(
     path: "${params.outDIR}/resistance_marker_module",
     mode: 'copy'
@@ -32,6 +33,6 @@ process BUILD_RESISTANCE_TABLE {
     --aligned_asv_table_path ${alignment_data} \
     --res_markers_info_path ${resmarkers} \
     --refseq_path ${refseq} \
-    --n-cores ${task.cpus} 
+    --n-cores ${task.cpus}
   """
 }

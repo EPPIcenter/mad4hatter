@@ -1,0 +1,7 @@
+target_name	chrom	insert_start	insert_end	insert_length	pool
+codon_at_start	Pf3D7_04_v3	748132	748140	8	R1
+codon_one_base_in	Pf3D7_04_v3	748131	748140	9	R1
+codon_at_end	Pf3D7_04_v3	748129	748135	6	R1
+codon_one_in_from_end	Pf3D7_04_v3	748129	748136	7	R1
+codon_partially_in_start	Pf3D7_04_v3	748133	748140	7	R1
+codon_partially_in_end	Pf3D7_04_v3	748129	748134	5	R1

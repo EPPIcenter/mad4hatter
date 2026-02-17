@@ -14,6 +14,7 @@ parser$add_argument("--omega-a", type = "double", default = 1e-120)
 parser$add_argument("--concat-non-overlaps", action = "store_true")
 parser$add_argument("--use-quals", type = "character", default = "false")
 parser$add_argument("--maxEE", type = "integer", default = 3)
+parser$add_argument("--max-mismatch", type = "integer", default = 0)
 parser$add_argument("--self-consist", action = "store_true")
 parser$add_argument("--omega-c", type = "double", default = 1e-40)
 parser$add_argument("--cores", type = "integer", default = 1)
@@ -64,39 +65,40 @@ if (args$concat_non_overlaps) {
     names = sapply(strsplit(names(dadaFs), "_trimmed"), "[", 1)
   )
 
+  #TODO: come back to this to remove dependency on format of target name
   amplicon.info <- amplicon.info %>%
     mutate(names = sapply(str_split(names, "_S(\\d+)"), head, 1)) %>%
-    mutate(amplicon = unlist(lapply(str_split(names, "_"), function(x) {
+    mutate(target_id = unlist(lapply(str_split(names, "_"), function(x) {
       paste(x[1:3], collapse = "_")
     }))) %>%
     inner_join(
       read.table(args$ampliconFILE, header = T) %>%
-        select(amplicon, ampInsert_length),
-      by = c("amplicon")
+        mutate(insert_length = insert_end - insert_start) %>%
+        select(target_name, insert_length),
+      by = c("target_id"="target_name")
     ) %>%
-    select(amplicon, ampInsert_length) %>%
+    select(target_id, insert_length) %>%
     mutate(
       sum.mean.length.reads = sapply(sapply(unlist(lapply(dadaFs, "[", "sequence"), recursive = F), nchar), mean) +
         sapply(sapply(unlist(lapply(dadaRs, "[", "sequence"), recursive = F), nchar), mean)
     )
 
   rownames(amplicon.info) <- names(dadaFs)
-
-  mergers.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) < sum.mean.length.reads))],
-    filtered_Fs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) < sum.mean.length.reads))],
-    dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) < sum.mean.length.reads))],
-    filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) < sum.mean.length.reads))],
+  mergers.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
+    filtered_Fs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
+    dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
+    filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) < sum.mean.length.reads))],
     verbose = TRUE,
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = args$max_mismatch
   )
 
-  mergers.no.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
-    filtered_Fs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
-    dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
-    filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((ampInsert_length + 10) >= sum.mean.length.reads))],
+  mergers.no.overlap <- mergePairs(dadaFs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
+    filtered_Fs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
+    dadaRs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
+    filtered_Rs[names(dadaFs) %in% rownames(amplicon.info %>% filter((insert_length + 10) >= sum.mean.length.reads))],
     verbose = TRUE,
     justConcatenate = TRUE
   )
@@ -121,7 +123,7 @@ if (args$concat_non_overlaps) {
     justConcatenate = FALSE,
     trimOverhang = TRUE,
     minOverlap = 10,
-    maxMismatch = 1
+    maxMismatch = args$max_mismatch
   )
 }
 
@@ -142,10 +144,10 @@ seqtab.nochim.df[seqtab.nochim.df == 0] <- NA
 amplicon.table <- read.table(args$ampliconFILE, header = TRUE, sep = "\t")
 
 # find amplicons (use to select)
-pat <- paste(amplicon.table$amplicon, collapse = "|") # find amplicons specified in amplicon table
+pat <- paste(amplicon.table$target_name, collapse = "|") # find amplicons specified in amplicon table
 
 # create regex to extract sampleID (to be used with remove)
-pat.sampleID <- paste(sprintf("^%s_", amplicon.table$amplicon), collapse = "|") # find amplicons specified in amplicon table (with _)
+pat.sampleID <- paste(sprintf("^%s_", amplicon.table$target_name), collapse = "|") # find amplicons specified in amplicon table (with _)
 pat.sampleID <- paste(c(pat.sampleID, "_trimmed_merged.fastq.gz$"), collapse = "|") # remove _trimmed from end
 
 seqtab.nochim.df <- seqtab.nochim.df %>%

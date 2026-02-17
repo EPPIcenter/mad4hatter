@@ -16,7 +16,7 @@ process COLLAPSE_CONCATENATED_READS {
   
   script:
   """
-  Rscript ${projectDir}/bin/collapse_concatenated_reads.R \
+  python3 ${projectDir}/bin/collapse_concatenated_reads.py \
     --clusters ${clusters} 
   """
 }

@@ -1,4 +1,4 @@
-SampleID	GeneID	Gene	CodonID	RefCodon	Codon	CodonRefAlt	RefAA	AA	AARefAlt	FollowsIndel	CodonMasked	MultipleLoci	Reads
+SampleID	gene_id	Gene	CodonID	RefCodon	Codon	CodonRefAlt	RefAA	AA	AARefAlt	FollowsIndel	CodonMasked	MultipleLoci	Reads
 sample1	1	gene1	1	TAA	TAA	REF	*	*	REF	False	False	False	10
 sample1	1	gene1	1	TAA	TGA	ALT	*	*	REF	False	False	False	50
 sample1	2	gene2	2	TAA	TGA	ALT	*	*	REF	False	True	False	5

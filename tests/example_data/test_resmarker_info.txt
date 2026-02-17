@@ -1,0 +1,9 @@
+gene_id	gene	aa_position	chrom	start	stop	strand	target_name	ampInsert_length	codon_start_in_target
+1	gene1	1	Pf3D7_01_v3	748132	748135	+	locus1	10	7
+2	gene2	2	Pf3D7_02_v3	1725338	1725341	+	locus2	10	7
+3	gene3	3	Pf3D7_02_v3	3	4	+	locus3	10	7
+4	gene4	4	Pf3D7_04_v3	300	400	+	locus4	10	7
+5	gene5	5	Pf3D7_05_v3	2	200	+	locus5	10	7
+5	gene5	5	Pf3D7_05_v3	3	300	+	locus6	10	7
+7	gene7	9	Pf3D7_07_v3	0	45	-	locus7	20	1
+7	gene7	7	Pf3D7_07_v3	0	45	-	locus7	20	5

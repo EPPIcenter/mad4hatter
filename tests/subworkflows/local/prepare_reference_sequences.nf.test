@@ -1,0 +1,72 @@
+nextflow_workflow {
+
+    name "Test Workflow PREPARE_REFERENCE_SEQUENCES"
+    script "subworkflows/local/prepare_reference_sequences.nf"
+    workflow "PREPARE_REFERENCE_SEQUENCES"
+
+    test("Should run with refseq") {
+
+        when {
+            params {
+                genome = null
+                amplicon_info = "${projectDir}/tests/example_data/chrom_one_info.tsv"
+                pools = 'D1,R1,R2'
+
+                pool_options = [
+                    D1: [
+                        amplicon_info_path: 'panel_information/D1.1/D1.1_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/D1.1/D1.1_reference.fasta'
+                    ],
+                    R1: [
+                        amplicon_info_path: 'panel_information/R1.2/R1.2_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/R1.2/R1.2_reference.fasta'
+                    ],
+                    R2: [
+                        amplicon_info_path: 'panel_information/R2.1/R2.1_amplicon_info.tsv',
+                        targeted_reference_path: 'panel_information/R2.1/R2.1_reference.fasta'
+                    ]
+                ]
+
+            }
+            workflow {
+                """
+                input[0] = params.amplicon_info
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.reference_ch
+            assert path(workflow.out.reference_ch.get(0)).md5 == "1b9e32ab96d2083941eafea727d83f48"
+            assert workflow.trace.tasks().size() == 1
+        }
+
+    }
+    
+    test("Should run with genome") {
+
+        when {
+            params {
+                genome = "${projectDir}/tests/example_data/chrom_one_genome.fasta"
+                amplicon_info = "${projectDir}/tests/example_data/chrom_one_info.tsv"
+            }
+            workflow {
+                """
+                input[0] = params.amplicon_info
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.reference_ch
+            assert path(workflow.out.reference_ch.get(0)).md5 == "754668a1fe025ebb408382ecd3ce775f"
+            assert workflow.trace.tasks().size() == 1
+        }
+
+    }
+
+}
+
+// TODO: simplify this into one workflow

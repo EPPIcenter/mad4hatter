@@ -1,0 +1,49 @@
+nextflow_process {
+
+    name "Test Process COLLAPSE_CONCATENATED_READS"
+    script "modules/local/collapse_concatenated_reads.nf"
+    process "COLLAPSE_CONCATENATED_READS"
+
+    test("Should run without failures and collapse concatenated reads where needed") {
+
+        when {
+            params {
+                dada2_cluster_example = "${projectDir}/tests/example_data/example_input_collapse_concat.tsv"
+            }
+            process {
+                """
+                input[0] = params.dada2_cluster_example
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.clusters_concatenated_collapsed
+            assert path(process.out.clusters_concatenated_collapsed.get(0)).md5 == "c24bb33b01e0790f1e13b66fa2a37b3e"
+        }
+
+    }
+
+    test("Should run without failures on file with no reads to concatenate and output identical file") {
+
+        when {
+            params {
+                dada2_cluster_example = "${projectDir}/tests/example_data/dada2.clusters.txt"
+            }
+            process {
+                """
+                input[0] = params.dada2_cluster_example
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.clusters_concatenated_collapsed
+            assert path(process.out.clusters_concatenated_collapsed.get(0)).md5 == "69bfb3498c0b1d71601339ae387e8752"
+        }
+
+    }
+
+}

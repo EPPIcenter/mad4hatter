@@ -1,0 +1,5 @@
+gene_id	gene	aa_position	chrom	start	stop	strand	target_name	codon_start_in_target
+0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	codon_at_start	0
+0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	codon_one_base_in	1
+0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	codon_at_end	3
+0417200	dhfr	16	Pf3D7_04_v3	748132	748135	+	codon_one_in_from_end	3

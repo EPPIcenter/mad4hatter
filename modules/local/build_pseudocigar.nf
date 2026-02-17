@@ -10,14 +10,16 @@ process BUILD_PSEUDOCIGAR {
 
   input:
   path alignments
+  val output_suffix
 
   output:
-  path("alignments.pseudocigar.txt"), emit: pseudocigar
+  path("alignments.pseudocigar${output_suffix}.txt"), emit: pseudocigar
 
   script:
   """
   Rscript ${projectDir}/bin/build_pseudocigar.R \
     --alignments ${alignments} \
+    --output_suffix ${output_suffix} \
     --ncores ${task.cpus}
   """
 }

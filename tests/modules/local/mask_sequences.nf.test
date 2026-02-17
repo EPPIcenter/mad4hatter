@@ -1,0 +1,103 @@
+nextflow_process {
+
+    name "Test Process MASK_SEQUENCES"
+    script "modules/local/mask_sequences.nf"
+    process "MASK_SEQUENCES"
+
+    test("Running with reference with homopolymer masking should run successfully") {
+
+        when {
+            params {
+                masks = "${projectDir}/tests/example_data/dummy_targeted_ref_masked_homo.fasta"
+                alignments = "${projectDir}/tests/example_data/dummy_alignments.txt"
+
+            }
+            process {
+                """
+                input[0] = params.masks
+                input[1] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.masked_alignments
+            assert path(process.out.masked_alignments.get(0)).md5 == "867ff838694316f3d48e25257830b20f"
+        }
+
+    }
+
+    test("Running with reference with tr masking should run successfully") {
+
+        when {
+            params {
+                masks = "${projectDir}/tests/example_data/dummy_targeted_ref_masked_tr.fasta"
+                alignments = "${projectDir}/tests/example_data/dummy_alignments.txt"
+
+            }
+            process {
+                """
+                input[0] = params.masks
+                input[1] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.masked_alignments
+            assert path(process.out.masked_alignments.get(0)).md5 == "82aa2f65bf345bd64c1acdf7b6edae2e"
+        }
+
+    }
+
+    test("Running with reference with multiple masking should run successfully") {
+
+        when {
+            params {
+                masks = ["${projectDir}/tests/example_data/dummy_targeted_ref_masked_homo.fasta","${projectDir}/tests/example_data/dummy_targeted_ref_masked_tr.fasta"]
+                alignments = "${projectDir}/tests/example_data/dummy_alignments.txt"
+
+            }
+            process {
+                """
+                input[0] = params.masks
+                input[1] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.masked_alignments
+            assert path(process.out.masked_alignments.get(0)).md5 == "639c25675c53ba693d9a66dee19282ce"
+        }
+
+    }
+
+    test("Running with reference testing indels in hapseq masking") {
+
+        when {
+            params {
+                masks = ["${projectDir}/tests/example_data/dummy_targeted_ref_masked_homo.fasta","${projectDir}/tests/example_data/dummy_targeted_ref_masked_tr.fasta"]
+                alignments = "${projectDir}/tests/example_data/dummy_alignments_test_hapseq_masking.txt"
+
+            }
+            process {
+                """
+                input[0] = params.masks
+                input[1] = params.alignments
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.masked_alignments
+            assert path(process.out.masked_alignments.get(0)).md5 == "03be914dae45914062ac3ff38d025e29"
+        }
+
+    }
+    
+}

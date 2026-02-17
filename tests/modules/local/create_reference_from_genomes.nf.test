@@ -1,0 +1,58 @@
+nextflow_process {
+
+    name "Test Process CREATE_REFERENCE_FROM_GENOMES"
+    script "modules/local/create_reference_from_genomes.nf"
+    process "CREATE_REFERENCE_FROM_GENOMES"
+
+    test("Should run without failures") {
+
+        when {
+            params {
+                genome = "${projectDir}/tests/example_data/chrom_one_genome.fasta"
+                amplicon_info = "${projectDir}/tests/example_data/chrom_one_info.tsv"
+                refseq_fasta = "output_name.fasta"
+            }
+            process {
+                """
+                // define inputs of the process here. Example:
+                input[0] = params.genome
+                input[1] = params.amplicon_info
+                input[2] = params.refseq_fasta
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.reference_fasta
+            assert path(process.out.reference_fasta.get(0)).md5 == "754668a1fe025ebb408382ecd3ce775f"
+        }
+
+    }
+
+    test("Should fail when chromosome is missing from genome file") {
+
+        when {
+            params {
+                genome = "${projectDir}/tests/example_data/chrom_one_genome.fasta"
+                amplicon_info = "${projectDir}/tests/example_data/chrom_missing_info.tsv"
+                refseq_fasta = "output_name.fasta"
+            }
+            process {
+                """
+                input[0] = params.genome
+                input[1] = params.amplicon_info
+                input[2] = params.refseq_fasta
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains("Error: The following chromosomes were not found in the genome file:")
+            assert process.errorReport.contains("Pf3D7_99_v3")
+        }
+
+    }
+
+}

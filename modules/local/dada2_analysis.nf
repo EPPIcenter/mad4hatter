@@ -17,10 +17,11 @@ process DADA2_ANALYSIS {
   input:
   path (demultiplexed_fastqs, stageAs: "demultiplexed_fastqs?")
   path amplicon_info
-  val pool
+  val dada2_pool
   val band_size
   val omega_a
   val maxEE
+  val maxMismatch
   val just_concatenate
 
   output:
@@ -34,10 +35,11 @@ process DADA2_ANALYSIS {
   Rscript ${projectDir}/bin/dada_overlaps.R \
     --trimmed-path ${demultiplexed_fastqs} \
     --ampliconFILE ${amplicon_info} \
-    --pool ${params.pool} \
-    --band-size ${params.band_size} \
-    --omega-a ${params.omega_a} \
-    --maxEE ${params.maxEE} \
+    --pool ${dada2_pool} \
+    --band-size ${band_size} \
+    --omega-a ${omega_a} \
+    --maxEE ${maxEE} \
+    --max-mismatch ${maxMismatch} \
     --cores ${task.cpus} \
     ${concatenate} 
   """

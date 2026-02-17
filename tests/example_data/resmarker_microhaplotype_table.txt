@@ -1,0 +1,12 @@
+sample_name	 gene_id	gene	target_name	mhap_aa_positions	ref_mhap	mhap	mhap_ref_alt	reads
+sample1	1	gene1	locus1	1	*	*	REF	60
+sample1	2	gene2	locus2	2	*	*	REF	5
+sample1	3	gene3	locus3	3	*	*	REF	25
+sample1	4	gene4	locus4	4	*	X	X	307
+sample2	1	gene1	locus1	1	*	*	REF	45
+sample2	2	gene2	locus2	2	*	X	X	35
+sample3	1	gene1	locus1	1	*	*	REF	600
+sample3	2	gene2	locus2	2	*	X	X	105
+sample4	5	gene5	locus5	5	*	*	REF	50
+sample4	5	gene5	locus6	5	*	*	REF	45
+sample4	7	gene7	locus7	7/9	S/S	S/N	ALT	184
