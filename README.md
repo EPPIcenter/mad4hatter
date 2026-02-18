@@ -132,13 +132,7 @@ nextflow run main.nf --readDIR /path/to/data -profile sge,apptainer --pools D1,R
 Apptainer should be used if you are using a computing cluster or grid. All dependencies needed to run the pipeline are contained within the apptainer image. The image can be created by pulling the docker image from dockerhub, which will create a `mad4hatter_latest.sif` image in your working directory.
 
 ```bash
-apptainer pull docker://eppicenter/mad4hatter:latest
-```
-
-As an alternative, you can build the image yourself by running the command below.
-
-```bash
-apptainer build mad4hatter_latest.sif Apptainer
+apptainer pull docker://eppicenter/mad4hatter:v1.0.0
 ```
 
 Once you have the image, you must include the `apptainer` profile on the command line in order for it to be used.
