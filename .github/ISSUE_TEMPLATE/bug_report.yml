@@ -1,24 +1,22 @@
----
 name: Bug Report
 description: Report a bug or unexpected behavior
 labels: bug
----
-body: 
+body:
   - type: markdown
-      attributes:
-        value: |
-          Before you post this issue, please check the documentation or see if there is already an issue open for this:
-          
-          - [Documentation](https://eppicenter.github.io/mad4hatter/)
-          - [Issues](https://github.com/EPPICenter/mad4hatter/issues)
+    attributes:
+      value: |
+        Before you post this issue, please check the documentation or see if there is already an issue open for this:
+
+        - [Documentation](https://eppicenter.github.io/mad4hatter/)
+        - [Issues](https://github.com/EPPICenter/mad4hatter/issues)
 
   - type: textarea
-      id: description
-      attributes:
-        label: Description of the bug
-        description: A clear and concise description of what the bug is.
-      validations:
-        required: true
+    id: description
+    attributes:
+      label: Description of the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
 
   - type: textarea
     id: command_used
@@ -39,7 +37,6 @@ body:
       render: console
       placeholder: |
         Nextflow version: e.g. 24.10.4
-        Pipeline version: e.g. v0.2.1
+        Pipeline version: e.g. v1.0.0
         Profile used: e.g. docker, conda, sge,apptainer
         Operating System: e.g. Linux, macOS, Windows
-
