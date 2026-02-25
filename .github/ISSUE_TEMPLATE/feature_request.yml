@@ -1,8 +1,6 @@
----
 name: Feature Request
 description: Suggest a new feature or enhancement for the pipeline
 labels: enhancement
----
 body:
   - type: textarea
     id: description
@@ -43,4 +41,3 @@ body:
       description: Add any other context, examples, or screenshots about the feature request here.
     validations:
       required: false
-
