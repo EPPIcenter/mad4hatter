@@ -4,16 +4,6 @@ library(tidyverse)
 # release_version DETECTION
 # -----------------------------------------------------------------------------
 
-release_version = NULL # CHANGE IF YOU KNOW THE VERSION (NOTE THAT IT CURRENTLY SUPPORTS 0.1.8 AND 0.2.2)
-input_dir   = "~/Downloads/MULE_NextSEQ02_120625_RESULTS_v0.1.8"
-output_dir  = "~/Downloads/MULE_NextSEQ02_120625_RESULTS_v0.1.8_fixed"
-
-locus_lookup = "~/Documents/repos/mad4hatter/aad/target_id_conversion_table.tsv"
-references = "~/Documents/repos/mad4hatter/aad/references.fasta"
-amplicon_info = "~/Documents/repos/mad4hatter/aad/amplicon_info.tsv"
-resmarker_info = "~/Documents/repos/mad4hatter/panel_information/principal_resistance_marker_info_table.tsv"
-
-
 detect_release_version <- function(input_dir) {
   
   files <- list.files(input_dir, recursive = TRUE)
@@ -30,11 +20,11 @@ detect_release_version <- function(input_dir) {
   if ("sampleID" %in% allele_cols && "locus" %in% allele_cols && "allele" %in% allele_cols) {
     release_version <- "0.1.8"
     
-  # v0.2.2: uppercase SampleID, uppercase Locus, has PseudoCIGAR (no 'allele')  
+    # v0.2.2: uppercase SampleID, uppercase Locus, has PseudoCIGAR (no 'allele')  
   } else if ("SampleID" %in% allele_cols && "Locus" %in% allele_cols && "PseudoCIGAR" %in% allele_cols) {
     release_version <- "0.2.2"
     
-  # v1.0.0: sample_name, target_name, pseudocigar_unmasked
+    # v1.0.0: sample_name, target_name, pseudocigar_unmasked
   } else if ("sample_name" %in% allele_cols && "target_name" %in% allele_cols) {
     release_version <- "1.0.0"
     
@@ -147,8 +137,8 @@ convert_sample_coverage <- function(input_dir, output_dir, release_version) {
   # Both v0.1.8 and v0.2.2 have same columns, just need sample_name dplyr::rename
   df <- df %>%
     dplyr::rename(sample_name = SampleID,
-           stage       = Stage,
-           reads       = Reads)
+                  stage       = Stage,
+                  reads       = Reads)
   
   write_tsv(df, file.path(output_dir, "sample_coverage.txt"))
   message("  [OK] sample_coverage.txt")
@@ -161,7 +151,7 @@ convert_amplicon_coverage <- function(input_dir, output_dir, release_version, lo
   # Both old release_versions have same column names
   df <- df %>%
     dplyr::rename(sample_name = SampleID,
-           reads       = Reads)
+                  reads       = Reads)
   
   # Apply locus lookup
   df <- apply_locus_lookup(df, "Locus", lookup) %>%
@@ -489,7 +479,7 @@ convert_mad4hatter <- function(input_dir, output_dir, locus_lookup,
   }
   lookup <- lookup %>% 
     dplyr::rename(target_name = new_name) 
-    
+  
   # --- Create output directories ---------------------------------------------
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
   dir.create(file.path(output_dir, "resistance_marker_module"), showWarnings = FALSE)
@@ -516,17 +506,3 @@ convert_mad4hatter <- function(input_dir, output_dir, locus_lookup,
   message(sprintf("\nDone. Output written to: %s", output_dir))
   invisible(output_dir)
 }
-
-
-
-# -----------------------------------------------------------------------------
-# RUN
-# -----------------------------------------------------------------------------
-
-convert_mad4hatter(
-  input_dir       = input_dir,
-  output_dir      = output_dir,
-  locus_lookup    = locus_lookup,
-  amplicon_info   = amplicon_info,
-  references      = references,
-  resmarker_info  = resmarker_info)
