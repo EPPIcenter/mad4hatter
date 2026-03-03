@@ -19,44 +19,42 @@ combined <- map_dfr(files, function(f) {
   pool_name <- basename(dirname(f))
   
   read_tsv(f) %>%
-    mutate(pool = pool_name)
+    mutate(pool = pool_name,
+           row_id = row_number())
 }) %>% 
   group_by(new_name,old_name) %>% 
-  summarize(pool = paste(pool,collapse = ","))%>%
+  summarize(pool = paste(pool,collapse = ","),
+            row_id = paste(row_id,collapse = ","))%>%
   mutate(
     old_name_fixed = case_when(
       
-      # ---- 1A cases ----
+      # 1A cases 
       pool %in% c("D1.1",
                   "D1.1,M1.1",
                   "D1.1,M2.1") ~ str_c(old_name, "-1A"),
       
-      # ---- 1B cases ----
+      # 1B cases 
       pool %in% c("R1.1",
                   "R1.1,R1.2",
                   "M1.1,R1.1,R1.2") ~ str_c(old_name, "-1B"),
       
-      # ---- 1AB cases ----
+      # 1AB cases 
       pool %in% c("D1.1,R1.1",
                   "D1.1,M1.1,R1.1",
                   "D1.1,M1.1,R1.1,R1.2") ~ str_c(old_name, "-1AB"),
       
-      # ---- 1B2 case ----
+      # 1B2 case 
       pool == "M1.1,R1.1,R1.2,R2.1" ~ str_c(old_name, "-1B2"),
       
-      # ---- -2 cases ----
+      # -2 cases 
       pool %in% c("R2.1",
                   "M1.1,R2.1",
                   "M2.1,R2.1") ~ str_c(old_name, "-2"),
       
-      # ---- -6 cases ----
+      # -6 cases 
       pool %in% c("M1.1",
                   "M1.addon",
                   "M2.1") ~ str_c(old_name, "-6"),
-      
-      # ---- Special mixed R1.1,R1.2 only ----
-      pool == "R1.1,R1.2" ~ str_c(old_name, "-1B"),
-      
       TRUE ~ old_name
     )
   )
@@ -66,21 +64,24 @@ combined <- map_dfr(files, function(f) {
 
 parent_dir <- "Documents/repos/mad4hatter/panel_information/"
 
-# 1️⃣ Expand comma-separated pools
+# Expand comma-separated pools
 expanded <- combined %>%
   separate_rows(pool, sep = ",") %>%
-  mutate(pool = str_trim(pool))
+  mutate(pool = str_trim(pool)) %>% 
+  row_id = as.numeric(str_trim(row_id))
 
-# 2️⃣ Get unique pool names
+
+# Get unique pool names
 unique_pools <- unique(expanded$pool)
 
-# 3️⃣ Loop and write files
+# Loop and write files
 for (p in unique_pools) {
   
   df_pool <- expanded %>%
     filter(pool == p) %>% 
-    select(old_name=old_name_fixed,new_name)
-  
+    arrange(row_id) %>%
+    select(new_name, old_name=old_name_fixed)
+
   output_path <- file.path(
     parent_dir,
     p,
