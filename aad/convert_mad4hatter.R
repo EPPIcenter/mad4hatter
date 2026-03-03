@@ -7,19 +7,22 @@
 #   convert_mad4hatter(
 #     input_dir   = "path/to/old/results",
 #     output_dir  = "path/to/new/results",
-#     locus_lookup = "path/to/locus_lookup.csv"
+#     locus_lookup = "path/to/locus_lookup.tsv"
 #   )
 #
-# locus_lookup.csv must have columns: old_target_name, target_name, pool
+# locus_lookup.tsv must have columns: old_name, new_name, pool
 # =============================================================================
 
-library(dplyr)
-library(readr)
-library(stringr)
+library(tidyverse)
 
 # -----------------------------------------------------------------------------
 # VERSION DETECTION
 # -----------------------------------------------------------------------------
+
+
+input_dir   = "Downloads/MULE_NextSEQ02_120625_RESULTS_v0.1.8"
+output_dir  = "Downloads/MULE_NextSEQ02_120625_RESULTS_v0.1.8_fixed"
+locus_lookup = "Documents/repos/mad4hatter/aad/target_id_conversion_table.tsv"
 
 detect_version <- function(input_dir) {
   
@@ -61,11 +64,11 @@ detect_version <- function(input_dir) {
 # -----------------------------------------------------------------------------
 
 apply_locus_lookup <- function(df, locus_col, lookup) {
-  # Rename the locus column to old_target_name for joining
-  df <- df %>% rename(old_target_name = !!sym(locus_col))
+  # Rename the locus column to old_name for joining
+  df <- df %>% rename(old_name = !!sym(locus_col))
   
   # Check for unmatched loci
-  unmatched <- setdiff(unique(df$old_target_name), lookup$old_target_name)
+  unmatched <- setdiff(unique(df$old_name), lookup$old_name)
   if (length(unmatched) > 0) {
     warning(sprintf(
       "The following loci were NOT found in the lookup file and will be kept as-is with pool = NA:\n  %s",
@@ -74,12 +77,12 @@ apply_locus_lookup <- function(df, locus_col, lookup) {
   }
   
   df <- df %>%
-    left_join(lookup, by = "old_target_name") %>%
+    left_join(lookup, by = "old_name") %>%
     mutate(
-      target_name = if_else(is.na(target_name), old_target_name, target_name),
-      pool        = if_else(old_target_name %in% unmatched, NA_character_, pool)
+      target_name = if_else(is.na(new_name), old_name, new_name),
+      pool        = if_else(old_name %in% unmatched, NA_character_, pool)
     ) %>%
-    select(-old_target_name)
+    select(-old_name,-new_name)
   
   return(df)
 }
@@ -356,7 +359,7 @@ copy_passthrough_files <- function(input_dir, output_dir, version) {
 #'
 #' @param input_dir   Path to the old results folder
 #' @param output_dir  Path where v1.0.0-formatted results will be written
-#' @param locus_lookup Path to CSV with columns: old_target_name, target_name, pool
+#' @param locus_lookup Path to CSV with columns: old_name, target_name, pool
 #' @param version     Optional. If NULL (default), version is auto-detected.
 #'                    Override with "0.1.8" or "0.2.2" if needed.
 #'
@@ -390,7 +393,7 @@ convert_mad4hatter <- function(input_dir, output_dir, locus_lookup, version = NU
   
   # --- Load lookup -----------------------------------------------------------
   lookup <- read_csv(locus_lookup, show_col_types = FALSE)
-  required_cols <- c("old_target_name", "target_name", "pool")
+  required_cols <- c("old_name", "target_name", "pool")
   missing_cols  <- setdiff(required_cols, names(lookup))
   if (length(missing_cols) > 0) {
     stop("locus_lookup is missing required columns: ", paste(missing_cols, collapse = ", "))

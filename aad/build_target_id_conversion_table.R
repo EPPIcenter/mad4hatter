@@ -33,7 +33,8 @@ combined <- map_dfr(files, function(f) {
                   "M1.1,R1.1,R1.2") ~ str_c(old_name, "-1B"),
       
       # ---- 1AB cases ----
-      pool %in% c("D1.1,M1.1,R1.1",
+      pool %in% c("D1.1,R1.1",
+                  "D1.1,M1.1,R1.1",
                   "D1.1,M1.1,R1.1,R1.2") ~ str_c(old_name, "-1AB"),
       
       # ---- 1B2 case ----
