@@ -8,7 +8,9 @@ files <- list.files(
   pattern = "^target_id_conversion_table\\.tsv$",
   recursive = TRUE,
   full.names = TRUE
-)
+)%>%
+  # exclude any path containing /aad/
+  .[!grepl("/aad/", .)]
 
 # 2. Read and bind them, adding pool column
 combined <- map_dfr(files, function(f) {
