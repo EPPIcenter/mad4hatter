@@ -66,9 +66,10 @@ parent_dir <- "Documents/repos/mad4hatter/panel_information/"
 
 # Expand comma-separated pools
 expanded <- combined %>%
-  separate_rows(pool, sep = ",") %>%
-  mutate(pool = str_trim(pool)) %>% 
-  row_id = as.numeric(str_trim(row_id))
+  separate_rows(pool,row_id, sep = ",")%>%
+  mutate(pool = str_trim(pool),
+         row_id = as.numeric(str_trim(row_id))
+  )
 
 
 # Get unique pool names
@@ -92,6 +93,4 @@ for (p in unique_pools) {
 }
 
 
-combined %>% select(old_name = old_name_fixed,new_name,pool) %>% 
-  write_tsv("~/Documents/repos/mad4hatter/aad/target_id_conversion_table.tsv")
 
