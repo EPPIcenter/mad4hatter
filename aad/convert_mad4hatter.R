@@ -1,18 +1,3 @@
-# =============================================================================
-# convert_mad4hatter.R
-# Converts mad4hatter results from v0.1.8 or v0.2.2 to v1.0.0 format
-#
-# Usage:
-#   source("convert_mad4hatter.R")
-#   convert_mad4hatter(
-#     input_dir   = "path/to/old/results",
-#     output_dir  = "path/to/new/results",
-#     locus_lookup = "path/to/locus_lookup.tsv"
-#   )
-#
-# locus_lookup.tsv must have columns: old_name, new_name, pool
-# =============================================================================
-
 library(tidyverse)
 
 # -----------------------------------------------------------------------------
@@ -355,20 +340,6 @@ copy_passthrough_files <- function(input_dir, output_dir, version) {
 # MAIN FUNCTION
 # -----------------------------------------------------------------------------
 
-#' Convert mad4hatter results to v1.0.0 format
-#'
-#' @param input_dir   Path to the old results folder
-#' @param output_dir  Path where v1.0.0-formatted results will be written
-#' @param locus_lookup Path to CSV with columns: old_name, target_name, pool
-#' @param version     Optional. If NULL (default), version is auto-detected.
-#'                    Override with "0.1.8" or "0.2.2" if needed.
-#'
-#' @examples
-#' convert_mad4hatter(
-#'   input_dir    = "~/results/MULE_run1",
-#'   output_dir   = "~/results/MULE_run1_v1",
-#'   locus_lookup = "~/locus_lookup.csv"
-#' )
 convert_mad4hatter <- function(input_dir, output_dir, locus_lookup, version = NULL) {
   
   # --- Validate inputs -------------------------------------------------------
@@ -392,13 +363,14 @@ convert_mad4hatter <- function(input_dir, output_dir, locus_lookup, version = NU
   }
   
   # --- Load lookup -----------------------------------------------------------
-  lookup <- read_csv(locus_lookup, show_col_types = FALSE)
-  required_cols <- c("old_name", "target_name", "pool")
+  lookup <- read_tsv(locus_lookup, show_col_types = FALSE)
+  required_cols <- c("old_name", "new_name", "pool")
   missing_cols  <- setdiff(required_cols, names(lookup))
   if (length(missing_cols) > 0) {
     stop("locus_lookup is missing required columns: ", paste(missing_cols, collapse = ", "))
   }
-  
+  lookup <- lookup %>% rename(target_name = new_name) 
+    
   # --- Create output directories ---------------------------------------------
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
   dir.create(file.path(output_dir, "resistance_marker_module"), showWarnings = FALSE)
