@@ -7,7 +7,12 @@ library(tidyverse)
 release_version = NULL # CHANGE IF YOU KNOW THE VERSION (NOTE THAT IT CURRENTLY SUPPORTS 0.1.8 AND 0.2.2)
 input_dir   = "~/Downloads/MULE_NextSEQ02_120625_RESULTS_v0.1.8"
 output_dir  = "~/Downloads/MULE_NextSEQ02_120625_RESULTS_v0.1.8_fixed"
+
 locus_lookup = "~/Documents/repos/mad4hatter/aad/target_id_conversion_table.tsv"
+references = "~/Documents/repos/mad4hatter/aad/references.fasta"
+amplicon_info = "~/Documents/repos/mad4hatter/aad/amplicon_info.tsv"
+resmarker_info = "~/Documents/repos/mad4hatter/panel_information/principal_resistance_marker_info_table.tsv"
+
 
 detect_release_version <- function(input_dir) {
   
@@ -49,8 +54,8 @@ detect_release_version <- function(input_dir) {
 # -----------------------------------------------------------------------------
 
 apply_locus_lookup <- function(df, locus_col, lookup) {
-  # Rename the locus column to old_name for joining
-  df <- df %>% rename(old_name = !!sym(locus_col))
+  # dplyr::rename the locus column to old_name for joining
+  df <- df %>% dplyr::rename(old_name = !!sym(locus_col))
   
   # Check for unmatched loci
   unmatched <- setdiff(unique(df$old_name), lookup$old_name)
@@ -82,7 +87,7 @@ convert_allele_data <- function(input_dir, output_dir, release_version, lookup) 
   
   if (release_version == "0.1.8") {
     df <- df %>%
-      rename(
+      dplyr::rename(
         sample_name      = sampleID,
         asv              = asv,
         reads            = reads,
@@ -95,7 +100,7 @@ convert_allele_data <- function(input_dir, output_dir, release_version, lookup) 
     
   } else if (release_version == "0.2.2") {
     df <- df %>%
-      rename(
+      dplyr::rename(
         sample_name        = SampleID,
         asv                = ASV,
         reads              = Reads,
@@ -138,9 +143,9 @@ convert_sample_coverage <- function(input_dir, output_dir, release_version) {
   f <- file.path(input_dir, "sample_coverage.txt")
   df <- read_tsv(f, show_col_types = FALSE)
   
-  # Both v0.1.8 and v0.2.2 have same columns, just need sample_name rename
+  # Both v0.1.8 and v0.2.2 have same columns, just need sample_name dplyr::rename
   df <- df %>%
-    rename(sample_name = SampleID,
+    dplyr::rename(sample_name = SampleID,
            stage       = Stage,
            reads       = Reads)
   
@@ -154,7 +159,7 @@ convert_amplicon_coverage <- function(input_dir, output_dir, release_version, lo
   
   # Both old release_versions have same column names
   df <- df %>%
-    rename(sample_name = SampleID,
+    dplyr::rename(sample_name = SampleID,
            reads       = Reads)
   
   # Apply locus lookup
@@ -172,7 +177,7 @@ convert_resmarker_table <- function(input_dir, output_dir, release_version, look
   
   if (release_version == "0.1.8") {
     df <- df %>%
-      rename(
+      dplyr::rename(
         sample_name  = SampleID,
         gene_id      = GeneID,
         gene         = Gene,
@@ -194,7 +199,7 @@ convert_resmarker_table <- function(input_dir, output_dir, release_version, look
     
   } else if (release_version == "0.2.2") {
     df <- df %>%
-      rename(
+      dplyr::rename(
         sample_name   = SampleID,
         gene_id       = GeneID,
         gene          = Gene,
@@ -237,7 +242,7 @@ convert_resmarker_table_by_locus <- function(input_dir, output_dir, release_vers
     return(invisible(NULL))
   } else if (release_version == "0.2.2") {
     df <- df %>%
-      rename(
+      dplyr::rename(
         sample_name   = SampleID,
         gene_id       = GeneID,
         gene          = Gene,
@@ -280,7 +285,7 @@ convert_resmarker_microhaplotype <- function(input_dir, output_dir, release_vers
     # RefMicrohap   -> ref_mhap
     # Microhaplotype -> mhap  (note: MicrohapRefAlt and Reads are separate columns)
     df <- df %>%
-      rename(
+      dplyr::rename(
         sample_name      = SampleID,
         gene_id          = GeneID,
         gene             = Gene,
@@ -295,7 +300,7 @@ convert_resmarker_microhaplotype <- function(input_dir, output_dir, release_vers
     
   } else if (release_version == "0.2.2") {
     df <- df %>%
-      rename(
+      dplyr::rename(
         sample_name       = SampleID,
         gene_id           = GeneID,
         gene              = Gene,
@@ -347,6 +352,106 @@ copy_passthrough_files <- function(input_dir, output_dir, release_version) {
   }
 }
 
+create_panel_information <- function(output_dir, amplicon_info, references, resmarker_info) {
+  
+  panel_dir <- file.path(output_dir, "panel_information")
+  dir.create(panel_dir, showWarnings = FALSE, recursive = TRUE)
+  
+  # Get target_names present in this run from the already-converted amplicon_coverage.txt
+  targets_in_data <- read_tsv(file.path(output_dir, "amplicon_coverage.txt"),
+                              show_col_types = FALSE) %>%
+    pull(target_name) %>%
+    unique()
+  
+  # --- amplicon_info.tsv -----------------------------------------------------
+  if (!file.exists(amplicon_info)) {
+    warning("amplicon_info file not found, skipping: ", amplicon_info)
+  } else {
+    df_amplicon <- read_tsv(amplicon_info, show_col_types = FALSE)
+    
+    missing_targets <- setdiff(targets_in_data, df_amplicon$target_name)
+    if (length(missing_targets) > 0) {
+      warning(sprintf(
+        "The following target_names from the data were NOT found in amplicon_info:\n  %s",
+        paste(missing_targets, collapse = "\n  ")
+      ))
+    }
+    
+    df_amplicon %>%
+      filter(target_name %in% targets_in_data) %>%
+      write_tsv(file.path(panel_dir, "amplicon_info.tsv"))
+    message("  [OK] panel_information/amplicon_info.tsv")
+  }
+  
+  # --- reference.fasta -------------------------------------------------------
+  if (!file.exists(references)) {
+    warning("references fasta file not found, skipping: ", references)
+  } else {
+    fasta_lines <- readLines(references)
+    
+    # Find all header lines and extract sequence names (everything after > up to first space)
+    header_idx <- which(startsWith(fasta_lines, ">"))
+    seq_names  <- sub("^>([^ ]+).*", "\\1", fasta_lines[header_idx])
+    
+    # Build per-entry line ranges
+    entry_start <- header_idx
+    entry_end   <- c(header_idx[-1] - 1, length(fasta_lines))
+    
+    missing_refs <- setdiff(targets_in_data, seq_names)
+    if (length(missing_refs) > 0) {
+      warning(sprintf(
+        "The following target_names from the data were NOT found in the reference fasta:\n  %s",
+        paste(missing_refs, collapse = "\n  ")
+      ))
+    }
+    
+    # Keep only entries whose name matches a target in the data
+    keep      <- seq_names %in% targets_in_data
+    kept_lines <- unlist(mapply(
+      function(s, e) fasta_lines[s:e],
+      entry_start[keep], entry_end[keep],
+      SIMPLIFY = FALSE
+    ))
+    
+    writeLines(kept_lines, file.path(panel_dir, "reference.fasta"))
+    message("  [OK] panel_information/reference.fasta")
+  }
+  
+  # --- resmarker_info.tsv ----------------------------------------------------
+  if (!file.exists(resmarker_info)) {
+    warning("resmarker_info file not found, skipping: ", resmarker_info)
+  } else {
+    resmarker_table_path <- file.path(output_dir, "resistance_marker_module", "resmarker_table.txt")
+    
+    if (!file.exists(resmarker_table_path)) {
+      message("  [SKIP] panel_information/resmarker_info.tsv — no resmarker_table.txt in output")
+    } else {
+      # Keys present in this run's resmarker output
+      resmarker_keys <- read_tsv(resmarker_table_path, show_col_types = FALSE) %>%
+        distinct(gene_id, gene, aa_position)
+      
+      df_resmarker <- read_tsv(resmarker_info, show_col_types = FALSE)
+      
+      # Warn about any keys in the data that are absent from the reference file
+      missing_keys <- anti_join(resmarker_keys, df_resmarker,
+                                by = c("gene_id", "gene", "aa_position"))
+      if (nrow(missing_keys) > 0) {
+        warning(sprintf(
+          "The following gene_id/gene/aa_position combinations from resmarker_table.txt were NOT found in resmarker_info:\n  %s",
+          paste(apply(missing_keys, 1, paste, collapse = " / "), collapse = "\n  ")
+        ))
+      }
+      
+      df_resmarker %>%
+        semi_join(resmarker_keys, by = c("gene_id", "gene", "aa_position")) %>%
+        write_tsv(file.path(panel_dir, "resmarker_info.tsv"))
+      message("  [OK] panel_information/resmarker_info.tsv")
+    }
+  }
+}
+
+
+
 # -----------------------------------------------------------------------------
 # MAIN FUNCTION
 # -----------------------------------------------------------------------------
@@ -380,7 +485,8 @@ convert_mad4hatter <- function(input_dir, output_dir, locus_lookup, release_vers
   if (length(missing_cols) > 0) {
     stop("locus_lookup is missing required columns: ", paste(missing_cols, collapse = ", "))
   }
-  lookup <- lookup %>% rename(target_name = new_name) 
+  lookup <- lookup %>% 
+    dplyr::rename(target_name = new_name) 
     
   # --- Create output directories ---------------------------------------------
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
