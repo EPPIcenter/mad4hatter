@@ -1,5 +1,3 @@
-library(tidyverse)
-
 
 # WRITE PATH TO DIRECTORY TO BE TRANSFORMED
 input_dir   = "PATH/TO/DIR"
@@ -17,6 +15,9 @@ references = file.path(pipeline_path,"aad/references.fasta")
 amplicon_info = file.path(pipeline_path,"aad/amplicon_info.tsv")
 # principal_resistance_marker_info_table.tsv, USE THE ONE THAT CONTAINS ALL MARKERS AS IN fix_principal_list BRANCH
 resmarker_info = file.path(pipeline_path,"panel_information/principal_resistance_marker_info_table.tsv")
+
+
+source(file.path(pipeline_path,"aad/convert_mad4hatter_functions.R"))
 
 # RUN
 convert_mad4hatter(
