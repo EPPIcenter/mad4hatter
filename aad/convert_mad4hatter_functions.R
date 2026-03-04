@@ -240,7 +240,7 @@ convert_resmarker_table_by_locus <- function(input_dir, output_dir, release_vers
         ref_codon     = RefCodon,
         codon         = Codon,
         codon_ref_alt = CodonRefAlt,
-        ref_aa        = RefAAAA,   # note: typo in v0.2.2 header
+        ref_aa        = RefAA,  
         aa            = AA,
         aa_ref_alt    = AARefAlt,
         follows_indel = FollowsIndel,
@@ -297,7 +297,7 @@ convert_resmarker_microhaplotype <- function(input_dir, output_dir, release_vers
         mhap_aa_positions = MicrohaplotypeCodonIDs,
         ref_mhap          = RefMicrohap,
         mhap              = Microhaplotype,
-        mhap_ref_alt      = MicrohaplotypeMicrohapRefAlt,
+        mhap_ref_alt      = MicrohapRefAlt,
         reads             = Reads
       )
     df <- apply_locus_lookup(df, "Locus", lookup)
