@@ -18,7 +18,9 @@ jobs:
         uses: docker/setup-buildx-action@v3
       
       - name: Set up Nextflow
-        uses: nf-core/setup-nextflow@v1
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: "25.04.0"
       
       - name: Set up nf-test
         uses: nf-core/setup-nf-test@v1
