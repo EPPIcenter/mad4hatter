@@ -15,6 +15,7 @@ parser$add_argument("--concat-non-overlaps", action = "store_true")
 parser$add_argument("--use-quals", type = "character", default = "false")
 parser$add_argument("--maxEE", type = "integer", default = 3)
 parser$add_argument("--max-mismatch", type = "integer", default = 0)
+parser$add_argument("--chimera-method", type = "character", default = "consensus", choices = c("consensus", "pooled", "per-sample"))
 parser$add_argument("--self-consist", action = "store_true")
 parser$add_argument("--omega-c", type = "double", default = 1e-40)
 parser$add_argument("--cores", type = "integer", default = 1)
@@ -130,7 +131,7 @@ if (args$concat_non_overlaps) {
 rm(dadaFs, dadaRs)
 
 seqtab <- makeSequenceTable(mergers)
-seqtab.nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = TRUE, verbose = TRUE)
+seqtab.nochim <- removeBimeraDenovo(seqtab, method = args$chimera_method, multithread = TRUE, verbose = TRUE)
 
 ### Create clusters output file with quality control
 

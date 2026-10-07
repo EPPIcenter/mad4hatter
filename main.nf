@@ -55,6 +55,7 @@ def helpMessage() {
       --band_size               Limit on the net cumulative number of insertions of one sequence relative to the other in DADA2 [Default: 16]
       --maxEE                   Limit on number of expected errors within a read during filtering and trimming within DADA2 [Default: 3]
       --just_concatenate        Whether to concatenate sequences that DADA2 was unable to merge [Default: true]
+      --chimera_method          Method used by DADA2 to remove chimeras [Options: consensus (default), pooled, per-sample]
 
       (Post processing parameters)
       --just_concatenate        Whether to collapse reads that DADA2 was not able to merge but concatenated [Default: true]

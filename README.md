@@ -76,6 +76,7 @@ DADA2 infers amplicon sequences exactly and can be tuned depending on your needs
 |band_size|An alignment heuristic that controls whether an alignment will occur between sequences if the number of indels exceeds this threshold (default `16`)|
 |maxEE|During filtering and trimming, reads that exceed the number of expected errors will be discarded (default `3`)|
 |just_concatenate|Setting this to true will concatenate any DADA sequences that were unable to be merged. Reads that are concatenated will have 10 Ns separating the forward and reverse reads (i.e. `N`). Setting this to false will discard reads that did not have enough bases to merge. The minimum overlap required to merge forward and reverse reads is 12 bases. (default true)|
+|chimera_method|The method DADA2 uses to remove chimeras (`removeBimeraDenovo`). `consensus` evaluates each sequence within every sample it appears in and removes it from all samples if it is flagged in most of them. `pooled` pools all samples together and removes flagged sequences from all samples. `per-sample` evaluates each sample independently and only removes a sequence from the samples in which it was flagged. (default `consensus`)|
 
 For more information about DADA2 and the parameters that can be set, please refer to their [documentation](https://www.bioconductor.org/packages/release/bioc/manuals/dada2/man/dada2.pdf). 
 

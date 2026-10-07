@@ -24,7 +24,8 @@ workflow DENOISE_AMPLICONS_1 {
     params.omega_a,
     params.maxEE,
     params.maxMismatch,
-    params.just_concatenate
+    params.just_concatenate,
+    params.chimera_method
   )
 
   emit: 

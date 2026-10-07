@@ -23,6 +23,7 @@ process DADA2_ANALYSIS {
   val maxEE
   val maxMismatch
   val just_concatenate
+  val chimera_method
 
   output:
   path 'dada2.clusters.txt', emit: dada2_clusters
@@ -40,6 +41,7 @@ process DADA2_ANALYSIS {
     --omega-a ${omega_a} \
     --maxEE ${maxEE} \
     --max-mismatch ${maxMismatch} \
+    --chimera-method ${chimera_method} \
     --cores ${task.cpus} \
     ${concatenate} 
   """
