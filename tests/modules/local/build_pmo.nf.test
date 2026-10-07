@@ -1,0 +1,101 @@
+import groovy.json.JsonSlurper
+import java.util.zip.GZIPInputStream
+
+nextflow_process {
+
+    name "Test Process BUILD_PMO"
+    script "modules/local/build_pmo.nf"
+    process "BUILD_PMO"
+
+    test("Should build a valid PMO without a specimen key") {
+
+        when {
+            process {
+                """
+                input[0] = file("${projectDir}/tests/example_data/allele_data.txt")
+                input[1] = file("${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv")
+                input[2] = "D1_R1_R2"
+                input[3] = []
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def pmo = new JsonSlurper().parse(new GZIPInputStream(path(process.out.pmo.get(0)).newInputStream()))
+            assert pmo.panel_info[0].panel_name == "D1.1_R1.2_R2.1"
+            assert pmo.panel_info[0].reactions*.reaction_name == ["D1.1", "R1.2", "R2.1"]
+            assert pmo.library_sample_info*.library_sample_name == ["SRR26819135_S1_L001"]
+            assert pmo.specimen_info*.specimen_name == ["SRR26819135_S1_L001"]
+        }
+
+    }
+
+    test("Should use specimen names from the specimen key") {
+
+        when {
+            process {
+                """
+                input[0] = file("${projectDir}/tests/example_data/allele_data.txt")
+                input[1] = file("${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv")
+                input[2] = "D1_R1_R2"
+                input[3] = file("${projectDir}/tests/example_data/pmo_specimen_key.tsv")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def pmo = new JsonSlurper().parse(new GZIPInputStream(path(process.out.pmo.get(0)).newInputStream()))
+            assert pmo.library_sample_info*.library_sample_name == ["SRR26819135_S1_L001"]
+            assert pmo.specimen_info*.specimen_name == ["specimen_1"]
+        }
+
+    }
+
+    test("Should use the panel name when amplicon info has no pool column") {
+
+        when {
+            process {
+                """
+                input[0] = file("${projectDir}/tests/example_data/allele_data.txt")
+                input[1] = file("${projectDir}/tests/example_data/amplicon_info_no_pool.tsv")
+                input[2] = "bespoke_pool"
+                input[3] = []
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def pmo = new JsonSlurper().parse(new GZIPInputStream(path(process.out.pmo.get(0)).newInputStream()))
+            assert pmo.panel_info[0].panel_name == "bespoke_pool"
+        }
+
+    }
+
+    test("Should fail when samples are missing from the specimen key") {
+
+        when {
+            process {
+                """
+                input[0] = file("${projectDir}/tests/example_data/allele_data.txt")
+                input[1] = file("${projectDir}/tests/example_data/multi_pool_amplicon_info.tsv")
+                input[2] = "D1_R1_R2"
+                input[3] = file("${projectDir}/tests/example_data/pmo_specimen_key_standardised.tsv")
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains("not in the specimen key")
+            assert process.errorReport.contains("--standardise_sample_names true")
+        }
+
+    }
+
+}

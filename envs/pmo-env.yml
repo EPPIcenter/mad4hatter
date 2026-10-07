@@ -1,0 +1,8 @@
+name: pmo
+channels:
+- conda-forge
+dependencies:
+- python=3.12
+- pip=24.0
+- pip:
+  - pmotools==1.1.0

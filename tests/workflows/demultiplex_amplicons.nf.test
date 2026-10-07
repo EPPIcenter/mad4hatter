@@ -80,4 +80,112 @@ nextflow_workflow {
 
     }
 
+    test("Should remove sequencer suffixes from sample names when standardise_sample_names is set") {
+
+        when {
+            params {
+                cutadapt_minlen = 5
+                allowed_errors = 0
+                standardise_sample_names = true
+            }
+            workflow {
+                """
+                input[0] = file("${projectDir}/tests/example_data/cutadapt_examples/dummy_amplicon_info.tsv")
+                input[1] = Channel.of(
+                    tuple(
+                        'sample1_S12_L001',
+                        [
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample1_R1.fastq.gz"),
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample1_R2.fastq.gz")
+                        ]
+                    ),
+                    tuple(
+                        'sample2_S3',
+                        [
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample2_R1.fastq.gz"),
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample2_R2.fastq.gz")
+                        ]
+                    ),
+                )
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.sample_summary_ch.collect { path(it).fileName.toString() }.sort() == ["sample1.SAMPLEsummary.txt", "sample2.SAMPLEsummary.txt"]
+            assert workflow.out.amplicon_summary_ch.collect { path(it).fileName.toString() }.sort() == ["sample1.AMPLICONsummary.txt", "sample2.AMPLICONsummary.txt"]
+            assert workflow.out.demux_fastqs_ch.any { path(it).resolve("AMP1_sample1_trimmed_R1.fastq.gz").exists() }
+        }
+
+    }
+
+    test("Should keep sequencer suffixes when standardise_sample_names is not set") {
+
+        when {
+            params {
+                cutadapt_minlen = 5
+                allowed_errors = 0
+            }
+            workflow {
+                """
+                input[0] = file("${projectDir}/tests/example_data/cutadapt_examples/dummy_amplicon_info.tsv")
+                input[1] = Channel.of(
+                    tuple(
+                        'sample1_S12_L001',
+                        [
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample1_R1.fastq.gz"),
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample1_R2.fastq.gz")
+                        ]
+                    ),
+                )
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert path(workflow.out.sample_summary_ch.get(0)).fileName.toString() == "sample1_S12_L001.SAMPLEsummary.txt"
+        }
+
+    }
+
+    test("Should fail when standardised sample names are not unique") {
+
+        when {
+            params {
+                cutadapt_minlen = 5
+                allowed_errors = 0
+                standardise_sample_names = true
+            }
+            workflow {
+                """
+                input[0] = file("${projectDir}/tests/example_data/cutadapt_examples/dummy_amplicon_info.tsv")
+                input[1] = Channel.of(
+                    tuple(
+                        'sample1_S1_L001',
+                        [
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample1_R1.fastq.gz"),
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample1_R2.fastq.gz")
+                        ]
+                    ),
+                    tuple(
+                        'sample1_S1_L002',
+                        [
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample2_R1.fastq.gz"),
+                            file("${projectDir}/tests/example_data/cutadapt_examples/sample2_R2.fastq.gz")
+                        ]
+                    ),
+                )
+                """
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.stdout.any { it.contains("Multiple fastq pairs have the same sample name after removing sequencer suffixes: sample1") }
+        }
+
+    }
+
 }

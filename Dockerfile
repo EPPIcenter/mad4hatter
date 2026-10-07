@@ -6,6 +6,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 # Python dependencies
 RUN pip install numpy==1.25.2 cutadapt==4.4 pandas==2.0.3 bio==1.5.9 
 
+# pmotools needs Python >= 3.11 and pandas >= 2.2.2, so it gets its own environment.
+# The Python install must live outside /root so non-root (e.g. apptainer) users can run it.
+COPY --from=ghcr.io/astral-sh/uv:0.8.22 /uv /usr/local/bin/uv
+ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python
+RUN uv venv --python 3.12 /opt/pmotools && uv pip install --no-cache --python /opt/pmotools/bin/python pmotools==1.1.0
+ENV PMO_PYTHON=/opt/pmotools/bin/python
+
 # R configuration
 RUN mkdir -p /usr/local/lib/R/etc/ /usr/lib/R/etc/
 RUN echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl', Ncpus = 4)" | tee /usr/local/lib/R/etc/Rprofile.site | tee /usr/lib/R/etc/Rprofile.site

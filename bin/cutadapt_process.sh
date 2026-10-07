@@ -4,14 +4,14 @@ set -e
 
 # Function to print help
 usage() {
-    echo "Usage: $0 -1 forward_read -2 reverse_read -m cutadapt_minlen -f fwd_primers_file -r rev_primers_file -g gtrim -q quality_score -e allowed_errors -c cores -o output"
+    echo "Usage: $0 -1 forward_read -2 reverse_read -m cutadapt_minlen -f fwd_primers_file -r rev_primers_file -g gtrim -q quality_score -e allowed_errors -c cores -o output [-s sample_id]"
     exit 1
 }
 
 # default settings
 cores=1
 # Parse command-line options
-while getopts "1:2:m:f:r:q:h:g:e:c:o:" OPTION
+while getopts "1:2:m:f:r:q:h:g:e:c:o:s:" OPTION
 do
     case $OPTION in
         1)
@@ -44,6 +44,9 @@ do
 		o)
 			trimmed_demuxed_fastqs=$OPTARG
 			;;
+        s)
+            sample_id=$OPTARG
+            ;;
         h)
             usage
             ;;
@@ -86,8 +89,10 @@ cutadapt_json="cutadapt.json"
 # Delete the directories on exit if specified on the command line
 trap "rm -rf '$adapter_dimers' '$no_adapter_dimers'" EXIT
 
-# get the sample id
-sample_id=$(basename "$forward_read" | sed 's/_R[12].*//')
+# get the sample id from the fastq name if not provided
+if [[ -z "$sample_id" ]]; then
+    sample_id=$(basename "$forward_read" | sed 's/_R[12].*//')
+fi
 
 # Remove all adapter dimers
 cutadapt \

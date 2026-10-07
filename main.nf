@@ -25,6 +25,7 @@ include { POSTPROC_ONLY } from './workflows/postproc_only.nf'
 
 // modules
 include { BUILD_ALLELETABLE } from './modules/local/build_alleletable.nf'
+include { BUILD_PMO } from './modules/local/build_pmo.nf'
 
 def helpMessage() {
   log.info """
@@ -44,6 +45,11 @@ def helpMessage() {
     Optional arguments:
       --outDIR                  Path to folder to place final output [Default: results]
       --workflow_name           Workflow option to be run [Options: complete (default), qc, postprocessing]
+      --standardise_sample_names  Remove sequencer suffixes (e.g. _S1_L001) from sample names in all outputs [Default: false]
+
+      (PMO parameters)
+      --output_pmo              Build and validate a Portable Microhaplotype Object (pmo.json.gz) [Default: true]
+      --pmo_specimen_key        TSV with library_sample_name and specimen_name columns used to set specimen names in the PMO [Default: specimen name is the sample name]
 
       (Nextflow parameters. Note the flags have "-" and not "--" at the start) 
       -profile                  Runtime profile [Options: sge,apptainer, docker, conda]
@@ -108,6 +114,10 @@ workflow {
   // Convert workflow to lowercase
   def workflow_name = params.workflow_name?.toLowerCase()
 
+  // Used for the PMO when the amplicon info has no pool column
+  def panel_name = params.pools.toString().split(',')*.trim().join('_')
+  def specimen_key = params.pmo_specimen_key ? file(params.pmo_specimen_key, checkIfExists: true) : []
+
   if (workflow_name=='qc') {
     // Run QC Only Workflow
     QC_ONLY(amplicon_info, params.reads)
@@ -115,6 +125,10 @@ workflow {
   } else if (workflow_name=='postprocessing') {
     // Run Postprocessing only
     POSTPROC_ONLY(amplicon_info, params.denoised_asvs)
+
+    if (params.output_pmo) {
+      BUILD_PMO(POSTPROC_ONLY.out.alleledata, amplicon_info, panel_name, specimen_key)
+    }
 
   } else if (workflow_name=='complete'){
     // Create read pairs channel from fastq data
@@ -143,6 +157,10 @@ workflow {
       DENOISE_AMPLICONS_2.out.unmasked_pseudocigar,
       DENOISE_AMPLICONS_2.out.aligned_asv_table
     )
+
+    if (params.output_pmo) {
+      BUILD_PMO(BUILD_ALLELETABLE.out.alleledata, amplicon_info, panel_name, specimen_key)
+    }
 
     // Create the quality report now
     QUALITY_CONTROL(

@@ -26,7 +26,7 @@ process CUTADAPT {
 
     script:
     """
-    bash cutadapt_process.sh \
+    bash ${projectDir}/bin/cutadapt_process.sh \
         -1 ${reads[0]} \
         -2 ${reads[1]} \
         -r ${rev_primers} \
@@ -36,6 +36,7 @@ process CUTADAPT {
         -q ${quality_score} \
         -e ${allowed_errors} \
         -c ${task.cpus} \
-        -o demultiplexed_fastqs
+        -o demultiplexed_fastqs \
+        -s ${pair_id}
     """
 }

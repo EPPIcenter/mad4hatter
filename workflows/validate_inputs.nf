@@ -25,6 +25,26 @@ workflow VALIDATE_INPUTS {
     if (params.refseq_fasta != null && params.genome != null) {
         log.warn "Both --refseq_fasta and --genome are specified. --refseq_fasta will be used and --genome will be ignored."
     }
+
+    check_pmo_params(workflow_name)
+
+    if (params.standardise_sample_names && workflow_name == 'postprocessing') {
+        log.warn "--standardise_sample_names only applies when reading fastqs and will be ignored for the postprocessing workflow."
+    }
+}
+
+// Helper function to check PMO parameters
+def check_pmo_params(workflow_name) {
+    if (params.pmo_specimen_key == null) {
+        return
+    }
+    if (!file(params.pmo_specimen_key).exists()) {
+        log.error "`--pmo_specimen_key` file does not exist: ${params.pmo_specimen_key}"
+        exit 1
+    }
+    if (!params.output_pmo || workflow_name == 'qc') {
+        log.warn "--pmo_specimen_key is set but no PMO will be built (requires --output_pmo true and the complete or postprocessing workflow)."
+    }
 }
 
 // Helper function to check if pools parameter is provided

@@ -13,6 +13,7 @@ A quick start guide for running the complete pipeline is below and comprehensive
         - [DADA parameters](#dada-parameters)
         - [Post processing parameters](#post-processing-parameters)
         - [Resmarker Module Parameters](#resmarker-module-parameters)
+        - [PMO Parameters](#pmo-parameters)
 - [Runtime Profiles](#runtime-profiles)
     - [Apptainer](#apptainer)
     - [Docker](#docker)
@@ -55,6 +56,7 @@ Below are parameters that are optional for running the pipeline.
 |---|---|
 | outDIR | The folder where you want the resulting data to be saved (default 'results') |
 | workflow_name | Workflow option to be run [Options: complete (default), qc, postprocessing] |
+| standardise_sample_names | Remove the sample number and lane that Illumina sequencers add to fastq names (e.g. `SAMPLE_S1_L001_R1_001.fastq.gz` becomes `SAMPLE`) so sample names are consistent across all outputs. The pipeline will stop if two fastq pairs end up with the same name, e.g. multiple lanes of one sample. Only applies to the complete and qc workflows (default false) |
 |**Nextflow parameters**||
 |profile|The infrastructure you wish to run the pipeline on. The different profiles are listed below under `Runtime Profiles`, including any setup that is required. **Please read that section for more details.**|
 |config|Resource configurations for each process that will override any defaults set in the pipeline. It is recommended to use the provided `custom.config` file to make these resource modifications.|
@@ -114,6 +116,25 @@ By default the pipeline will check if any of the markers in the principal list (
 |Parameter|Description|
 |---|---|
 |resmarker_info|Path to table containing resmarker information|
+
+##### PMO Parameters
+
+By default the complete and postprocessing workflows combine the allele table and panel information into a [Portable Microhaplotype Object (PMO)](https://plasmogenepi.github.io/PMO_Docs/), validate it against the PMO schema with [pmotools-python](https://github.com/PlasmoGenEpi/pmotools-python) and write it to `pmo.json.gz` in the output directory. Each pool is recorded as a reaction of a single panel.
+
+By default the specimen name for each library sample is the sample name from the fastq files. To set specimen names, supply a tab-separated table with a `library_sample_name` and a `specimen_name` column:
+
+```
+library_sample_name	specimen_name
+SAMPLE1_S1_L001	specimen_A
+SAMPLE2_S2_L001	specimen_B
+```
+
+`library_sample_name` must match the `sample_name` column of `allele_data.txt` (use `--standardise_sample_names true` if your table uses names without the sequencer suffixes). The pipeline will stop with an error listing any samples in the allele table that are missing from the table, or if a `library_sample_name` appears more than once. Rows in the table for samples with no microhaplotypes are ignored with a warning.
+
+|Parameter|Description|
+|---|---|
+|output_pmo|Build and validate a PMO (default true)|
+|pmo_specimen_key|Path to table of `library_sample_name` and `specimen_name` (default: specimen name is the sample name)|
 
 ## Runtime Profiles
 
