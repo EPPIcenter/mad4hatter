@@ -15,7 +15,7 @@ parser$add_argument("--concat-non-overlaps", action = "store_true")
 parser$add_argument("--use-quals", type = "character", default = "false")
 parser$add_argument("--maxEE", type = "integer", default = 3)
 parser$add_argument("--max-mismatch", type = "integer", default = 0)
-parser$add_argument("--chimera-method", type = "character", default = "consensus", choices = c("consensus", "pooled", "per-sample"))
+parser$add_argument("--chimera-method", type = "character", default = "consensus", choices = c("consensus", "pooled", "per-sample", "consensus_with_rescue"))
 parser$add_argument("--self-consist", action = "store_true")
 parser$add_argument("--omega-c", type = "double", default = 1e-40)
 parser$add_argument("--cores", type = "integer", default = 1)
@@ -131,7 +131,24 @@ if (args$concat_non_overlaps) {
 rm(dadaFs, dadaRs)
 
 seqtab <- makeSequenceTable(mergers)
-seqtab.nochim <- removeBimeraDenovo(seqtab, method = args$chimera_method, multithread = TRUE, verbose = TRUE)
+rescue_chimeras <- args$chimera_method == "consensus_with_rescue"
+bimera_method <- if (rescue_chimeras) "consensus" else args$chimera_method
+seqtab.nochim <- removeBimeraDenovo(seqtab, method = bimera_method, multithread = TRUE, verbose = TRUE)
+
+# Each row of seqtab is a single sample-locus. A sequence that is one of the two most abundant
+# in a row cannot have two more abundant parents in that row, so restore it in that row only.
+if (rescue_chimeras) {
+  removed <- setdiff(colnames(seqtab), colnames(seqtab.nochim))
+  if (length(removed) > 0) {
+    top2 <- t(apply(seqtab, 1, function(x) x > 0 & rank(-x, ties.method = "min") <= 2))
+    dimnames(top2) <- dimnames(seqtab)
+    rescued <- seqtab[, removed, drop = FALSE] * top2[, removed, drop = FALSE]
+    rescued <- rescued[, colSums(rescued) > 0, drop = FALSE]
+    message("Rescued ", ncol(rescued), " of ", length(removed), " sequences flagged as chimeras (",
+            sum(rescued > 0), " sample-locus entries)")
+    seqtab.nochim <- cbind(seqtab.nochim, rescued)
+  }
+}
 
 ### Create clusters output file with quality control
 
